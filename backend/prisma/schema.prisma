@@ -1,0 +1,294 @@
+// This is your Prisma schema file
+// Learn more about it: https://pris.ly/d/prisma-schema
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+// ─── ENUMS ───────────────────────────────────────────────────────────────────
+enum StatusLiberacao {
+  ATIVA
+  CONCLUIDA
+  CANCELADA
+}
+enum TipoFardo {
+  FARDAO
+  FARDINHO
+}
+enum StatusVeiculo {
+  AGENDADO
+  CARREGADO
+  EM_TRANSITO
+  FINALIZADO
+  LIBERADO
+  AGUARDANDO_CARREGAMENTO
+  AGUARDANDO_DESCARGA
+  AGUARDANDO_NFE
+  AGUARDANDO_GR
+  FALTA_AGENDAR
+  FALTA_CONTRATAR
+  SOLICITADO
+  PIX_PAGO
+  CARTA_FRETE
+}
+enum TipoAcesso {
+  EMAIL
+  LINK
+  API
+}
+enum TipoAlerta {
+  DEADLINE_PROXIMO
+  CARGA_ATRASADA
+  SALDO_PENDENTE
+  STATUS_ALTERADO
+  DOCUMENTACAO_PENDENTE
+  AGENDAMENTO_NECESSARIO
+}
+enum StatusAlerta {
+  ENVIADO
+  FALHOU
+  PENDENTE
+}
+enum PerfilUsuario {
+  ADMIN
+  OPERADOR
+  GESTOR_FILIAL
+  VISUALIZADOR
+  CLIENTE
+}
+enum AcaoAuditoria {
+  INSERT
+  UPDATE
+  DELETE
+}
+// ─── TABELAS PRINCIPAIS ───────────────────────────────────────────────────────
+model Cliente {
+  id         Int      @id @default(autoincrement())
+  nome       String   @unique
+  cnpj       String   @unique
+  email      String?
+  contatos   String?
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  liberacoes   Liberacao[]
+  usuarios     Usuario[]
+  alertasConfig AlertaConfig[]
+  @@map("clientes")
+}
+model Origem {
+  id          Int      @id @default(autoincrement())
+  nome        String   @unique
+  localizacao String
+  estado      String
+  createdAt   DateTime @default(now()) @map("created_at")
+  liberacoes Liberacao[]
+  usuarios   Usuario[]
+  @@map("origens")
+}
+model Destino {
+  id          Int      @id @default(autoincrement())
+  nome        String   @unique
+  estado      String
+  createdAt   DateTime @default(now()) @map("created_at")
+  liberacoes  Liberacao[]
+  @@map("destinos")
+}
+model LocalColeta {
+  id          Int      @id @default(autoincrement())
+  nome        String   @unique
+  cidade      String?
+  estado      String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  liberacoes  Liberacao[]
+  @@map("locais_coleta")
+}
+model Terminal {
+  id                     Int        @id @default(autoincrement())
+  nome                   String     @unique
+  tipoAcesso             TipoAcesso @map("tipo_acesso")
+  linkSistema            String? @map("link_sistema")
+  login                  String?
+  senha                  String?
+  cnpj                   String?
+  emailsContato          String? @map("emails_contato")
+  instrucoesEspecificas  String? @map("instrucoes_especificas")
+  documentosNecessarios  String? @map("documentos_necessarios")
+  createdAt              DateTime   @default(now()) @map("created_at")
+  updatedAt              DateTime   @updatedAt @map("updated_at")
+  liberacoes    Liberacao[]
+  alertasConfig AlertaConfig[]
+  @@map("terminais")
+}
+model ModeloCarreta {
+  id                       Int      @id @default(autoincrement())
+  nomeDescricao            String   @map("nome_descricao")
+  placaVeiculo             String?  @map("placa_veiculo")
+  motoristaNome            String? @map("motorista_nome")
+  motoristaTelefone        String? @map("motorista_telefone")
+  capacidadeMaximaFardos   Int @map("capacidade_maxima_fardos")
+  pesoMaximoKg             Int @map("peso_maximo_kg")
+  comprimentoM             Float? @map("comprimento_m")
+  larguraM                 Float? @map("largura_m")
+  alturaM                  Float? @map("altura_m")
+  caracteristicasEspeciais String? @map("caracteristicas_especiais")
+  observacoes              String?
+  ativo                    Boolean  @default(true)
+  createdAt                DateTime @default(now()) @map("created_at")
+  updatedAt                DateTime @updatedAt @map("updated_at")
+  veiculos Veiculo[]
+  @@map("modelo_carretas")
+}
+
+model ReferenciaCadastro {
+  id        Int      @id @default(autoincrement())
+  tipo      String
+  valor     String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  @@unique([tipo, valor])
+  @@map("referencias_cadastro")
+}
+model Transportadora {
+  id        Int      @id @default(autoincrement())
+  nome      String   @unique
+  cnpj      String   @unique
+  telefone  String?
+  email     String?
+  createdAt DateTime @default(now()) @map("created_at")
+  veiculos Veiculo[]
+  @@map("transportadoras")
+}
+model Liberacao {
+  id             Int              @id @default(autoincrement())
+  instrucao      String           @unique
+  dataLiberacao  DateTime @map("data_liberacao")
+  dataColeta     DateTime @map("data_coleta")
+  clienteId      Int @map("cliente_id")
+  origemId       Int @map("origem_id")
+  destinoId      Int @map("destino_id")
+  terminalId     Int @map("terminal_id")
+  localColetaId  Int @map("local_coleta_id")
+  // Campos diretos: a Liberação é a fonte de cadastro operacional.
+  clienteNome    String? @map("cliente_nome")
+  filialNome     String? @map("filial_nome")
+  destinoNome    String? @map("destino_nome")
+  origemNome     String? @map("origem_nome")
+  localColetaNome String? @map("local_coleta_nome")
+  freteEmpresa   Float @map("frete_empresa")
+  totalFardos    Int @map("total_fardos")
+  tipoFardo      TipoFardo        @default(FARDAO) @map("tipo_fardo")
+  deadline       DateTime
+  carregado      Int              @default(0)
+  observacao     String?
+  status         StatusLiberacao  @default(ATIVA)
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+  cliente  Cliente  @relation(fields: [clienteId], references: [id])
+  origem   Origem   @relation(fields: [origemId], references: [id])
+  destino  Destino  @relation(fields: [destinoId], references: [id])
+  terminal Terminal @relation(fields: [terminalId], references: [id])
+  localColeta LocalColeta @relation(fields: [localColetaId], references: [id])
+  veiculos    Veiculo[]
+  alertasLog  AlertaLog[]
+  @@index([clienteId])
+  @@index([deadline])
+  @@index([status])
+  @@map("liberacoes")
+}
+model Veiculo {
+  id                 Int           @id @default(autoincrement())
+  liberacaoId        Int @map("liberacao_id")
+  placa              String
+  modeloCarretaId    Int @map("modelo_carreta_id")
+  freteMotorista     Float @map("frete_motorista")
+  qtdFardos          Int @map("qtd_fardos")
+  motoristaNome      String @map("motorista_nome")
+  motoristaTelefone  String @map("motorista_telefone")
+  motoristaCpf       String? @map("motorista_cpf")
+  motoristaEmail     String? @map("motorista_email")
+  transportadoraId   Int? @map("transportadora_id")
+  status             StatusVeiculo @default(AGENDADO)
+  dataAgendamento    DateTime? @map("data_agendamento")
+  dataCarregamento   DateTime? @map("data_carregamento")
+  dataDescarga       DateTime? @map("data_descarga")
+  observacao         String?
+  createdAt          DateTime      @default(now()) @map("created_at")
+  updatedAt          DateTime      @updatedAt @map("updated_at")
+  liberacao      Liberacao       @relation(fields: [liberacaoId], references: [id], onDelete: Cascade)
+  modeloCarreta  ModeloCarreta   @relation(fields: [modeloCarretaId], references: [id])
+  transportadora Transportadora? @relation(fields: [transportadoraId], references: [id])
+  alertasLog AlertaLog[]
+  @@index([liberacaoId])
+  @@index([placa])
+  @@index([status])
+  @@map("veiculos")
+}
+model Usuario {
+  id        Int           @id @default(autoincrement())
+  nome      String
+  email     String        @unique
+  senhaHash String @map("senha_hash")
+  telefone  String?
+  perfil    PerfilUsuario
+  clienteId Int? @map("cliente_id")
+  filialId  Int? @map("filial_id")
+  ativo     Boolean       @default(true)
+  lastLogin DateTime? @map("last_login")
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
+  cliente Cliente? @relation(fields: [clienteId], references: [id])
+  filial  Origem?  @relation(fields: [filialId], references: [id])
+  auditoria AuditoriaLog[]
+  @@index([email])
+  @@map("usuarios")
+}
+model AlertaConfig {
+  id            Int        @id @default(autoincrement())
+  clienteId     Int? @map("cliente_id")
+  terminalId    Int? @map("terminal_id")
+  tipoAlerta    TipoAlerta @map("tipo_alerta")
+  diasAntes     Int @map("dias_antes")
+  canais        String?
+  destinatarios String?
+  horarioInicio String? @map("horario_inicio")
+  horarioFim    String? @map("horario_fim")
+  ativo         Boolean    @default(true)
+  createdAt     DateTime   @default(now()) @map("created_at")
+  cliente  Cliente?  @relation(fields: [clienteId], references: [id])
+  terminal Terminal? @relation(fields: [terminalId], references: [id])
+  @@map("alertas_config")
+}
+model AlertaLog {
+  id            Int          @id @default(autoincrement())
+  liberacaoId   Int @map("liberacao_id")
+  veiculoId     Int? @map("veiculo_id")
+  tipoAlerta    TipoAlerta @map("tipo_alerta")
+  canal         String
+  destinatario  String
+  diasRestantes Int? @map("dias_restantes")
+  placaVeiculo  String? @map("placa_veiculo")
+  mensagem      String
+  status        StatusAlerta @default(PENDENTE)
+  enviadoEm     DateTime     @default(now()) @map("enviado_em")
+  liberacao Liberacao @relation(fields: [liberacaoId], references: [id])
+  veiculo   Veiculo?  @relation(fields: [veiculoId], references: [id])
+  @@index([liberacaoId])
+  @@index([enviadoEm])
+  @@map("alertas_log")
+}
+model AuditoriaLog {
+  id             Int           @id @default(autoincrement())
+  usuarioId      Int @map("usuario_id")
+  tabelaAfetada  String @map("tabela_afetada")
+  registroId     Int @map("registro_id")
+  acao           AcaoAuditoria
+  dadosAntigos   String? @map("dados_antigos")
+  dadosNovos     String? @map("dados_novos")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  usuario Usuario @relation(fields: [usuarioId], references: [id])
+  @@index([tabelaAfetada])
+  @@index([createdAt])
+  @@map("auditoria_log")
+}
