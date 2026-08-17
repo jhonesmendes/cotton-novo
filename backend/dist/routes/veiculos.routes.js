@@ -8,6 +8,7 @@ exports.veiculosRouter = (0, express_1.Router)();
 exports.veiculosRouter.use(auth_1.authenticate);
 exports.veiculosRouter.get('/', veiculos_controller_1.listar);
 exports.veiculosRouter.get('/placa/:placa', veiculos_controller_1.buscarPorPlaca);
+exports.veiculosRouter.get('/motorista/cpf/:cpf', veiculos_controller_1.buscarMotoristaPorCpf);
 exports.veiculosRouter.get('/:id', veiculos_controller_1.buscarPorId);
 exports.veiculosRouter.post('/', veiculos_controller_1.criar);
 exports.veiculosRouter.put('/:id', veiculos_controller_1.atualizar);

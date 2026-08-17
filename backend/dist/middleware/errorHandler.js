@@ -51,7 +51,10 @@ function errorHandler(err, _req, res, _next) {
     }
     console.error('Erro não tratado:', err);
     return res.status(500).json({
-        error: { code: 'INTERNAL_ERROR', message: 'Erro interno do servidor' },
+        error: {
+            code: 'INTERNAL_ERROR',
+            message: process.env.NODE_ENV === 'development' ? err.message : 'Erro interno do servidor',
+        },
     });
 }
 //# sourceMappingURL=errorHandler.js.map

@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.listar = listar;
 exports.buscarPorId = buscarPorId;
 exports.buscarPorPlaca = buscarPorPlaca;
+exports.buscarMotoristaPorCpf = buscarMotoristaPorCpf;
 exports.criar = criar;
 exports.atualizar = atualizar;
 exports.deletar = deletar;
@@ -26,7 +27,8 @@ const criarSchema = zod_1.z.object({
     qtdFardos: zod_1.z.number().int().positive(),
     motoristaNome: zod_1.z.string().min(3),
     motoristaTelefone: zod_1.z.string().min(10),
-    motoristaCpf: zod_1.z.string().length(11).optional(),
+    // Há cadastros legados com CPF incompleto; não devem impedir a edição do veículo.
+    motoristaCpf: zod_1.z.string().min(10).max(11).nullable().optional(),
     motoristaEmail: zod_1.z.string().email().optional(),
     transportadoraId: zod_1.z.number().int().positive().optional(),
     status: zod_1.z.nativeEnum(client_1.StatusVeiculo).optional().default(client_1.StatusVeiculo.AGENDADO),
@@ -61,15 +63,15 @@ async function vincularCadastroBase(data) {
         });
     }
     else {
-        if (!data.nomeDescricao || !data.capacidadeMaximaFardos || !data.pesoMaximoKg) {
-            throw new errorHandler_1.AppError('Informe modelo, capacidade e peso para cadastrar um novo veículo', 400);
+        if (!data.nomeDescricao) {
+            throw new errorHandler_1.AppError('Informe o modelo da carreta para cadastrar um novo veículo', 400);
         }
         cadastro = await prisma_1.default.modeloCarreta.create({
             data: {
                 ...dadosCadastro,
                 nomeDescricao: data.nomeDescricao,
-                capacidadeMaximaFardos: data.capacidadeMaximaFardos,
-                pesoMaximoKg: data.pesoMaximoKg,
+                capacidadeMaximaFardos: data.capacidadeMaximaFardos ?? 0,
+                pesoMaximoKg: data.pesoMaximoKg ?? 0,
             },
         });
     }
@@ -181,6 +183,15 @@ async function buscarPorPlaca(req, res) {
         motoristaTelefone: veiculo.motoristaTelefone,
         motoristaCpf: veiculo.motoristaCpf,
     });
+}
+async function buscarMotoristaPorCpf(req, res) {
+    const cpf = req.params.cpf.replace(/\D/g, '');
+    const veiculo = await prisma_1.default.veiculo.findFirst({
+        where: { motoristaCpf: cpf },
+        orderBy: { updatedAt: 'desc' },
+        select: { motoristaNome: true, motoristaTelefone: true, motoristaCpf: true },
+    });
+    return res.json(veiculo);
 }
 async function criar(req, res) {
     const data = criarSchema.parse(req.body);

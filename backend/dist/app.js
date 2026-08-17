@@ -20,7 +20,9 @@ const clientes_routes_1 = require("./routes/clientes.routes");
 const origens_routes_1 = require("./routes/origens.routes");
 const destinos_routes_1 = __importDefault(require("./routes/destinos.routes"));
 const locais_coleta_routes_1 = __importDefault(require("./routes/locais-coleta.routes"));
-dotenv_1.default.config();
+// A instância de desenvolvimento pode priorizar o .env local sem alterar a
+// configuração herdada por processos de produção.
+dotenv_1.default.config({ override: process.env.NODE_ENV === 'development' });
 const app = (0, express_1.default)();
 const PORT = process.env.PORT || 3001;
 app.use((0, cors_1.default)({
@@ -43,7 +45,7 @@ app.use('/api/origens', origens_routes_1.origensRouter);
 app.use('/api/destinos', destinos_routes_1.default);
 app.use('/api/locais-coleta', locais_coleta_routes_1.default);
 app.get('/health', (_, res) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+    res.json({ status: 'ok', source: 'cotton-backend', timestamp: new Date().toISOString() });
 });
 app.use(errorHandler_1.errorHandler);
 app.listen(PORT, () => {

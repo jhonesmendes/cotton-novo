@@ -179,8 +179,27 @@ export async function atualizarReferencia(req: AuthRequest, res: Response) {
   }
   const campos = { clientes: 'clienteNome', filiais: 'filialNome', destinos: 'destinoNome', origens: 'origemNome', locaisColeta: 'localColetaNome' } as const;
   const campo = campos[body.tipo];
-  const resultado = await prisma.liberacao.updateMany({ where: { [campo]: body.atual }, data: { [campo]: body.novo.trim() } });
-  return res.json({ atualizados: resultado.count });
+  const novoValor = body.novo.trim();
+  const resultado = await prisma.$transaction(async (tx) => {
+    const liberacoes = await tx.liberacao.updateMany({ where: { [campo]: body.atual }, data: { [campo]: novoValor } });
+    const referenciaAtual = await tx.referenciaCadastro.findUnique({ where: { tipo_valor: { tipo: body.tipo, valor: body.atual } } });
+
+    if (!referenciaAtual) return { liberacoes: liberacoes.count, referencias: 0 };
+
+    const referenciaComNovoValor = await tx.referenciaCadastro.findUnique({ where: { tipo_valor: { tipo: body.tipo, valor: novoValor } } });
+    if (referenciaComNovoValor) {
+      await tx.referenciaCadastro.delete({ where: { id: referenciaAtual.id } });
+    } else {
+      await tx.referenciaCadastro.update({ where: { id: referenciaAtual.id }, data: { valor: novoValor } });
+    }
+
+    return { liberacoes: liberacoes.count, referencias: 1 };
+  });
+
+  if (resultado.liberacoes + resultado.referencias === 0) {
+    throw new AppError('Referência não encontrada para atualização', 404);
+  }
+  return res.json({ atualizados: resultado.liberacoes + resultado.referencias });
 }
 
 export async function buscarPorId(req: AuthRequest, res: Response) {

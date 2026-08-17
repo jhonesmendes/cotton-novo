@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import sqlite3 from 'sqlite3';
 import { AppError } from '../middleware/errorHandler';
+import { AuthRequest } from '../middleware/auth';
 
 const loginSchema = z.object({
   email: z.string().email('Email inválido'),

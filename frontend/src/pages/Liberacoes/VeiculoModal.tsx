@@ -39,7 +39,11 @@ export default function VeiculoModal({ liberacaoId, veiculoId, onClose, onSaved 
     mutationFn: (data: any) =>
       isEdit ? api.put(`/veiculos/${veiculoId}`, data) : api.post('/veiculos', data),
     onSuccess: () => { toast.success(isEdit ? 'Veículo atualizado' : 'Veículo adicionado'); onSaved(); },
-    onError: (e: any) => toast.error(e?.response?.data?.error?.message || 'Erro ao salvar'),
+    onError: (e: any) => {
+      const error = e?.response?.data?.error;
+      const primeiroDetalhe = error?.details?.[0];
+      toast.error(primeiroDetalhe?.message || error?.message || 'Erro ao salvar');
+    },
   });
 
   function set(field: string, val: any) {
@@ -53,10 +57,18 @@ export default function VeiculoModal({ liberacaoId, veiculoId, onClose, onSaved 
     }
 
     const payload = {
-      ...form,
+      ...(isEdit ? {} : { liberacaoId }),
+      placa: form.placa?.trim().toUpperCase(),
+      modeloCarretaId: Number.isInteger(form.modeloCarretaId) ? form.modeloCarretaId : undefined,
+      nomeDescricao: form.nomeDescricao.trim(),
+      qtdFardos: Number(form.qtdFardos),
+      freteMotorista: Number(form.freteMotorista),
+      motoristaNome: form.motoristaNome?.trim(),
       motoristaTelefone: form.motoristaTelefone?.replace(/\D/g, ''),
       // null permite remover um CPF incorreto já gravado.
       motoristaCpf: form.motoristaCpf?.replace(/\D/g, '') || null,
+      status: form.status,
+      observacao: form.observacao?.trim() || undefined,
     };
 
     mutation.mutate(payload);
