@@ -15,8 +15,8 @@ export default function DashboardKPIs() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* Por Cliente */}
-      <div className="bg-white rounded-xl border p-5">
-        <h2 className="text-sm font-semibold text-gray-700 mb-4">Fardos Pendentes por Cliente</h2>
+      <div className="ui-card p-5">
+        <h2 className="mb-4 text-sm font-semibold text-ui-text">Fardos Pendentes por Cliente</h2>
         <ResponsiveContainer width="100%" height={220}>
           <BarChart data={data.porCliente} layout="vertical" margin={{ left: 20 }}>
             <XAxis type="number" tick={{ fontSize: 11 }} />
@@ -28,8 +28,8 @@ export default function DashboardKPIs() {
       </div>
 
       {/* Por Filial */}
-      <div className="bg-white rounded-xl border p-5">
-        <h2 className="text-sm font-semibold text-gray-700 mb-4">Volume Ativo por Filial</h2>
+      <div className="ui-card p-5">
+        <h2 className="mb-4 text-sm font-semibold text-ui-text">Volume Ativo por Filial</h2>
         <ResponsiveContainer width="100%" height={220}>
           <PieChart>
             <Pie

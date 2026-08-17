@@ -5,6 +5,7 @@ import UrgenciaBadge from '@/components/UrgenciaBadge';
 import { PhoneIcon, PencilSquareIcon, CheckIcon } from '@heroicons/react/24/outline';
 import { Link } from 'react-router-dom';
 import { formatDate } from '@/utils/format';
+import PageHeader from '@/components/ui/PageHeader';
 
 const URGENCIA_OPTIONS = [
   { value: '', label: 'Todas urgências' },
@@ -40,11 +41,8 @@ export default function AlertasPage() {
   const sumario = data?.sumario;
 
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Alertas de Deadline</h1>
-        <p className="text-gray-500 text-sm">Cargas com prazo crítico ou vencido</p>
-      </div>
+    <div className="ui-page space-y-6">
+      <PageHeader title="Alertas de Deadline" description="Cargas com prazo crítico ou vencido" />
 
       {/* Sumário */}
       {sumario && (
@@ -56,7 +54,7 @@ export default function AlertasPage() {
             { label: 'Alerta',   val: sumario.alerta,    cls: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
             { label: 'Monitorar',val: sumario.monitorar, cls: 'bg-amber-50 text-amber-700 border-amber-200' },
           ].map((s) => (
-            <div key={s.label} className={`rounded-xl border p-3 text-center ${s.cls}`}>
+            <div key={s.label} className={`rounded-ui-md border p-3 text-center ${s.cls}`}>
               <div className="text-2xl font-bold">{s.val}</div>
               <div className="text-xs font-medium">{s.label}</div>
             </div>
@@ -65,13 +63,13 @@ export default function AlertasPage() {
       )}
 
       {/* Filtros */}
-      <div className="bg-white rounded-xl border p-4">
+      <div className="ui-card p-4">
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           <div>
             <label className="text-xs text-gray-500 mb-1 block">Urgência</label>
             <select value={filtros.urgencia}
               onChange={(e) => setFiltros((f) => ({ ...f, urgencia: e.target.value }))}
-              className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm">
+              className="ui-input">
               {URGENCIA_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </div>
@@ -79,18 +77,18 @@ export default function AlertasPage() {
             <label className="text-xs text-gray-500 mb-1 block">Dias p/ vencer (máx)</label>
             <input type="number" min={0} max={30} value={filtros.diasMax}
               onChange={(e) => setFiltros((f) => ({ ...f, diasMax: e.target.value }))}
-              className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm" />
+              className="ui-input" />
           </div>
           <div>
             <label className="text-xs text-gray-500 mb-1 block">Motorista / Telefone</label>
             <input value={filtros.motorista}
               onChange={(e) => setFiltros((f) => ({ ...f, motorista: e.target.value }))}
               placeholder="Nome ou número..."
-              className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm" />
+              className="ui-input" />
           </div>
           <div className="flex items-end">
             <button onClick={() => refetch()}
-              className="w-full bg-green-700 text-white text-sm py-1.5 rounded hover:bg-green-800">
+              className="ui-btn-primary w-full">
               Atualizar
             </button>
           </div>
@@ -98,9 +96,9 @@ export default function AlertasPage() {
       </div>
 
       {/* Tabela */}
-      <div className="bg-white rounded-xl border overflow-hidden">
-        <div className="px-5 py-4 border-b flex items-center justify-between">
-          <h2 className="font-semibold text-gray-800">
+      <div className="ui-card overflow-hidden">
+        <div className="ui-card-header flex items-center justify-between">
+          <h2 className="font-semibold text-ui-text">
             Veículos com Deadline Crítico
             <span className="ml-2 text-sm font-normal text-gray-500">({data?.total ?? 0} registros)</span>
           </h2>
@@ -111,7 +109,7 @@ export default function AlertasPage() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
+              <thead className="bg-ui-muted text-xs uppercase text-ui-text-muted">
                 <tr>
                   <th className="px-3 py-3 text-left">Nível</th>
                   <th className="px-3 py-3 text-left">Placa</th>
@@ -129,7 +127,7 @@ export default function AlertasPage() {
                   <th className="px-3 py-3 text-center">Ações</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-ui-border-subtle">
                 {(data?.data ?? []).length === 0 && (
                   <tr>
                     <td colSpan={14} className="text-center py-10 text-gray-400">
@@ -139,7 +137,7 @@ export default function AlertasPage() {
                 )}
                 {(data?.data ?? []).map((v: any) => (
                   <tr key={v.id}
-                    className={`hover:bg-gray-50 ${v.nivel === 'VENCIDO' || v.nivel === 'HOJE' ? 'bg-red-50' : ''}`}>
+                    className={`transition-colors hover:bg-ui-muted/60 ${v.nivel === 'VENCIDO' || v.nivel === 'HOJE' ? 'bg-red-50' : ''}`}>
                     <td className="px-3 py-3"><UrgenciaBadge nivel={v.nivel} /></td>
                     <td className="px-3 py-3 font-mono font-bold text-gray-800">{v.placa}</td>
                     <td className="px-3 py-3">
@@ -193,13 +191,13 @@ export default function AlertasPage() {
         )}
 
         {data?.total > 50 && (
-          <div className="px-5 py-3 border-t flex justify-between text-sm text-gray-500">
+          <div className="flex justify-between border-t border-ui-border-subtle px-5 py-3 text-sm text-ui-text-muted">
             <span>Página {page}</span>
             <div className="flex gap-2">
               <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
-                className="px-3 py-1 border rounded disabled:opacity-40">Anterior</button>
+                className="ui-btn-outline min-h-0 px-3 py-1 disabled:opacity-40">Anterior</button>
               <button onClick={() => setPage((p) => p + 1)} disabled={page * 50 >= data.total}
-                className="px-3 py-1 border rounded disabled:opacity-40">Próxima</button>
+                className="ui-btn-outline min-h-0 px-3 py-1 disabled:opacity-40">Próxima</button>
             </div>
           </div>
         )}

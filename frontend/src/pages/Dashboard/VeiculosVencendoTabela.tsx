@@ -30,7 +30,7 @@ export default function VeiculosVencendoTabela({ filtros }: Props) {
 
   if (isLoading) {
     return (
-      <div className="bg-white rounded-xl border p-6">
+      <div className="ui-card p-6">
         <div className="animate-pulse space-y-3">
           {[...Array(5)].map((_, i) => <div key={i} className="h-10 bg-gray-100 rounded" />)}
         </div>
@@ -42,9 +42,9 @@ export default function VeiculosVencendoTabela({ filtros }: Props) {
   const total = data?.total ?? 0;
 
   return (
-    <div className="bg-white rounded-xl border overflow-hidden">
-      <div className="px-5 py-4 border-b flex items-center justify-between">
-        <h2 className="font-semibold text-gray-800">
+    <div className="ui-card overflow-hidden">
+      <div className="ui-card-header flex items-center justify-between">
+        <h2 className="font-semibold text-ui-text">
           Veículos com Deadline Próximo
           <span className="ml-2 text-sm font-normal text-gray-500">({total} registros)</span>
         </h2>
@@ -52,7 +52,7 @@ export default function VeiculosVencendoTabela({ filtros }: Props) {
 
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
+          <thead className="bg-ui-muted text-xs uppercase text-ui-text-muted">
             <tr>
               <th className="px-4 py-3 text-left">Urgência</th>
               <th className="px-4 py-3 text-left">Placa</th>
@@ -68,7 +68,7 @@ export default function VeiculosVencendoTabela({ filtros }: Props) {
               <th className="px-4 py-3 text-center">Ações</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody className="divide-y divide-ui-border-subtle">
             {items.length === 0 && (
               <tr>
                 <td colSpan={12} className="text-center py-8 text-gray-400">
@@ -77,7 +77,7 @@ export default function VeiculosVencendoTabela({ filtros }: Props) {
               </tr>
             )}
             {items.map((v: any) => (
-              <tr key={v.id} className="hover:bg-gray-50 transition-colors">
+              <tr key={v.id} className="transition-colors hover:bg-ui-muted/60">
                 <td className="px-4 py-3">
                   <UrgenciaBadge nivel={v.urgencia} />
                 </td>

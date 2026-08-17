@@ -144,30 +144,30 @@ export default function UsuariosPage() {
   const perfilColor = (perfil: string) => PERFIS.find(p => p.value === perfil)?.color || '';
 
   return (
-    <div className="p-6 space-y-5">
+    <div className="ui-page space-y-6">
       {/* HEADER */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between rounded-ui-lg border border-ui-border bg-ui-surface p-5 shadow-sm">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Usuários</h1>
           <p className="text-gray-500 text-sm">Gerenciamento de acesso ao sistema</p>
         </div>
         <button onClick={abrirNovoUsuario}
-          className="flex items-center gap-2 bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-800">
+          className="ui-btn-primary">
           <Plus className="w-4 h-4" />
           Novo Usuário
         </button>
       </div>
 
       {/* BUSCA */}
-      <div className="bg-white rounded-xl border p-4">
+      <div className="ui-card p-4">
         <input value={busca} onChange={(e) => setBusca(e.target.value)}
           placeholder="Pesquisar por nome ou email..."
-          className="w-full border border-gray-200 rounded px-3 py-1.5 text-sm" />
+          className="ui-input" />
       </div>
 
       {/* TABELA */}
-      <div className="bg-white rounded-xl border overflow-hidden">
-        <div className="px-5 py-3 border-b text-sm text-gray-500">
+      <div className="ui-card overflow-hidden">
+        <div className="ui-card-header py-3 text-sm text-ui-text-muted">
           {listarFiltrados.length} usuário(s) encontrado(s)
         </div>
         {isLoading ? (
@@ -175,7 +175,7 @@ export default function UsuariosPage() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
+              <thead className="bg-ui-muted text-xs uppercase text-ui-text-muted">
                 <tr>
                   <th className="px-4 py-3 text-left">Nome</th>
                   <th className="px-4 py-3 text-left">Email</th>
@@ -186,9 +186,9 @@ export default function UsuariosPage() {
                   <th className="px-4 py-3 text-center">Ação</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-ui-border-subtle">
                 {listarFiltrados.map((u: Usuario) => (
-                  <tr key={u.id} className="hover:bg-gray-50">
+                  <tr key={u.id} className="transition-colors hover:bg-ui-muted/60">
                     <td className="px-4 py-3 font-medium">{u.nome}</td>
                     <td className="px-4 py-3 text-gray-600">{u.email}</td>
                     <td className="px-4 py-3">
@@ -235,7 +235,7 @@ export default function UsuariosPage() {
       </div>
 
       {/* PERMISSÕES REFERÊNCIA */}
-      <div className="bg-white rounded-xl border p-5">
+      <div className="ui-card p-5">
         <h3 className="font-bold text-sm mb-4">Permissões por Perfil</h3>
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
           {PERFIS.map(perfil => (
@@ -328,4 +328,3 @@ export default function UsuariosPage() {
     </div>
   );
 }
-

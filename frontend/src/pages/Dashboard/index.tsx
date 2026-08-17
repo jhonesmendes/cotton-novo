@@ -4,8 +4,8 @@ import api from '@/services/api';
 import DashboardResumo from './DashboardResumo';
 import VeiculosVencendoTabela from './VeiculosVencendoTabela';
 import DashboardKPIs from './DashboardKPIs';
-import DashboardCharts from './DashboardCharts';
 import FiltrosDashboard, { FiltrosDashboardState } from './FiltrosDashboard';
+import PageHeader from '@/components/ui/PageHeader';
 
 export default function DashboardPage() {
   const [filtros, setFiltros] = useState<FiltrosDashboardState>({
@@ -20,23 +20,15 @@ export default function DashboardPage() {
   });
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-500 text-sm">Visão geral das cargas em andamento</p>
-        </div>
-        <span className="text-xs text-gray-400">
-          Atualiza a cada 5 min
-        </span>
-      </div>
+    <div className="ui-page space-y-6">
+      <PageHeader title="Dashboard" description="Visão geral das cargas em andamento" action={<span className="text-xs text-ui-text-muted">Atualiza a cada 5 min</span>} />
 
       {/* Cards de resumo */}
       <DashboardResumo data={resumo} loading={loadResumo} />
 
       {/* Gráficos */}
       <div className="mt-6">
-        <h2 className="text-xl font-bold text-gray-900 mb-4">Análise de Dados</h2>
+        <h2 className="mb-4 text-lg font-semibold text-ui-text">Análise de Dados</h2>
         {/* <DashboardCharts /> */}
       </div>
 

@@ -26,8 +26,8 @@ export default function FiltrosDashboard({ value, onChange }: Props) {
   }
 
   return (
-    <div className="bg-white rounded-xl border p-4">
-      <h3 className="text-sm font-semibold text-gray-700 mb-3">Filtros</h3>
+    <div className="ui-card p-4">
+      <h3 className="mb-3 text-sm font-semibold text-ui-text">Filtros</h3>
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
         <div>
           <label className="text-xs text-gray-500 mb-1 block">Busca (placa / motorista)</label>
@@ -35,14 +35,14 @@ export default function FiltrosDashboard({ value, onChange }: Props) {
             value={value.busca}
             onChange={(e) => set('busca', e.target.value)}
             placeholder="ABC-1234..."
-            className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm"
+            className="ui-input"
           />
         </div>
 
         <div>
           <label className="text-xs text-gray-500 mb-1 block">Cliente</label>
           <select value={value.clienteId} onChange={(e) => set('clienteId', e.target.value)}
-            className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm">
+            className="ui-input">
             <option value="">Todos</option>
             {(clientes ?? []).map((c: any, i: number) => (
               <option key={c.clienteId || i} value={c.clienteId}>{c.nome}</option>
@@ -53,7 +53,7 @@ export default function FiltrosDashboard({ value, onChange }: Props) {
         <div>
           <label className="text-xs text-gray-500 mb-1 block">Filial Embarcadora</label>
           <select value={value.origemId} onChange={(e) => set('origemId', e.target.value)}
-            className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm">
+            className="ui-input">
             <option value="">Todas</option>
             {(origens ?? []).map((o: any, i: number) => (
               <option key={o.origemId || i} value={o.origemId}>{o.nome}</option>
@@ -64,7 +64,7 @@ export default function FiltrosDashboard({ value, onChange }: Props) {
         <div>
           <label className="text-xs text-gray-500 mb-1 block">Origem</label>
           <select value={value.terminalId} onChange={(e) => set('terminalId', e.target.value)}
-            className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm">
+            className="ui-input">
             <option value="">Todos</option>
             {(terminais ?? []).map((t: any, i: number) => (
               <option key={t.id || i} value={t.id}>{t.nome}</option>
@@ -75,7 +75,7 @@ export default function FiltrosDashboard({ value, onChange }: Props) {
         <div>
           <label className="text-xs text-gray-500 mb-1 block">Status Veículo</label>
           <select value={value.status} onChange={(e) => set('status', e.target.value)}
-            className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm">
+            className="ui-input">
             <option value="">Todos</option>
             {STATUS_OPTIONS.map((s) => (
               <option key={s} value={s}>{STATUS_LABELS[s]}</option>
@@ -91,7 +91,7 @@ export default function FiltrosDashboard({ value, onChange }: Props) {
             max={365}
             value={value.diasMax}
             onChange={(e) => set('diasMax', e.target.value)}
-            className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm"
+            className="ui-input"
           />
         </div>
       </div>

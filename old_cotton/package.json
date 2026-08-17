@@ -1,0 +1,16 @@
+{
+  "name": "cotton",
+  "version": "1.0.0",
+  "scripts": {
+    "frontend": "npm --prefix frontend run dev",
+    "backend": "npm --prefix backend run dev",
+    "dev": "concurrently \"npm run backend\" \"npm run frontend\""
+  },
+  "dependencies": {
+    "generate": "^0.10.0",
+    "migrate": "^2.1.0"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0"
+  }
+}

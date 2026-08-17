@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ChevronDownIcon, XMarkIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, PlusIcon } from '@heroicons/react/24/outline';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
 
@@ -29,11 +29,6 @@ export default function AlertasConfigPage() {
   const { data: alertas, isLoading } = useQuery({
     queryKey: ['alertas-config'],
     queryFn: () => api.get('/alertas/config').then((r) => r.data),
-  });
-
-  const { data: clientes } = useQuery({
-    queryKey: ['clientes'],
-    queryFn: () => api.get('/liberacoes/clientes').then((r) => r.data),
   });
 
   const criarMutation = useMutation({

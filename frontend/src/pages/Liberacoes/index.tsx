@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import api from '@/services/api';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import { formatDate } from '@/utils/format';
+import PageHeader from '@/components/ui/PageHeader';
 
 export default function LiberacoesPage() {
   const [busca, setBusca] = useState('');
@@ -22,25 +23,20 @@ export default function LiberacoesPage() {
   });
 
   return (
-    <div className="p-6 space-y-5">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Liberações</h1>
-          <p className="text-gray-500 text-sm">Instruções de carregamento</p>
-        </div>
-        <Link to="/liberacoes/nova"
-          className="flex items-center gap-2 bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-800">
+    <div className="ui-page space-y-6">
+      <PageHeader title="Liberações" description="Instruções de carregamento" action={
+        <Link to="/liberacoes/nova" className="ui-btn-primary">
           <PlusIcon className="w-4 h-4" />
           Nova Liberação
         </Link>
-      </div>
+      } />
 
-      <div className="bg-white rounded-xl border p-4 flex gap-3 flex-wrap">
+      <div className="ui-card flex flex-wrap gap-3 p-4">
         <input value={busca} onChange={(e) => { setBusca(e.target.value); setPage(1); }}
           placeholder="Instrução, placa ou motorista..."
-          className="flex-1 min-w-[200px] border border-gray-200 rounded px-3 py-1.5 text-sm" />
+          className="ui-input min-w-[200px] flex-1" />
         <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}
-          className="border border-gray-200 rounded px-3 py-1.5 text-sm">
+          className="ui-input w-auto">
           <option value="">Todos status</option>
           <option value="ATIVA">Ativas</option>
           <option value="CONCLUIDA">Concluídas</option>
@@ -48,8 +44,8 @@ export default function LiberacoesPage() {
         </select>
       </div>
 
-      <div className="bg-white rounded-xl border overflow-hidden">
-        <div className="px-5 py-3 border-b text-sm text-gray-500">
+      <div className="ui-card overflow-hidden">
+        <div className="ui-card-header py-3 text-sm text-ui-text-muted">
           {data?.total ?? 0} liberações encontradas
         </div>
         {isLoading ? (
@@ -57,7 +53,7 @@ export default function LiberacoesPage() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
+              <thead className="bg-ui-muted text-xs uppercase text-ui-text-muted">
                 <tr>
                   <th className="px-4 py-3 text-left">Instrução</th>
                   <th className="px-4 py-3 text-left">Cliente</th>
@@ -72,10 +68,10 @@ export default function LiberacoesPage() {
                   <th className="px-4 py-3 text-center">Ação</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-ui-border-subtle">
                 {(data?.data ?? []).map((l: any) => (
-                  <tr key={l.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 font-medium text-green-700">
+                  <tr key={l.id} className="transition-colors hover:bg-ui-muted/60">
+                    <td className="px-4 py-3 font-medium text-ui-primary">
                       <Link to={`/liberacoes/${l.id}`} className="hover:underline">{l.instrucao}</Link>
                     </td>
                     <td className="px-4 py-3 text-xs">{l.clienteNome ?? l.cliente?.nome}</td>
@@ -112,13 +108,13 @@ export default function LiberacoesPage() {
           </div>
         )}
         {data?.total > 50 && (
-          <div className="px-5 py-3 border-t flex justify-between text-sm text-gray-500">
+          <div className="flex justify-between border-t border-ui-border-subtle px-5 py-3 text-sm text-ui-text-muted">
             <span>Página {page}</span>
             <div className="flex gap-2">
               <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
-                className="px-3 py-1 border rounded disabled:opacity-40">Anterior</button>
+                className="ui-btn-outline min-h-0 px-3 py-1 disabled:opacity-40">Anterior</button>
               <button onClick={() => setPage((p) => p + 1)} disabled={page * 50 >= data.total}
-                className="px-3 py-1 border rounded disabled:opacity-40">Próxima</button>
+                className="ui-btn-outline min-h-0 px-3 py-1 disabled:opacity-40">Próxima</button>
             </div>
           </div>
         )}

@@ -1,0 +1,21 @@
+import { Router } from 'express';
+import { authenticate } from '../middleware/auth';
+import {
+  listar,
+  buscarPorId,
+  criar,
+  atualizar,
+  deletar,
+  atualizarStatus,
+} from '../controllers/liberacoes.controller';
+
+export const liberacoesRouter = Router();
+
+liberacoesRouter.use(authenticate);
+
+liberacoesRouter.get('/', listar);
+liberacoesRouter.get('/:id', buscarPorId);
+liberacoesRouter.post('/', criar);
+liberacoesRouter.put('/:id', atualizar);
+liberacoesRouter.patch('/:id/status', atualizarStatus);
+liberacoesRouter.delete('/:id', deletar);
