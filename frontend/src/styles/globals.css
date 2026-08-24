@@ -17,16 +17,16 @@
   .ui-page-header { @apply flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between; }
   .ui-card { @apply rounded-ui-lg border border-ui-border bg-ui-surface shadow-sm; }
   .ui-card-header { @apply border-b border-ui-border-subtle px-5 py-4; }
-  .ui-input { @apply w-full rounded-ui-md border border-ui-border bg-ui-surface px-3 py-2 text-sm text-ui-text outline-none transition placeholder:text-ui-text-muted hover:border-slate-300 focus:border-ui-primary focus:ring-4 focus:ring-green-100 disabled:bg-ui-muted disabled:text-ui-disabled; }
+  .ui-input { @apply w-full rounded-ui-md border border-ui-border bg-ui-surface px-3 py-2 text-sm text-ui-text outline-none transition placeholder:text-ui-text-muted hover:border-slate-300 focus:border-ui-primary focus:ring-4 focus:ring-indigo-100 disabled:bg-ui-muted disabled:text-ui-disabled; }
   .ui-btn { @apply inline-flex items-center justify-center gap-2 rounded-ui-md px-4 py-2 text-sm font-semibold transition focus:outline-none focus:ring-4 disabled:pointer-events-none disabled:opacity-50; }
-  .ui-btn-primary { @apply ui-btn bg-ui-primary text-white hover:bg-ui-primary-hover active:bg-ui-primary-active focus:ring-green-100; }
+  .ui-btn-primary { @apply ui-btn bg-ui-primary text-white hover:bg-ui-primary-hover active:bg-ui-primary-active focus:ring-indigo-100; }
   .ui-btn-outline { @apply ui-btn border border-ui-border bg-ui-surface text-ui-text hover:bg-ui-muted focus:ring-slate-100; }
-  .badge-vencido  { @apply bg-red-50 text-red-700 font-semibold border border-red-200/50 shadow-sm; }
-  .badge-hoje     { @apply bg-red-50 text-red-700 font-semibold border border-red-200/50 shadow-sm; }
-  .badge-critico  { @apply bg-orange-50 text-orange-700 font-semibold border border-orange-200/50 shadow-sm; }
-  .badge-alerta   { @apply bg-yellow-50 text-yellow-700 font-semibold border border-yellow-200/50 shadow-sm; }
-  .badge-monitorar{ @apply bg-blue-50 text-blue-700 font-medium border border-blue-200/50 shadow-sm; }
-  .badge-ok       { @apply bg-green-50 text-green-700 font-medium border border-green-200/50 shadow-sm; }
+  .badge-vencido  { @apply bg-red-50 text-red-700 font-semibold border border-red-200 rounded-ui-sm; }
+  .badge-hoje     { @apply bg-red-50 text-red-700 font-semibold border border-red-200 rounded-ui-sm; }
+  .badge-critico  { @apply bg-orange-50 text-orange-700 font-semibold border border-orange-200 rounded-ui-sm; }
+  .badge-alerta   { @apply bg-yellow-50 text-yellow-700 font-semibold border border-yellow-200 rounded-ui-sm; }
+  .badge-monitorar{ @apply bg-indigo-50 text-indigo-700 font-semibold border border-indigo-200 rounded-ui-sm; }
+  .badge-ok       { @apply bg-green-50 text-green-700 font-medium border border-green-200 rounded-ui-sm; }
   
   .glass-panel {
     @apply bg-white/80 backdrop-blur-md border border-white/20 shadow-glass;

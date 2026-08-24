@@ -12,7 +12,7 @@ const MAP: Record<string, { label: string; cls: string }> = {
 export default function UrgenciaBadge({ nivel }: { nivel: string }) {
   const m = MAP[nivel] ?? MAP.OK;
   return (
-    <span className={clsx('text-xs px-2 py-0.5 rounded-full', m.cls)}>
+    <span className={clsx('text-xs px-2 py-0.5', m.cls)}>
       {m.label}
     </span>
   );

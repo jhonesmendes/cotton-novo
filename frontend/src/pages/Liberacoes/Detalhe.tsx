@@ -146,7 +146,7 @@ export default function LiberacaoDetalhe() {
             <p className="text-xs text-gray-400 mt-0.5">{lib.veiculos?.length ?? 0} veículo(s) vinculado(s)</p>
           </div>
           <button onClick={() => setVeiculoModal('novo')}
-            className="flex items-center gap-2 bg-green-700 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-green-800 transition-colors font-medium">
+            className="flex items-center gap-2 bg-ui-primary text-white px-3 py-1.5 rounded-lg text-sm hover:bg-ui-primary-hover transition-colors font-medium">
             <PlusIcon className="w-4 h-4" />
             Adicionar Veículo
           </button>

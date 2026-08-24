@@ -149,7 +149,7 @@ export default function VeiculoModal({ liberacaoId, veiculoId, onClose, onSaved 
             Cancelar
           </button>
           <button onClick={handleSave} disabled={mutation.isPending}
-            className="px-4 py-2 bg-green-700 text-white rounded-lg text-sm font-medium hover:bg-green-800 disabled:opacity-60">
+            className="px-4 py-2 bg-ui-primary text-white rounded-lg text-sm font-medium hover:bg-ui-primary-hover disabled:opacity-60">
             {mutation.isPending ? 'Salvando...' : 'Salvar'}
           </button>
         </div>

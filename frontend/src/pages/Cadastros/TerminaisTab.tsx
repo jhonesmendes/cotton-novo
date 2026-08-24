@@ -101,7 +101,7 @@ export default function OrigensPage() {
             if (showForm) handleCancel();
             else setShowForm(true);
           }}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium"
+          className="flex items-center gap-2 px-4 py-2 bg-ui-primary text-white rounded-lg hover:bg-ui-primary-hover transition text-sm font-medium"
         >
           {showForm ? 'Fechar' : <><Plus size={18} /> Nova Origem</>}
         </button>
@@ -136,7 +136,7 @@ export default function OrigensPage() {
               </button>
               <button
                 type="submit"
-                className="px-4 py-1.5 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition font-medium"
+                className="px-4 py-1.5 bg-ui-primary text-white rounded text-sm hover:bg-ui-primary-hover transition font-medium"
                 disabled={mutatarCriar.isPending || mutatarAtualizar.isPending}
               >
                 {mutatarCriar.isPending || mutatarAtualizar.isPending ? 'Salvando...' : editingId ? 'Atualizar' : 'Adicionar'}
@@ -155,7 +155,7 @@ export default function OrigensPage() {
             <p className="mb-4">Nenhum terminal cadastrado ainda</p>
             <button
               onClick={() => setShowForm(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-ui-primary text-white rounded-lg hover:bg-ui-primary-hover transition text-sm"
             >
               <Plus size={18} />
               Cadastrar Primeiro Terminal

@@ -40,8 +40,8 @@ export default function DashboardResumo({ data, loading }: Props) {
       label: 'Taxa de Cumprimento',
       value: `${data?.taxaCumprimento ?? 0}%`,
       icon: CheckBadgeIcon,
-      color: 'bg-green-50 text-green-700',
-      iconBg: 'bg-green-100',
+      color: 'bg-indigo-50 text-indigo-700',
+      iconBg: 'bg-indigo-100',
     },
   ];
 

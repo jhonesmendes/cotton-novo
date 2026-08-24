@@ -4,34 +4,24 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Inter', 'sans-serif'],
-        display: ['Outfit', 'sans-serif'],
+        sans: ['IBM Plex Sans', 'sans-serif'],
+        display: ['Space Grotesk', 'sans-serif'],
       },
       colors: {
         ui: {
-          primary: '#15803d',
-          'primary-hover': '#166534',
-          'primary-active': '#14532d',
+          primary: '#4f46e5',
+          'primary-hover': '#4338ca',
+          'primary-active': '#3730a3',
           secondary: '#0f766e',
-          background: '#f8fafc',
+          background: '#f6f7f9',
           surface: '#ffffff',
-          muted: '#f1f5f9',
-          border: '#e2e8f0',
+          muted: '#f8fafc',
+          border: '#e5e7eb',
           'border-subtle': '#f1f5f9',
           text: '#0f172a',
           'text-muted': '#64748b',
           disabled: '#94a3b8',
           success: '#15803d', warning: '#b45309', danger: '#dc2626', info: '#2563eb',
-        },
-        cotton: {
-          50: '#f0fdf4',
-          100: '#dcfce7',
-          500: '#22c55e',
-          600: '#16a34a',
-          700: '#15803d',
-          800: '#166534',
-          900: '#14532d',
-          950: '#052e16',
         },
         urgency: {
           vencido: '#ef4444',

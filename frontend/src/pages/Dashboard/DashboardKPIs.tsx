@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import api from '@/services/api';
 
-const COLORS = ['#16a34a', '#2563eb', '#d97706', '#dc2626', '#7c3aed', '#0891b2'];
+const COLORS = ['#4f46e5', '#818cf8', '#2563eb', '#d97706', '#dc2626', '#0891b2'];
 
 export default function DashboardKPIs() {
   const { data } = useQuery({
@@ -22,7 +22,7 @@ export default function DashboardKPIs() {
             <XAxis type="number" tick={{ fontSize: 11 }} />
             <YAxis type="category" dataKey="nome" width={90} tick={{ fontSize: 11 }} />
             <Tooltip formatter={(v: number) => v.toLocaleString('pt-BR')} />
-            <Bar dataKey="saldo" name="Saldo" fill="#16a34a" radius={[0, 4, 4, 0]} />
+            <Bar dataKey="saldo" name="Saldo" fill="#4f46e5" radius={[0, 4, 4, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>

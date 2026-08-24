@@ -76,7 +76,7 @@ export default function ClientesTab() {
         <h2 className="text-lg font-bold text-gray-800">Lista de Clientes</h2>
         <button
           onClick={() => { if (showForm) handleCancel(); else setShowForm(true); }}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium"
+          className="flex items-center gap-2 px-4 py-2 bg-ui-primary text-white rounded-lg hover:bg-ui-primary-hover transition text-sm font-medium"
         >
           {showForm ? 'Fechar Formulário' : <><Plus size={18} /> Novo Cliente</>}
         </button>
@@ -113,7 +113,7 @@ export default function ClientesTab() {
               <button type="button" onClick={handleCancel} className="px-4 py-1.5 border border-gray-300 text-gray-700 rounded text-sm hover:bg-gray-50 transition">
                 Cancelar
               </button>
-              <button type="submit" disabled={salvar.isPending} className="px-4 py-1.5 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition font-medium">
+              <button type="submit" disabled={salvar.isPending} className="px-4 py-1.5 bg-ui-primary text-white rounded text-sm hover:bg-ui-primary-hover transition font-medium">
                 {salvar.isPending ? 'Salvando...' : 'Salvar'}
               </button>
             </div>

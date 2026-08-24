@@ -142,7 +142,7 @@ export default function AlertasPage() {
                     <td className="px-3 py-3 font-mono font-bold text-gray-800">{v.placa}</td>
                     <td className="px-3 py-3">
                       <Link to={`/liberacoes/${v.liberacaoId}`}
-                        className="text-green-700 hover:underline text-xs font-medium">
+                        className="text-ui-primary hover:underline text-xs font-medium">
                         {v.instrucao}
                       </Link>
                     </td>

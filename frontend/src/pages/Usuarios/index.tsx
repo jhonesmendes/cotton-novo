@@ -305,7 +305,7 @@ export default function UsuariosPage() {
                   Cancelar
                 </button>
                 <button type="submit"
-                  className="flex-1 px-4 py-2 bg-blue-700 text-white rounded-lg hover:bg-blue-800 text-sm font-medium"
+                  className="flex-1 px-4 py-2 bg-ui-primary text-white rounded-lg hover:bg-ui-primary-hover text-sm font-medium"
                   disabled={mutatarCriar.isPending || mutatarAtualizar.isPending}>
                   {mutatarCriar.isPending || mutatarAtualizar.isPending ? 'Salvando...' : 'Salvar'}
                 </button>

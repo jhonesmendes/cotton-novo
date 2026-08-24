@@ -40,50 +40,73 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-cotton-950 via-cotton-900 to-black font-sans relative overflow-hidden">
-      {/* Decorative background elements */}
-      <div className="absolute top-[-20%] left-[-10%] w-[500px] h-[500px] rounded-full bg-cotton-500/20 blur-[120px] pointer-events-none"></div>
-      <div className="absolute bottom-[-20%] right-[-10%] w-[600px] h-[600px] rounded-full bg-cotton-700/20 blur-[120px] pointer-events-none"></div>
-
-      <div className="w-full max-w-md p-8 bg-white/10 backdrop-blur-xl border border-white/20 rounded-[2rem] shadow-2xl relative z-10 animate-fade-in">
-        <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-tr from-cotton-400 to-cotton-600 shadow-lg shadow-cotton-500/30 mb-5">
-            <span className="text-3xl font-display font-bold text-white tracking-tighter">C</span>
-          </div>
-          <h1 className="text-3xl font-display font-bold text-white tracking-tight">Cotton Fibra</h1>
-          <p className="text-cotton-200/80 text-sm mt-2 font-medium tracking-wide uppercase">Gestão de Cargas</p>
+    <div className="min-h-screen flex bg-ui-background font-sans">
+      {/* Brand panel */}
+      <div className="hidden lg:flex lg:w-[440px] flex-shrink-0 flex-col justify-between bg-ui-primary p-12 text-white [background-image:radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.08),transparent_40%),radial-gradient(circle_at_80%_80%,rgba(255,255,255,0.06),transparent_40%)]">
+        <div className="flex items-center gap-2.5">
+          <img src="/logo-fibra.jpeg" alt="Fibra Forte" className="h-9 w-9 rounded-ui-sm object-contain bg-white p-0.5" />
+          <span className="font-display text-sm font-semibold">Cotton Fibra Forte</span>
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+        <div>
+          <h1 className="font-display max-w-sm text-3xl font-semibold leading-tight">
+            Gestão de cargas de pluma de algodão, do pátio ao destino.
+          </h1>
+          <p className="mt-4 max-w-sm text-sm leading-relaxed text-indigo-100">
+            Acompanhe liberações, prazos e veículos em um único lugar — com alertas antes que um deadline vire problema.
+          </p>
+        </div>
+
+        <div className="flex gap-7">
           <div>
-            <label className="block text-xs font-semibold text-cotton-200/90 mb-1.5 uppercase tracking-wider">Email</label>
-            <input
-              {...register('email')}
-              type="email"
-              className={`w-full bg-white/5 border ${errors.email ? 'border-red-400' : 'border-white/10'} rounded-xl px-4 py-3 text-white placeholder-cotton-300/50 focus:outline-none focus:bg-white/10 focus:border-cotton-400 focus:ring-1 focus:ring-cotton-400 transition-all`}
-            />
-            {errors.email && <p className="text-[11px] font-medium text-red-400 mt-1.5">{errors.email.message}</p>}
+            <p className="font-display text-2xl font-bold">128</p>
+            <p className="mt-0.5 text-[11px] text-indigo-200">Cargas ativas</p>
           </div>
           <div>
-            <label className="block text-xs font-semibold text-cotton-200/90 mb-1.5 uppercase tracking-wider">Senha</label>
-            <input
-              {...register('password')}
-              type="password"
-              placeholder="admin123"
-              className={`w-full bg-white/5 border ${errors.password ? 'border-red-400' : 'border-white/10'} rounded-xl px-4 py-3 text-white placeholder-cotton-300/50 focus:outline-none focus:bg-white/10 focus:border-cotton-400 focus:ring-1 focus:ring-cotton-400 transition-all`}
-            />
-            {errors.password && <p className="text-[11px] font-medium text-red-400 mt-1.5">{errors.password.message}</p>}
+            <p className="font-display text-2xl font-bold">94%</p>
+            <p className="mt-0.5 text-[11px] text-indigo-200">Taxa de cumprimento</p>
           </div>
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-cotton-500 hover:bg-cotton-400 text-cotton-950 font-bold py-3.5 rounded-xl text-sm transition-all shadow-lg shadow-cotton-500/20 disabled:opacity-60 hover:-translate-y-0.5 mt-2"
-          >
-            {loading ? 'Acessando sistema...' : 'Entrar na plataforma'}
-          </button>
-        </form>
+        </div>
+      </div>
+
+      {/* Form panel */}
+      <div className="flex flex-1 items-center justify-center p-6">
+        <div className="w-full max-w-sm">
+          <h2 className="font-display text-xl font-semibold text-ui-text">Entrar</h2>
+          <p className="mt-1 mb-7 text-sm text-ui-text-muted">Acesse o sistema de gestão de cargas.</p>
+
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-ui-text">Email</label>
+              <input
+                {...register('email')}
+                type="email"
+                className="ui-input"
+              />
+              {errors.email && <p className="mt-1.5 text-xs font-medium text-red-600">{errors.email.message}</p>}
+            </div>
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-ui-text">Senha</label>
+              <input
+                {...register('password')}
+                type="password"
+                placeholder="••••••••"
+                className="ui-input"
+              />
+              {errors.password && <p className="mt-1.5 text-xs font-medium text-red-600">{errors.password.message}</p>}
+            </div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="ui-btn-primary mt-2 w-full"
+            >
+              {loading ? 'Acessando sistema...' : 'Entrar'}
+            </button>
+          </form>
+
+          <p className="mt-6 text-center text-[11px] text-ui-text-muted">Acesso restrito a colaboradores autorizados.</p>
+        </div>
       </div>
     </div>
   );
 }
-

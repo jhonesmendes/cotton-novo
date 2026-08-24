@@ -90,7 +90,7 @@ export default function AlertasConfigPage() {
         </div>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2"
+          className="bg-ui-primary text-white px-4 py-2 rounded-lg hover:bg-ui-primary-hover flex items-center gap-2"
         >
           <PlusIcon className="w-5 h-5" />
           Novo Alerta
@@ -111,7 +111,7 @@ export default function AlertasConfigPage() {
                 onChange={(e) =>
                   setNovoAlerta({ ...novoAlerta, tipoAlerta: e.target.value })
                 }
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
                 <option value="">Selecione o tipo</option>
                 {tiposAlerta.map((t) => (
@@ -135,7 +135,7 @@ export default function AlertasConfigPage() {
                 }
                 min={0}
                 max={30}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
 
@@ -181,7 +181,7 @@ export default function AlertasConfigPage() {
                 onChange={(e) =>
                   setNovoAlerta({ ...novoAlerta, horarioInicio: e.target.value })
                 }
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
 
@@ -196,7 +196,7 @@ export default function AlertasConfigPage() {
                 onChange={(e) =>
                   setNovoAlerta({ ...novoAlerta, horarioFim: e.target.value })
                 }
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
 
@@ -212,7 +212,7 @@ export default function AlertasConfigPage() {
                   setNovoAlerta({ ...novoAlerta, destinatarios: e.target.value })
                 }
                 placeholder="exemplo@email.com, outro@email.com"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
           </div>
@@ -223,7 +223,7 @@ export default function AlertasConfigPage() {
                 criarMutation.mutate(novoAlerta as AlertaConfig)
               }
               disabled={criarMutation.isPending}
-              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50"
+              className="bg-ui-primary text-white px-4 py-2 rounded-lg hover:bg-ui-primary-hover disabled:opacity-50"
             >
               {criarMutation.isPending ? 'Salvando...' : 'Salvar Alerta'}
             </button>
@@ -244,7 +244,7 @@ export default function AlertasConfigPage() {
             <p className="text-gray-500">Nenhum alerta configurado ainda</p>
             <button
               onClick={() => setShowForm(true)}
-              className="mt-2 text-green-600 hover:text-green-700 font-medium"
+              className="mt-2 text-ui-primary hover:text-ui-primary-hover font-medium"
             >
               Criar primeiro alerta →
             </button>

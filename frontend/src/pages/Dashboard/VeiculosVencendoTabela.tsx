@@ -83,7 +83,7 @@ export default function VeiculosVencendoTabela({ filtros }: Props) {
                 </td>
                 <td className="px-4 py-3 font-mono font-semibold text-gray-800">{v.placa}</td>
                 <td className="px-4 py-3">
-                  <Link to={`/liberacoes/${v.liberacaoId}`} className="text-green-700 hover:underline">
+                  <Link to={`/liberacoes/${v.liberacaoId}`} className="text-ui-primary hover:underline">
                     {v.liberacao?.instrucao}
                   </Link>
                 </td>
@@ -114,7 +114,7 @@ export default function VeiculosVencendoTabela({ filtros }: Props) {
                 </td>
                 <td className="px-4 py-3 text-center">
                   <Link to={`/liberacoes/${v.liberacaoId}`} title="Editar">
-                    <PencilSquareIcon className="w-4 h-4 text-gray-400 hover:text-green-700 inline" />
+                    <PencilSquareIcon className="w-4 h-4 text-gray-400 hover:text-ui-primary inline" />
                   </Link>
                 </td>
               </tr>

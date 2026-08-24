@@ -198,7 +198,7 @@ export default function ModelosPage() {
                 </button>
                 <button type="submit"
                   disabled={salvar.isPending}
-                  className="inline-flex items-center gap-2 rounded-lg bg-green-700 px-6 py-2 text-sm font-bold text-white hover:bg-green-800 disabled:opacity-60 shadow-sm">
+                  className="inline-flex items-center gap-2 rounded-lg bg-ui-primary px-6 py-2 text-sm font-bold text-white hover:bg-ui-primary-hover disabled:opacity-60 shadow-sm">
                   {salvar.isPending ? 'Salvando...' : 'Salvar Alterações'}
                 </button>
               </div>
@@ -214,7 +214,7 @@ export default function ModelosPage() {
             <button
               onClick={() => { if (confirm('Aplicar os dados do Cadastro Base a todas as liberações vinculadas?')) sincronizar.mutate(); }}
               disabled={sincronizar.isPending}
-              className="text-xs text-green-700 hover:text-green-800 font-bold disabled:opacity-60"
+              className="text-xs text-ui-primary hover:text-ui-primary-hover font-bold disabled:opacity-60"
             >
               {sincronizar.isPending ? 'Sincronizando...' : 'Sincronizar liberações'}
             </button>

@@ -132,7 +132,7 @@ export default function LiberacaoForm() {
             Cancelar
           </button>
           <button type="submit" disabled={mutation.isPending}
-            className="px-5 py-2 bg-green-700 text-white rounded-lg text-sm font-semibold hover:bg-green-800 disabled:opacity-60">
+            className="px-5 py-2 bg-ui-primary text-white rounded-lg text-sm font-semibold hover:bg-ui-primary-hover disabled:opacity-60">
             {mutation.isPending ? 'Salvando...' : isEdit ? 'Salvar Alterações' : 'Criar Liberação'}
           </button>
         </div>
