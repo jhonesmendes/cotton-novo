@@ -5,7 +5,11 @@
   "scripts": {
     "frontend": "npm --prefix frontend run dev",
     "backend": "npm --prefix backend run dev",
-    "dev": "concurrently \"npm run backend\" \"npm run frontend\""
+    "dev": "concurrently \"npm run backend\" \"npm run frontend\"",
+    "docker:up": "docker compose up --build",
+    "docker:down": "docker compose down",
+    "docker:prod": "docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build",
+    "docker:logs": "docker compose logs -f"
   },
 
   "dependencies": {

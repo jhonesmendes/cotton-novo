@@ -1,1 +1,15 @@
 node_modules
+dist
+
+# env / secrets
+.env
+.env.local
+backend/.env
+frontend/.env
+
+# bancos locais
+backend/dev.db
+backend/dev.db-journal
+
+# docker
+docker-compose.override.yml
