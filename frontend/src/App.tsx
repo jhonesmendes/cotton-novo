@@ -36,8 +36,9 @@ export default function App() {
           <Route path="liberacoes/:id" element={<LiberacaoDetalhe />} />
           <Route path="liberacoes/:id/editar" element={<LiberacaoForm />} />
           <Route path="alertas" element={<AlertasPage />} />
-          <Route path="usuarios" element={<UsuariosPage />} />
           <Route path="cadastros" element={<CadastrosPage />} />
+          <Route path="configuracoes" element={<Navigate to="/configuracoes/usuarios" replace />} />
+          <Route path="configuracoes/usuarios" element={<UsuariosPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

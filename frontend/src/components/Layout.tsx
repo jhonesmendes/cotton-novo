@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   ArrowRightOnRectangleIcon, Bars3Icon, BellAlertIcon, ClipboardDocumentListIcon,
-  FolderIcon, HomeIcon, UsersIcon, XMarkIcon,
+  Cog6ToothIcon, FolderIcon, HomeIcon, XMarkIcon,
 } from '@heroicons/react/24/outline';
 import clsx from 'clsx';
 import { useAuthStore } from '@/stores/auth.store';
@@ -11,12 +11,11 @@ const nav = [
   { to: '/dashboard', label: 'Dashboard', icon: HomeIcon },
   { to: '/liberacoes', label: 'Liberações', icon: ClipboardDocumentListIcon },
   { to: '/alertas', label: 'Alertas', icon: BellAlertIcon },
-  { to: '/usuarios', label: 'Usuários', icon: UsersIcon },
 ];
 
 const pageTitles: Record<string, string> = {
   '/dashboard': 'Dashboard', '/liberacoes': 'Liberações', '/alertas': 'Alertas',
-  '/usuarios': 'Usuários', '/cadastros': 'Revisão de Dados',
+  '/configuracoes': 'Configurações', '/configuracoes/usuarios': 'Configurações', '/cadastros': 'Revisão de Dados',
 };
 
 type SidebarContentProps = { onNavigate?: () => void; onLogout: () => void; userName?: string };
@@ -41,6 +40,9 @@ function SidebarContent({ onNavigate, onLogout, userName }: SidebarContentProps)
       </NavLink>)}
       <NavLink to="/cadastros" onClick={onNavigate} className={({ isActive }) => itemClass(isActive)}>
         <FolderIcon className="h-4 w-4" />Revisão de Dados
+      </NavLink>
+      <NavLink to="/configuracoes" onClick={onNavigate} className={({ isActive }) => itemClass(isActive)}>
+        <Cog6ToothIcon className="h-4 w-4" />Configurações
       </NavLink>
     </nav>
     <div className="mt-auto border-t border-ui-border px-3 py-3">
