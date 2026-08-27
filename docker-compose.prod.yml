@@ -1,21 +1,29 @@
-# Uso: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
-# Sobrescreve o compose de dev: builda as imagens de produção (target "prod"),
-# tira hot-reload/Adminer e exige as variáveis reais de produção via .env.
+# Stack de produção, autossuficiente (não depende de docker-compose.yml —
+# pensado pra rodar sozinho, inclusive de um único "Compose path" no Portainer).
+# Uso local: docker compose -f docker-compose.prod.yml up -d --build
 services:
-  adminer:
-    profiles: !override ["tools"]
-
   postgres:
-    ports: !override []
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-cotton_db}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-cotton_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 
   backend:
     build:
       context: ./backend
+      dockerfile: Dockerfile
       target: prod
-    # o frontend já repassa /api pro backend pela rede interna do Docker
-    # (ver frontend/nginx.conf) — não precisa publicar a porta no host.
-    ports: !override []
-    environment: !override
+    restart: unless-stopped
+    environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-cotton_db}
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-8h}
@@ -24,14 +32,23 @@ services:
       PORT: 3001
       NODE_ENV: production
       FRONTEND_URL: ${FRONTEND_URL}
-    volumes: !override []
+    # o frontend já repassa /api pro backend pela rede interna do Docker
+    # (ver frontend/nginx.conf) — não precisa publicar a porta no host.
+    depends_on:
+      postgres:
+        condition: service_healthy
     command: sh -c "npx prisma migrate deploy && node dist/app.js"
 
   frontend:
     build:
       context: ./frontend
+      dockerfile: Dockerfile
       target: prod
-    environment: !override {}
-    ports: !override
+    restart: unless-stopped
+    ports:
       - "${FRONTEND_PORT:-80}:80"
-    volumes: !override []
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:

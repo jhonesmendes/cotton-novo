@@ -23,9 +23,13 @@ docker compose down                # derruba tudo (mantém o volume do postgres)
 docker compose logs -f backend     # segue os logs de um serviço
 docker compose exec backend sh     # shell dentro do container do backend
 
-# produção (build de imagens otimizadas, sem hot-reload/adminer)
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+# produção (build de imagens otimizadas, sem hot-reload/adminer, arquivo autossuficiente)
+docker compose -f docker-compose.prod.yml up -d --build
 ```
+
+`docker-compose.prod.yml` é independente do `docker-compose.yml` de dev (não usa `-f` duplo)
+de propósito — o Portainer só aceita um arquivo no campo "Compose path" ao fazer deploy via
+repositório Git.
 
 Também há atalhos no `package.json` da raiz: `npm run docker:up`, `docker:down`,
 `docker:prod`, `docker:logs`.
