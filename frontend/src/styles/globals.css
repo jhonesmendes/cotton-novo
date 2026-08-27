@@ -95,7 +95,7 @@
   border-color: #334155;
   color: #f1f5f9;
 }
-.dark .hover\:bg-gray-50:hover, .dark .hover\:bg-ui-muted:hover { background-color: #263449; }
+.dark .hover\:bg-gray-50:hover, .dark .hover\:bg-ui-muted:hover, .dark .hover\:bg-ui-muted\/60:hover { background-color: #243043; }
 
 /* semantic pastel colors (badges, alert boxes, icon chips) */
 .dark .bg-red-50    { background-color: rgba(248, 113, 113, .12); }

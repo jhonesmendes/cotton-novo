@@ -11,5 +11,8 @@ frontend/.env
 backend/dev.db
 backend/dev.db-journal
 
+# dumps de dados reais (contêm PII — nunca versionar)
+dados-producao.sql
+
 # docker
 docker-compose.override.yml
