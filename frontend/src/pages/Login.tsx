@@ -21,9 +21,6 @@ export default function LoginPage() {
 
   const { register, handleSubmit, formState: { errors } } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
-    defaultValues: {
-      email: 'admin@cottonfibraforte.com',
-    }
   });
 
   const onSubmit = async (data: LoginFormData) => {
@@ -81,6 +78,8 @@ export default function LoginPage() {
               <input
                 {...register('email')}
                 type="email"
+                placeholder="seu@email.com"
+                autoComplete="username"
                 className="ui-input"
               />
               {errors.email && <p className="mt-1.5 text-xs font-medium text-red-600">{errors.email.message}</p>}
@@ -91,6 +90,7 @@ export default function LoginPage() {
                 {...register('password')}
                 type="password"
                 placeholder="••••••••"
+                autoComplete="current-password"
                 className="ui-input"
               />
               {errors.password && <p className="mt-1.5 text-xs font-medium text-red-600">{errors.password.message}</p>}
