@@ -38,6 +38,16 @@ services:
       PORT: 3001
       NODE_ENV: development
       FRONTEND_URL: http://localhost:${FRONTEND_PORT:-5173}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      # bind mount no Windows não emite eventos de fs de forma confiável —
+      # sem isso, o ts-node-dev não percebe mudanças de arquivo (mesmo caso
+      # do usePolling do Vite no frontend).
+      CHOKIDAR_USEPOLLING: "true"
     ports:
       - "${BACKEND_PORT:-3001}:3001"
     volumes:

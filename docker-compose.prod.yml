@@ -32,6 +32,12 @@ services:
       PORT: 3001
       NODE_ENV: production
       FRONTEND_URL: ${FRONTEND_URL}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
     # o frontend já repassa /api pro backend pela rede interna do Docker
     # (ver frontend/nginx.conf) — não precisa publicar a porta no host.
     depends_on:

@@ -2,6 +2,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/auth.store';
 import Layout from '@/components/Layout';
 import LoginPage from '@/pages/Login';
+import EsqueciSenhaPage from '@/pages/EsqueciSenha';
+import RedefinirSenhaPage from '@/pages/RedefinirSenha';
 import DashboardPage from '@/pages/Dashboard';
 import LiberacoesPage from '@/pages/Liberacoes';
 import LiberacaoDetalhe from '@/pages/Liberacoes/Detalhe';
@@ -29,6 +31,8 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/esqueci-senha" element={<EsqueciSenhaPage />} />
+        <Route path="/redefinir-senha" element={<RedefinirSenhaPage />} />
         <Route
           path="/"
           element={

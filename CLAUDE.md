@@ -96,9 +96,14 @@ SOLICITADO → FALTA_CONTRATAR → FALTA_AGENDAR → AGENDADO
 
 ## Variáveis de ambiente
 
-- **Com Docker** (padrão): tudo vem do `.env` da raiz (`MYSQL_ROOT_PASSWORD`,
-  `MYSQL_DATABASE`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `JWT_REFRESH_EXPIRES_IN`,
-  `ENCRYPTION_KEY`, `FRONTEND_URL`) — ver `.env.example`.
+- **Com Docker** (padrão): tudo vem do `.env` da raiz (`POSTGRES_USER`,
+  `POSTGRES_PASSWORD`, `POSTGRES_DB`, `JWT_SECRET`, `JWT_EXPIRES_IN`,
+  `JWT_REFRESH_EXPIRES_IN`, `ENCRYPTION_KEY`, `FRONTEND_URL`, `SMTP_*`) — ver
+  `.env.example`.
+- **SMTP** (recuperação de senha por email): `SMTP_HOST`, `SMTP_PORT`,
+  `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`. Sem `SMTP_HOST`
+  configurado, o backend não envia o email — só loga o link no console (útil
+  em dev). Não há tela de configuração; é só via variável de ambiente mesmo.
 - **Sem Docker**: `backend/.env` (ver `backend/.env.example`) e `frontend/.env.example`
   (só `VITE_PROXY_TARGET`, usado pelo proxy `/api` do Vite dev server).
 - `backend/.env`, `frontend/.env` e o `.env` da raiz estão no `.gitignore` — nunca
