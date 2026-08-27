@@ -10,9 +10,11 @@ import ConfirmModal from '@/components/ConfirmModal';
 import TimelineStatus from '@/components/TimelineStatus';
 import { PlusIcon, PencilSquareIcon, TrashIcon, PhoneIcon, ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline';
 import VeiculoModal from './VeiculoModal';
+import { useAuthStore } from '@/stores/auth.store';
 
 export default function LiberacaoDetalhe() {
   const { id } = useParams<{ id: string }>();
+  const podeEditarLiberacao = useAuthStore((s) => s.user?.perfil) !== 'OPERADOR';
   const navigate = useNavigate();
   const [veiculoModal, setVeiculoModal] = useState<'novo' | number | null>(null);
   const [expandedTimeline, setExpandedTimeline] = useState<number | null>(null);
@@ -83,11 +85,13 @@ export default function LiberacaoDetalhe() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Link to={`/liberacoes/${id}/editar`}
-            className="flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm hover:bg-gray-50 transition-colors">
-            <PencilSquareIcon className="w-4 h-4" />
-            Editar
-          </Link>
+          {podeEditarLiberacao && (
+            <Link to={`/liberacoes/${id}/editar`}
+              className="flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm hover:bg-gray-50 transition-colors">
+              <PencilSquareIcon className="w-4 h-4" />
+              Editar
+            </Link>
+          )}
           <button
             onClick={() => setConfirmDelete({ type: 'liberacao' })}
             className="flex items-center gap-2 border border-red-200 text-red-600 px-4 py-2 rounded-lg text-sm hover:bg-red-50 transition-colors">

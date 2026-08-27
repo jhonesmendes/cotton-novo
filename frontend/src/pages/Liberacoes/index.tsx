@@ -5,8 +5,10 @@ import api from '@/services/api';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import { formatDate } from '@/utils/format';
 import PageHeader from '@/components/ui/PageHeader';
+import { useAuthStore } from '@/stores/auth.store';
 
 export default function LiberacoesPage() {
+  const podeCriar = useAuthStore((s) => s.user?.perfil) !== 'OPERADOR';
   const [busca, setBusca] = useState('');
   const [status, setStatus] = useState('ATIVA');
   const [page, setPage] = useState(1);
@@ -25,10 +27,12 @@ export default function LiberacoesPage() {
   return (
     <div className="ui-page space-y-6">
       <PageHeader title="Liberações" description="Instruções de carregamento" action={
-        <Link to="/liberacoes/nova" className="ui-btn-primary">
-          <PlusIcon className="w-4 h-4" />
-          Nova Liberação
-        </Link>
+        podeCriar && (
+          <Link to="/liberacoes/nova" className="ui-btn-primary">
+            <PlusIcon className="w-4 h-4" />
+            Nova Liberação
+          </Link>
+        )
       } />
 
       <div className="ui-card flex flex-wrap gap-3 p-4">

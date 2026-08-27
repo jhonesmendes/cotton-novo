@@ -21,20 +21,18 @@ interface Usuario {
   createdAt: string;
 }
 
+// Visualizador e Cliente existem no banco mas não são usados por enquanto —
+// tirados da tela de cadastro/edição de usuário até serem retomados.
 const PERFIS = [
   { value: 'ADMIN', label: 'Administrador', color: 'bg-red-100 text-red-800' },
   { value: 'OPERADOR', label: 'Operador', color: 'bg-blue-100 text-blue-800' },
   { value: 'GESTOR_FILIAL', label: 'Gestor de Filial', color: 'bg-purple-100 text-purple-800' },
-  { value: 'VISUALIZADOR', label: 'Visualizador', color: 'bg-gray-100 text-gray-800' },
-  { value: 'CLIENTE', label: 'Cliente', color: 'bg-green-100 text-green-800' },
 ];
 
 const PERMISSOES_POR_PERFIL: Record<string, string[]> = {
   ADMIN: ['Dashboard', 'Liberações', 'Veículos', 'Alertas', 'Usuários', 'Modelos', 'Terminais', 'Configurações'],
-  OPERADOR: ['Dashboard', 'Liberações', 'Veículos', 'Alertas'],
+  OPERADOR: ['Dashboard', 'Liberações (sem criar/editar)', 'Veículos', 'Alertas'],
   GESTOR_FILIAL: ['Dashboard', 'Liberações', 'Veículos', 'Alertas', 'Usuários da Filial'],
-  VISUALIZADOR: ['Dashboard', 'Liberações', 'Veículos'],
-  CLIENTE: ['Dashboard', 'Minhas Liberações'],
 };
 
 const usuarioSchema = z.object({
