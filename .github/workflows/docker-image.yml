@@ -14,5 +14,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag my-image-name:$(date +%s)
+    - name: Build the backend image
+      run: docker build ./backend --file backend/Dockerfile --target build --tag cotton-backend:ci
+    - name: Build the frontend image
+      run: docker build ./frontend --file frontend/Dockerfile --target build --tag cotton-frontend:ci
