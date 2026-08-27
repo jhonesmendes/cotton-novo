@@ -12,6 +12,9 @@ services:
     build:
       context: ./backend
       target: prod
+    # o frontend já repassa /api pro backend pela rede interna do Docker
+    # (ver frontend/nginx.conf) — não precisa publicar a porta no host.
+    ports: !override []
     environment: !override
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-cotton_db}
       JWT_SECRET: ${JWT_SECRET}
