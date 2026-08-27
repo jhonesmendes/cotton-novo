@@ -100,14 +100,47 @@ SOLICITADO → FALTA_CONTRATAR → FALTA_AGENDAR → AGENDADO
   `POSTGRES_PASSWORD`, `POSTGRES_DB`, `JWT_SECRET`, `JWT_EXPIRES_IN`,
   `JWT_REFRESH_EXPIRES_IN`, `ENCRYPTION_KEY`, `FRONTEND_URL`, `SMTP_*`) — ver
   `.env.example`.
-- **SMTP** (recuperação de senha por email): `SMTP_HOST`, `SMTP_PORT`,
-  `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`. Sem `SMTP_HOST`
-  configurado, o backend não envia o email — só loga o link no console (útil
-  em dev). Não há tela de configuração; é só via variável de ambiente mesmo.
+- **SMTP** (recuperação de senha por email) — sem tela de configuração,
+  só variável de ambiente. Sem `SMTP_HOST`, o backend não envia o email, só
+  loga o conteúdo (com o link) no console — útil em dev sem SMTP real.
+
+  | Variável | Descrição |
+  |---|---|
+  | `SMTP_HOST` | Endereço do servidor SMTP |
+  | `SMTP_PORT` | Porta (`587` STARTTLS é o comum; `465` = SSL direto) |
+  | `SMTP_SECURE` | `true` só se a porta for 465 (SSL direto); `false` para 587/STARTTLS |
+  | `SMTP_USER` | Usuário/email de autenticação |
+  | `SMTP_PASS` | Senha ou app password |
+  | `SMTP_FROM` | Remetente, ex: `"Cotton Fibra Forte <no-reply@fibraforte.agr.br>"` |
 - **Sem Docker**: `backend/.env` (ver `backend/.env.example`) e `frontend/.env.example`
   (só `VITE_PROXY_TARGET`, usado pelo proxy `/api` do Vite dev server).
 - `backend/.env`, `frontend/.env` e o `.env` da raiz estão no `.gitignore` — nunca
   commitar segredo real.
+
+## Produção (Portainer)
+
+- Deploy via Portainer, stack **"cotton_fibraforte"**, método "Repository" (Git),
+  branch `main`. **Compose path: `docker-compose.prod.yml`** — só esse arquivo, o
+  Portainer usado aqui não aceita múltiplos/lista no campo. É por isso que esse
+  arquivo é autossuficiente (não depende de `-f` duplo com o `docker-compose.yml`
+  de dev).
+- Variáveis do stack são cadastradas na própria tela do Portainer (não vêm de um
+  `.env` no repo) — mesma lista da seção acima (Postgres, JWT, `ENCRYPTION_KEY`,
+  `FRONTEND_URL`, `SMTP_*`) mais `FRONTEND_PORT`.
+- Domínio público: `cotton.fibraforte.agr.br`. Na frente tem **Nginx Proxy
+  Manager** (não Traefik) escutando 80/443 no host — por isso `FRONTEND_PORT` não
+  pode ser 80/443 (ex: `8081`), e o Proxy Host do NPM aponta pro IP do host +
+  essa porta. O backend não expõe porta nenhuma no host (o Nginx do próprio
+  frontend já repassa `/api` internamente — ver `frontend/nginx.conf`), então o
+  NPM só precisa saber da porta do frontend.
+- Nome dos containers no Portainer: `cotton_fibraforte-<serviço>-1` (ex:
+  `cotton_fibraforte-postgres-1`, `cotton_fibraforte-backend-1`).
+- Redeploy = "Pull and redeploy" (ou "Update the stack" com rebuild) na tela da
+  stack no Portainer — necessário depois de qualquer push em `main` pra mudança
+  aparecer em produção (não é automático).
+- Acesso ao servidor é via SSH (usuário sem permissão direta no Docker — precisa
+  `sudo`, ex: `ssh -t usuario@host sudo docker exec cotton_fibraforte-postgres-1 ...`).
+  Usado até agora pra importar dados reais direto no Postgres (`psql -f`).
 
 ## Convenções
 
