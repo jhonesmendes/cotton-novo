@@ -1,4 +1,4 @@
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
@@ -14,6 +14,7 @@ interface Props {
 
 export default function VeiculoModal({ liberacaoId, veiculoId, onClose, onSaved }: Props) {
   const isEdit = !!veiculoId;
+  const qc = useQueryClient();
   const [form, setForm] = useState<any>({
     liberacaoId, placa: '', modeloCarretaId: '', nomeDescricao: '',
     freteMotorista: '', qtdFardos: '',
@@ -38,7 +39,12 @@ export default function VeiculoModal({ liberacaoId, veiculoId, onClose, onSaved 
   const mutation = useMutation({
     mutationFn: (data: any) =>
       isEdit ? api.put(`/veiculos/${veiculoId}`, data) : api.post('/veiculos', data),
-    onSuccess: () => { toast.success(isEdit ? 'Veículo atualizado' : 'Veículo adicionado'); onSaved(); },
+    onSuccess: () => {
+      toast.success(isEdit ? 'Veículo atualizado' : 'Veículo adicionado');
+      // sem isso, reabrir o modal mostra o valor antigo em cache até expirar sozinho
+      qc.invalidateQueries({ queryKey: ['veiculo'] });
+      onSaved();
+    },
     onError: (e: any) => {
       const error = e?.response?.data?.error;
       const primeiroDetalhe = error?.details?.[0];
