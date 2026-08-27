@@ -1,10 +1,10 @@
 # syntax=docker/dockerfile:1
 
-# ─── deps: instala dependências (com toolchain nativo p/ sqlite3) ─────────────
+# ─── deps: instala dependências ────────────────────────────────────────────────
 FROM node:20-bookworm-slim AS deps
 WORKDIR /app
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends python3 build-essential openssl \
+  && apt-get install -y --no-install-recommends openssl \
   && rm -rf /var/lib/apt/lists/*
 COPY package*.json ./
 COPY prisma ./prisma
