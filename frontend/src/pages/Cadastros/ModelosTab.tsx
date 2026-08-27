@@ -5,7 +5,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
-import { PencilSquareIcon, TrashIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { Link } from 'react-router-dom';
+import { ArrowLeftIcon, PencilSquareIcon, PlusIcon, TrashIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import PageHeader from '@/components/ui/PageHeader';
 
 const modeloSchema = z.object({
   nomeDescricao: z.string().min(1, 'Modelo é obrigatório'),
@@ -101,21 +103,30 @@ export default function ModelosPage() {
   }
 
   const onSubmit = (data: any) => {
-    salvar.mutate(data);
+    // campo opcional: '' vira 0 depois do zod coerce, e o backend exige > 0
+    // quando o valor é enviado — então omitimos em vez de mandar 0/vazio.
+    const payload = { ...data };
+    if (!payload.comprimentoM) delete payload.comprimentoM;
+    salvar.mutate(payload);
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Gestão de Cadastro</h1>
-      </div>
+    <div className="ui-page space-y-6">
+      <Link to="/cadastros" className="inline-flex items-center gap-1.5 text-xs font-medium text-ui-text-muted hover:text-ui-text">
+        <ArrowLeftIcon className="h-3.5 w-3.5" />Revisão de Dados
+      </Link>
+      <PageHeader title="Modelos de Carreta" description="Cadastro de veículos, capacidade e motorista padrão." action={
+        <button onClick={() => openModal()} className="ui-btn-primary">
+          <PlusIcon className="h-4 w-4" />Novo Modelo
+        </button>
+      } />
 
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-2xl">
             <div className="flex items-start justify-between border-b border-gray-100 px-6 py-4">
               <div>
-                <h2 className="text-lg font-bold text-gray-900">Editar Veículo</h2>
+                <h2 className="text-lg font-bold text-gray-900">{editando ? 'Editar Veículo' : 'Novo Modelo de Carreta'}</h2>
                 <p className="text-xs text-gray-500">Ajuste os dados mestre. As liberações vinculadas serão atualizadas.</p>
               </div>
               <button onClick={closeModal} className="p-1 hover:bg-gray-100 rounded-full transition">
@@ -199,7 +210,7 @@ export default function ModelosPage() {
                 <button type="submit"
                   disabled={salvar.isPending}
                   className="inline-flex items-center gap-2 rounded-lg bg-ui-primary px-6 py-2 text-sm font-bold text-white hover:bg-ui-primary-hover disabled:opacity-60 shadow-sm">
-                  {salvar.isPending ? 'Salvando...' : 'Salvar Alterações'}
+                  {salvar.isPending ? 'Salvando...' : editando ? 'Salvar Alterações' : 'Criar Modelo'}
                 </button>
               </div>
             </form>
