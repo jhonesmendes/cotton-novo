@@ -2,10 +2,11 @@ import { useState } from 'react';
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   ArrowRightOnRectangleIcon, Bars3Icon, BellAlertIcon, ClipboardDocumentListIcon,
-  Cog6ToothIcon, FolderIcon, HomeIcon, XMarkIcon,
+  Cog6ToothIcon, FolderIcon, HomeIcon, MoonIcon, SunIcon, XMarkIcon,
 } from '@heroicons/react/24/outline';
 import clsx from 'clsx';
 import { useAuthStore } from '@/stores/auth.store';
+import { useThemeStore } from '@/stores/theme.store';
 
 const nav = [
   { to: '/dashboard', label: 'Dashboard', icon: HomeIcon },
@@ -15,7 +16,8 @@ const nav = [
 
 const pageTitles: Record<string, string> = {
   '/dashboard': 'Dashboard', '/liberacoes': 'Liberações', '/alertas': 'Alertas',
-  '/configuracoes': 'Configurações', '/configuracoes/usuarios': 'Configurações', '/cadastros': 'Revisão de Dados',
+  '/configuracoes': 'Configurações', '/configuracoes/usuarios': 'Configurações',
+  '/cadastros': 'Revisão de Dados', '/cadastros/modelos': 'Revisão de Dados',
 };
 
 type SidebarContentProps = { onNavigate?: () => void; onLogout: () => void; userName?: string };
@@ -62,6 +64,7 @@ export default function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { theme, toggle } = useThemeStore();
   const currentTitle = pageTitles[location.pathname] || 'Gestão de Cargas';
   const handleLogout = () => { logout(); navigate('/login'); };
 
@@ -82,7 +85,14 @@ export default function Layout() {
           <button type="button" aria-label="Abrir menu" onClick={() => setMobileOpen(true)} className="rounded-ui-sm p-2 text-ui-text-muted hover:bg-ui-muted md:hidden"><Bars3Icon className="h-6 w-6" /></button>
           <div><p className="font-display text-sm font-semibold text-ui-text">{currentTitle}</p></div>
         </div>
-        <div className="flex items-center gap-2 text-right"><div className="hidden sm:block"><p className="text-sm font-medium text-ui-text">{user?.nome || 'Administrador'}</p><p className="text-xs text-ui-text-muted">Acesso administrativo</p></div><div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-50 text-xs font-bold text-indigo-700">{user?.nome?.charAt(0).toUpperCase() || 'A'}</div></div>
+        <div className="flex items-center gap-3 text-right">
+          <button type="button" onClick={toggle} aria-label={theme === 'dark' ? 'Ativar tema claro' : 'Ativar tema escuro'}
+            className="rounded-ui-sm p-2 text-ui-text-muted hover:bg-ui-muted hover:text-ui-text">
+            {theme === 'dark' ? <SunIcon className="h-5 w-5" /> : <MoonIcon className="h-5 w-5" />}
+          </button>
+          <div className="hidden sm:block"><p className="text-sm font-medium text-ui-text">{user?.nome || 'Administrador'}</p><p className="text-xs text-ui-text-muted">Acesso administrativo</p></div>
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-50 text-xs font-bold text-indigo-700">{user?.nome?.charAt(0).toUpperCase() || 'A'}</div>
+        </div>
       </header>
       <main className="min-h-[calc(100vh-3.5rem)]"><Outlet /></main>
     </div>

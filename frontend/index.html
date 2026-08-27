@@ -12,6 +12,16 @@
     
     <title>Cotton Fibra Forte - Gestão de Cargas</title>
     <meta name="description" content="Sistema de gestão de cargas de pluma de algodão" />
+    <script>
+      (function () {
+        try {
+          var stored = JSON.parse(localStorage.getItem('cotton-theme') || 'null');
+          var theme = stored && stored.state && stored.state.theme;
+          if (!theme) theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+          if (theme === 'dark') document.documentElement.classList.add('dark');
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

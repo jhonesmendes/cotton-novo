@@ -47,3 +47,104 @@
 ::-webkit-scrollbar-thumb:hover {
   @apply bg-slate-400;
 }
+
+/* ────────────────────────────────────────────────────────────────────────
+   DARK MODE
+   Retheme app-wide by overriding the literal Tailwind utility classes used
+   across the codebase (bg-white, text-gray-*, border-gray-*, semantic
+   pastel colors, etc.) under a `.dark` ancestor on <html>. This covers the
+   whole app without having to add `dark:` variants to every component.
+   ──────────────────────────────────────────────────────────────────────── */
+.dark {
+  color-scheme: dark;
+}
+
+.dark body {
+  background-color: #0f172a;
+  color: #f1f5f9;
+}
+
+/* base tokens */
+.dark .bg-ui-background { background-color: #0f172a; }
+.dark .bg-ui-surface, .dark .bg-white { background-color: #1e293b; }
+.dark .bg-white\/90 { background-color: rgba(30, 41, 59, .9); }
+.dark .bg-white\/80 { background-color: rgba(30, 41, 59, .8); }
+.dark .bg-ui-muted, .dark .bg-gray-50, .dark .bg-gray-100 { background-color: #0f172a; }
+.dark .border-ui-border, .dark .border-ui-border-subtle,
+.dark .border-gray-100, .dark .border-gray-200, .dark .border-gray-300,
+.dark .border, .dark .border-b, .dark .border-t, .dark .border-l, .dark .border-r,
+.dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]),
+.dark .divide-y > :not([hidden]) ~ :not([hidden]) {
+  border-color: #334155;
+}
+.dark .text-ui-text, .dark .text-gray-900, .dark .text-gray-800,
+.dark .text-slate-900, .dark .text-slate-800 { color: #f1f5f9; }
+.dark .text-ui-text-muted, .dark .text-gray-700, .dark .text-gray-600,
+.dark .text-slate-700, .dark .text-slate-600 { color: #cbd5e1; }
+.dark .text-gray-500, .dark .text-gray-400,
+.dark .text-slate-500, .dark .text-slate-400 { color: #94a3b8; }
+.dark .border-slate-200, .dark .border-slate-300, .dark .border-slate-200\/70 { border-color: #334155; }
+.dark .placeholder\:text-ui-text-muted::placeholder { color: #64748b; }
+.dark .shadow-sm, .dark .shadow-md, .dark .shadow-lg, .dark .shadow-premium { box-shadow: none; }
+
+/* form fields that don't carry an explicit bg-white class */
+.dark input:not([type='checkbox']):not([type='radio']),
+.dark select,
+.dark textarea {
+  background-color: #1e293b;
+  border-color: #334155;
+  color: #f1f5f9;
+}
+.dark .hover\:bg-gray-50:hover, .dark .hover\:bg-ui-muted:hover { background-color: #263449; }
+
+/* semantic pastel colors (badges, alert boxes, icon chips) */
+.dark .bg-red-50    { background-color: rgba(248, 113, 113, .12); }
+.dark .bg-red-100    { background-color: rgba(248, 113, 113, .18); }
+.dark .bg-orange-50, .dark .bg-orange-100 { background-color: rgba(251, 146, 60, .15); }
+.dark .bg-amber-50, .dark .bg-amber-100 { background-color: rgba(251, 191, 36, .15); }
+.dark .bg-yellow-50, .dark .bg-yellow-100 { background-color: rgba(250, 204, 21, .15); }
+.dark .bg-green-50, .dark .bg-green-100 { background-color: rgba(74, 222, 128, .13); }
+.dark .bg-blue-50, .dark .bg-blue-100 { background-color: rgba(96, 165, 250, .15); }
+.dark .bg-indigo-50, .dark .bg-indigo-100 { background-color: rgba(129, 140, 248, .18); }
+.dark .bg-purple-100 { background-color: rgba(192, 132, 252, .18); }
+
+.dark .text-red-600, .dark .text-red-700, .dark .text-red-800 { color: #f87171; }
+.dark .text-orange-600, .dark .text-orange-700 { color: #fb923c; }
+.dark .text-amber-600, .dark .text-amber-700, .dark .text-amber-800 { color: #fbbf24; }
+.dark .text-yellow-600, .dark .text-yellow-700 { color: #facc15; }
+.dark .text-green-600, .dark .text-green-700, .dark .text-green-800 { color: #4ade80; }
+.dark .text-blue-600, .dark .text-blue-700, .dark .text-blue-800 { color: #60a5fa; }
+.dark .text-indigo-600, .dark .text-indigo-700 { color: #a5b4fc; }
+.dark .text-purple-800 { color: #c084fc; }
+
+.dark .border-red-200, .dark .border-red-300 { border-color: rgba(248, 113, 113, .35); }
+.dark .border-orange-200, .dark .border-orange-300 { border-color: rgba(251, 146, 60, .35); }
+.dark .border-amber-200, .dark .border-amber-300 { border-color: rgba(251, 191, 36, .35); }
+.dark .border-yellow-200 { border-color: rgba(250, 204, 21, .35); }
+.dark .border-green-200, .dark .border-green-300, .dark .border-green-400 { border-color: rgba(74, 222, 128, .35); }
+.dark .border-blue-300 { border-color: rgba(96, 165, 250, .35); }
+.dark .border-indigo-200, .dark .border-indigo-300 { border-color: rgba(129, 140, 248, .35); }
+
+/* badges: keep semantic hue, adapt for dark backgrounds */
+.dark .badge-vencido, .dark .badge-hoje {
+  background-color: rgba(248, 113, 113, .12); color: #f87171; border-color: rgba(248, 113, 113, .35);
+}
+.dark .badge-critico {
+  background-color: rgba(251, 146, 60, .15); color: #fb923c; border-color: rgba(251, 146, 60, .35);
+}
+.dark .badge-alerta {
+  background-color: rgba(250, 204, 21, .15); color: #facc15; border-color: rgba(250, 204, 21, .35);
+}
+.dark .badge-monitorar {
+  background-color: rgba(129, 140, 248, .18); color: #a5b4fc; border-color: rgba(129, 140, 248, .35);
+}
+.dark .badge-ok {
+  background-color: rgba(74, 222, 128, .13); color: #4ade80; border-color: rgba(74, 222, 128, .35);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background-color: #475569;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background-color: #64748b;
+}
