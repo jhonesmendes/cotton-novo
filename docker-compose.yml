@@ -35,7 +35,7 @@ services:
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-8h}
       JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:-dev-encryption-key-32-characters}
-      PORT: 3001
+      PORT: 8081
       NODE_ENV: development
       FRONTEND_URL: http://localhost:${FRONTEND_PORT:-5173}
       SMTP_HOST: ${SMTP_HOST:-}
@@ -44,12 +44,9 @@ services:
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASS: ${SMTP_PASS:-}
       SMTP_FROM: ${SMTP_FROM:-}
-      # bind mount no Windows não emite eventos de fs de forma confiável —
-      # sem isso, o ts-node-dev não percebe mudanças de arquivo (mesmo caso
-      # do usePolling do Vite no frontend).
       CHOKIDAR_USEPOLLING: "true"
     ports:
-      - "${BACKEND_PORT:-3001}:3001"
+      - "${BACKEND_PORT:-8081}:8081"
     volumes:
       - ./backend/src:/app/src
       - ./backend/prisma:/app/prisma
@@ -65,7 +62,7 @@ services:
       target: dev
     restart: unless-stopped
     environment:
-      VITE_PROXY_TARGET: http://backend:3001
+      VITE_PROXY_TARGET: http://backend:8081
     ports:
       - "${FRONTEND_PORT:-5173}:5173"
     volumes:
