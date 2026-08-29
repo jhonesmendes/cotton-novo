@@ -27,6 +27,33 @@ function SaldoBarShape(props: any) {
   return <rect x={x} y={y} width={w} height={height} rx={4} ry={4} fill={isZero ? '#22c55e' : '#4f46e5'} />;
 }
 
+const MAX_DETALHES_TOOLTIP = 3;
+
+function SaldoClienteTooltip({ active, payload }: any) {
+  if (!active || !payload?.length) return null;
+  const item = payload[0].payload;
+  const detalhes: { instrucao: string; localColeta: string }[] = item.detalhes ?? [];
+  return (
+    <div className="rounded-lg border border-ui-border bg-ui-surface px-3 py-2 text-xs shadow-lg">
+      <p className="mb-1 font-semibold text-ui-text">{item.nome}</p>
+      <p className="text-ui-text-muted">Saldo: {item.saldo.toLocaleString('pt-BR')}</p>
+      {detalhes.length > 0 && (
+        <div className="mt-2 space-y-1 border-t border-ui-border pt-2">
+          {detalhes.slice(0, MAX_DETALHES_TOOLTIP).map((d, i) => (
+            <div key={i}>
+              <p className="text-ui-text">{d.instrucao}</p>
+              <p className="text-ui-text-muted">Local de coleta: {d.localColeta}</p>
+            </div>
+          ))}
+          {detalhes.length > MAX_DETALHES_TOOLTIP && (
+            <p className="text-ui-text-muted">+{detalhes.length - MAX_DETALHES_TOOLTIP} outra(s)</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function DashboardKPIs() {
   const { data } = useQuery({
     queryKey: ['dashboard-kpis'],
@@ -44,7 +71,7 @@ export default function DashboardKPIs() {
           <BarChart data={data.porCliente} layout="vertical" margin={{ left: 20 }}>
             <XAxis type="number" tick={{ fontSize: 11, fill: '#94a3b8' }} />
             <YAxis type="category" dataKey="nome" width={90} tick={{ fontSize: 11, fill: '#94a3b8' }} />
-            <Tooltip formatter={(v: number) => v.toLocaleString('pt-BR')} />
+            <Tooltip content={<SaldoClienteTooltip />} />
             <Bar dataKey="saldo" name="Saldo" shape={<SaldoBarShape />} />
           </BarChart>
         </ResponsiveContainer>

@@ -153,13 +153,26 @@ export async function getKPIs(req: AuthRequest, res: Response) {
   });
 
   // Clientes e origens para lookup
-  const [clientes, origens] = await Promise.all([
+  const [clientes, origens, liberacoesDetalhe] = await Promise.all([
     prisma.cliente.findMany({ select: { id: true, nome: true } }),
     prisma.origem.findMany({ select: { id: true, nome: true } }),
+    // Instrução + local de coleta de cada liberação — pro tooltip do gráfico
+    // "Fardos Pendentes por Cliente" mostrar de onde vem o saldo agregado.
+    prisma.liberacao.findMany({
+      where,
+      select: { clienteId: true, instrucao: true, localColetaNome: true, localColeta: { select: { nome: true } } },
+    }),
   ]);
 
   const mapCliente = Object.fromEntries(clientes.map((c) => [c.id, c.nome]));
   const mapOrigem = Object.fromEntries(origens.map((o) => [o.id, o.nome]));
+
+  const detalhesPorCliente = new Map<number, { instrucao: string; localColeta: string }[]>();
+  for (const l of liberacoesDetalhe) {
+    const lista = detalhesPorCliente.get(l.clienteId) ?? [];
+    lista.push({ instrucao: l.instrucao, localColeta: l.localColetaNome ?? l.localColeta?.nome ?? '—' });
+    detalhesPorCliente.set(l.clienteId, lista);
+  }
 
   return res.json({
     porCliente: porCliente.map((g) => ({
@@ -169,6 +182,7 @@ export async function getKPIs(req: AuthRequest, res: Response) {
       totalFardos: g._sum.totalFardos ?? 0,
       carregado: g._sum.carregado ?? 0,
       saldo: (g._sum.totalFardos ?? 0) - (g._sum.carregado ?? 0),
+      detalhes: detalhesPorCliente.get(g.clienteId) ?? [],
     })),
     porFilial: porFilial.map((g) => ({
       origemId: g.origemId,
