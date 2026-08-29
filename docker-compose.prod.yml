@@ -29,7 +29,7 @@ services:
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-8h}
       JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
-      PORT: 8081
+      PORT: 3001
       NODE_ENV: production
       FRONTEND_URL: ${FRONTEND_URL}
       SMTP_HOST: ${SMTP_HOST:-}
@@ -38,8 +38,6 @@ services:
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASS: ${SMTP_PASS:-}
       SMTP_FROM: ${SMTP_FROM:-}
-    ports:
-      - "${BACKEND_PORT:-8081}:8081"
     # o frontend já repassa /api pro backend pela rede interna do Docker
     # (ver frontend/nginx.conf) — não precisa publicar a porta no host.
     depends_on:
