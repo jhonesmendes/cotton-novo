@@ -100,6 +100,16 @@ SOLICITADO → FALTA_CONTRATAR → FALTA_AGENDAR → AGENDADO
   `POSTGRES_PASSWORD`, `POSTGRES_DB`, `JWT_SECRET`, `JWT_EXPIRES_IN`,
   `JWT_REFRESH_EXPIRES_IN`, `ENCRYPTION_KEY`, `FRONTEND_URL`, `SMTP_*`) — ver
   `.env.example`.
+- **`JWT_EXPIRES_IN`/`JWT_REFRESH_EXPIRES_IN`** (default `1h`/`12h`): a
+  autenticação é stateless (JWT puro, sem sessão no banco) — o frontend renova
+  o access token sozinho via refresh token quando expira (`frontend/src/services/api.ts`),
+  então quem já está logado só é obrigado a logar de novo quando o
+  **refresh** token vence, não o access token. Trocar a senha de um usuário
+  (admin ou o próprio) **não invalida** tokens já emitidos — eles continuam
+  válidos até vencer sozinhos. `JWT_REFRESH_EXPIRES_IN` curto é a mitigação
+  atual pra contas compartilhadas por várias pessoas; uma invalidação
+  imediata de verdade exigiria guardar um carimbo (`passwordChangedAt`) ou
+  uma tabela de sessões — não implementado ainda.
 - **SMTP** (recuperação de senha por email) — sem tela de configuração,
   só variável de ambiente. Sem `SMTP_HOST`, o backend não envia o email, só
   loga o conteúdo (com o link) no console — útil em dev sem SMTP real.
