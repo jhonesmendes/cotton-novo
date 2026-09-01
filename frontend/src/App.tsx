@@ -26,6 +26,13 @@ function RequireLiberacaoWrite({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+// Gestão de usuários (inclusive criação de contas ADMIN) é restrita a ADMIN — mesma regra do backend (usuarios.routes.ts).
+function RequireAdmin({ children }: { children: React.ReactNode }) {
+  const perfil = useAuthStore((s) => s.user?.perfil);
+  if (perfil !== 'ADMIN') return <Navigate to="/dashboard" replace />;
+  return <>{children}</>;
+}
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -51,7 +58,7 @@ export default function App() {
           <Route path="cadastros" element={<CadastrosPage />} />
           <Route path="cadastros/modelos" element={<ModelosPage />} />
           <Route path="configuracoes" element={<Navigate to="/configuracoes/usuarios" replace />} />
-          <Route path="configuracoes/usuarios" element={<UsuariosPage />} />
+          <Route path="configuracoes/usuarios" element={<RequireAdmin><UsuariosPage /></RequireAdmin>} />
         </Route>
       </Routes>
     </BrowserRouter>

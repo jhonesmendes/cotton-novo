@@ -20,9 +20,9 @@ const pageTitles: Record<string, string> = {
   '/cadastros': 'Revisão de Dados', '/cadastros/modelos': 'Revisão de Dados',
 };
 
-type SidebarContentProps = { onNavigate?: () => void; onLogout: () => void; userName?: string };
+type SidebarContentProps = { onNavigate?: () => void; onLogout: () => void; userName?: string; isAdmin?: boolean };
 
-function SidebarContent({ onNavigate, onLogout, userName }: SidebarContentProps) {
+function SidebarContent({ onNavigate, onLogout, userName, isAdmin }: SidebarContentProps) {
   const itemClass = (isActive: boolean) => clsx(
     'flex items-center gap-3 rounded-ui-md px-3 py-2 text-sm font-medium transition-colors',
     isActive ? 'bg-indigo-50 text-indigo-700 font-semibold' : 'text-ui-text-muted hover:bg-ui-muted hover:text-ui-text',
@@ -43,9 +43,11 @@ function SidebarContent({ onNavigate, onLogout, userName }: SidebarContentProps)
       <NavLink to="/cadastros" onClick={onNavigate} className={({ isActive }) => itemClass(isActive)}>
         <FolderIcon className="h-4 w-4" />Revisão de Dados
       </NavLink>
-      <NavLink to="/configuracoes" onClick={onNavigate} className={({ isActive }) => itemClass(isActive)}>
-        <Cog6ToothIcon className="h-4 w-4" />Configurações
-      </NavLink>
+      {isAdmin && (
+        <NavLink to="/configuracoes" onClick={onNavigate} className={({ isActive }) => itemClass(isActive)}>
+          <Cog6ToothIcon className="h-4 w-4" />Configurações
+        </NavLink>
+      )}
     </nav>
     <div className="mt-auto border-t border-ui-border px-3 py-3">
       <div className="mb-1 flex items-center gap-2 px-1">
@@ -70,13 +72,13 @@ export default function Layout() {
 
   return <div className="min-h-screen bg-ui-background font-sans text-ui-text selection:bg-ui-primary selection:text-white">
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-56 flex-col border-r border-ui-border bg-ui-surface py-5 md:flex">
-      <SidebarContent onLogout={handleLogout} userName={user?.nome} />
+      <SidebarContent onLogout={handleLogout} userName={user?.nome} isAdmin={user?.perfil === 'ADMIN'} />
     </aside>
     {mobileOpen && <div className="fixed inset-0 z-50 md:hidden" role="dialog" aria-modal="true" aria-label="Menu de navegação">
       <button type="button" aria-label="Fechar menu" className="absolute inset-0 bg-slate-950/45" onClick={() => setMobileOpen(false)} />
       <aside className="relative flex h-full w-72 flex-col bg-ui-surface py-5 shadow-2xl">
         <button type="button" aria-label="Fechar menu" onClick={() => setMobileOpen(false)} className="absolute right-3 top-3 rounded-ui-sm p-2 text-ui-text-muted hover:bg-ui-muted"><XMarkIcon className="h-5 w-5" /></button>
-        <SidebarContent onNavigate={() => setMobileOpen(false)} onLogout={handleLogout} userName={user?.nome} />
+        <SidebarContent onNavigate={() => setMobileOpen(false)} onLogout={handleLogout} userName={user?.nome} isAdmin={user?.perfil === 'ADMIN'} />
       </aside>
     </div>}
     <div className="min-h-screen md:pl-56">
