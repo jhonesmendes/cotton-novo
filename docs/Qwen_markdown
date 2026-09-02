@@ -14,7 +14,7 @@ Desenvolver um painel completo de gestão e acompanhamento de cargas de pluma de
 Campos obrigatórios:
 - **Data da Liberação**: Data de criação da instrução
 - **Data de Coleta**: Data prevista/real de coleta
-- **Cliente**: (BRASIL AGRO, COFCO, NUTRADE, SCHEFFER, LDC, BOA ESPERANÇA)
+- **Cliente**: (BRASIL AGRO, COFCO, NUTRADE, SCHEFFER, LDC, BOA ESPERANCA)
 - **Filial/Origem**: (PRIMAVERA DO LESTE-MT, LUCAS DO RIO VERDE-MT, SINOP-MT, SAPEZAL-MT, RONDONOPOLIS-MT, SORRISO-MT, CAMPO NOVO-MT, etc.)
 - **Local de Coleta**: (ALG ITAQUERE, ALG S COTTON, ALG MARAPÉ, ALG RAFAELA, ALG PRINCESA, etc.)
 - **Destino**: (SANTOS-SP, CUBATAO-SP, GUARUJA-SP, RONDONOPOLIS-MT, NATAL-RN, HORIZONTE-CE, AMERICANA-SP, etc.)

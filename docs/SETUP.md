@@ -102,7 +102,7 @@ Login com as credenciais acima.
 
 O seed cria automaticamente:
 
-**Clientes**: BRASIL AGRO, COFCO, NUTRADE, SCHEFFER, LDC, BOA ESPERANÇA
+**Clientes**: BRASIL AGRO, COFCO, NUTRADE, SCHEFFER, LDC, BOA ESPERANCA
 
 **Filiais**: Primavera do Leste, Lucas do Rio Verde, Sinop, Sapezal, Rondonópolis, Sorriso, Campo Novo
 

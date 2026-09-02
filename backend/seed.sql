@@ -12,7 +12,7 @@
 INSERT OR IGNORE INTO clientes (nome, cnpj, email, created_at, updated_at) VALUES
 ('ADM', '00000000000001', 'contato@adm.com', datetime('now'), datetime('now')),
 ('AMAGGI', '00000000000002', 'contato@amaggi.com', datetime('now'), datetime('now')),
-('BOA ESPERANÇA', '00000000000003', 'contato@boaesperanca.com', datetime('now'), datetime('now')),
+('BOA ESPERANCA', '00000000000003', 'contato@boaesperanca.com', datetime('now'), datetime('now')),
 ('BRASIL AGRO', '00000000000004', 'contato@brasilagro.com', datetime('now'), datetime('now')),
 ('BUNGE', '00000000000005', 'contato@bunge.com', datetime('now'), datetime('now')),
 ('CARGILL', '00000000000006', 'contato@cargill.com', datetime('now'), datetime('now')),
