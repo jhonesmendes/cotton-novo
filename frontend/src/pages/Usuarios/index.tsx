@@ -29,10 +29,12 @@ const PERFIS = [
   { value: 'GESTOR_FILIAL', label: 'Gestor de Filial', color: 'bg-purple-100 text-purple-800' },
 ];
 
+// Espelha exatamente o que cada rota do backend libera por perfil
+// (requireRole em cada *.routes.ts) — não é só texto informativo.
 const PERMISSOES_POR_PERFIL: Record<string, string[]> = {
-  ADMIN: ['Dashboard', 'Liberações', 'Veículos', 'Alertas', 'Usuários', 'Modelos', 'Terminais', 'Configurações'],
-  OPERADOR: ['Dashboard', 'Liberações (sem criar/editar)', 'Veículos', 'Alertas'],
-  GESTOR_FILIAL: ['Dashboard', 'Liberações', 'Veículos', 'Alertas', 'Usuários da Filial'],
+  ADMIN: ['Dashboard', 'Liberações', 'Veículos', 'Alertas', 'Cadastros (completo)', 'Usuários'],
+  OPERADOR: ['Dashboard', 'Liberações (sem criar/editar)', 'Veículos', 'Alertas', 'Cadastros (completo)'],
+  GESTOR_FILIAL: ['Dashboard', 'Liberações', 'Veículos', 'Alertas', 'Cadastros (completo)'],
 };
 
 const usuarioSchema = z.object({
