@@ -34,6 +34,12 @@ enum StatusVeiculo {
   PIX_PAGO
   CARTA_FRETE
 }
+enum StatusSM {
+  PENDENTE
+  ABERTA
+  LIBERADA
+  ENCERRADA
+}
 enum TipoAcesso {
   EMAIL
   LINK
@@ -211,6 +217,7 @@ model Veiculo {
   motoristaEmail     String? @map("motorista_email")
   transportadoraId   Int? @map("transportadora_id")
   status             StatusVeiculo @default(AGENDADO)
+  statusSm           StatusSM      @default(PENDENTE) @map("status_sm")
   dataAgendamento    DateTime? @map("data_agendamento")
   dataCarregamento   DateTime? @map("data_carregamento")
   dataDescarga       DateTime? @map("data_descarga")

@@ -71,3 +71,16 @@ export function isStatusMonitorado(status: VeiculoStatus): boolean {
 export function isStatusSemMonitoramento(status: VeiculoStatus): boolean {
   return STATUS_SEM_MONITORAMENTO.includes(status);
 }
+
+// SM = status do "Monitoramento do Veículo" em si (campo próprio no veículo,
+// independente do StatusVeiculo/andamento da carga acima).
+export type StatusSM = 'PENDENTE' | 'ABERTA' | 'LIBERADA' | 'ENCERRADA';
+
+export const SM_OPTIONS: StatusSM[] = ['PENDENTE', 'ABERTA', 'LIBERADA', 'ENCERRADA'];
+
+export const SM_LABELS: Record<StatusSM, string> = {
+  PENDENTE: 'PENDENTE',
+  ABERTA: 'ABERTA',
+  LIBERADA: 'LIBERADA',
+  ENCERRADA: 'ENCERRADA',
+};

@@ -3,8 +3,13 @@ import { CheckCircleIcon, ClockIcon, TruckIcon, ArchiveBoxIcon } from '@heroicon
 import { XCircleIcon } from '@heroicons/react/24/outline';
 import { STATUS_LABELS, VeiculoStatus } from '@/utils/status';
 
+// "AGUARDANDO_CTE" ainda não existe como StatusVeiculo real no sistema — é só uma
+// etapa decorativa pedida pro painel visual; nenhum veículo nunca fica "atual" nela
+// de verdade (ver conversa sobre criar o status pra valer, se decidirem adotar).
+type StatusStepKey = VeiculoStatus | 'AGUARDANDO_CTE';
+
 interface StatusStep {
-  key: VeiculoStatus;
+  key: StatusStepKey;
   label: string;
   description: string;
   icon: React.ReactNode;
@@ -17,7 +22,7 @@ const STATUS_FLOW: StatusStep[] = [
   {
     key: 'SOLICITADO',
     label: STATUS_LABELS.SOLICITADO,
-    description: 'Operação solicitada',
+    description: 'Instrução recebida do cliente',
     icon: <ClockIcon className="w-4 h-4" />,
     color: 'text-gray-600',
     bgColor: 'bg-gray-100',
@@ -26,61 +31,43 @@ const STATUS_FLOW: StatusStep[] = [
   {
     key: 'FALTA_CONTRATAR',
     label: STATUS_LABELS.FALTA_CONTRATAR,
-    description: 'Falta contratar o transporte',
+    description: 'Falta contratar caminhão',
     icon: <XCircleIcon className="w-4 h-4" />,
     color: 'text-red-600',
     bgColor: 'bg-red-100',
     borderColor: 'border-red-300',
   },
   {
-    key: 'FALTA_AGENDAR',
-    label: STATUS_LABELS.FALTA_AGENDAR,
-    description: 'Falta agendar o carregamento',
+    key: 'AGUARDANDO_GR',
+    label: STATUS_LABELS.AGUARDANDO_GR,
+    description: 'Aguardando liberação pelo GR',
     icon: <ClockIcon className="w-4 h-4" />,
-    color: 'text-orange-600',
-    bgColor: 'bg-orange-100',
-    borderColor: 'border-orange-300',
-  },
-  {
-    key: 'AGENDADO',
-    label: STATUS_LABELS.AGENDADO,
-    description: 'Veículo agendado para carregamento',
-    icon: <ClockIcon className="w-4 h-4" />,
-    color: 'text-blue-600',
-    bgColor: 'bg-blue-100',
-    borderColor: 'border-blue-300',
+    color: 'text-amber-600',
+    bgColor: 'bg-amber-100',
+    borderColor: 'border-amber-300',
   },
   {
     key: 'LIBERADO',
     label: STATUS_LABELS.LIBERADO,
-    description: 'Liberação emitida, aguardando carga',
+    description: 'Cadastro liberado pelo GR',
     icon: <CheckCircleIcon className="w-4 h-4" />,
     color: 'text-indigo-600',
     bgColor: 'bg-indigo-100',
     borderColor: 'border-indigo-300',
   },
   {
-    key: 'AGUARDANDO_NFE',
-    label: STATUS_LABELS.AGUARDANDO_NFE,
-    description: 'Aguardando emissão da NFE',
-    icon: <ClockIcon className="w-4 h-4" />,
-    color: 'text-amber-600',
-    bgColor: 'bg-amber-100',
-    borderColor: 'border-amber-300',
-  },
-  {
-    key: 'AGUARDANDO_GR',
-    label: STATUS_LABELS.AGUARDANDO_GR,
-    description: 'Aguardando autorização de GR',
-    icon: <ClockIcon className="w-4 h-4" />,
-    color: 'text-amber-600',
-    bgColor: 'bg-amber-100',
-    borderColor: 'border-amber-300',
+    key: 'EM_TRANSITO',
+    label: STATUS_LABELS.EM_TRANSITO,
+    description: 'Veículo em trânsito para o carregamento',
+    icon: <TruckIcon className="w-4 h-4" />,
+    color: 'text-orange-600',
+    bgColor: 'bg-orange-100',
+    borderColor: 'border-orange-300',
   },
   {
     key: 'AGUARDANDO_CARREGAMENTO',
     label: STATUS_LABELS.AGUARDANDO_CARREGAMENTO,
-    description: 'Aguardando início do carregamento',
+    description: 'Veículo no local aguardando carregamento',
     icon: <ArchiveBoxIcon className="w-4 h-4" />,
     color: 'text-amber-600',
     bgColor: 'bg-amber-100',
@@ -89,20 +76,47 @@ const STATUS_FLOW: StatusStep[] = [
   {
     key: 'CARREGADO',
     label: STATUS_LABELS.CARREGADO,
-    description: 'Carga realizada no terminal',
+    description: 'Veículo carregado aguardando manifesto',
     icon: <ArchiveBoxIcon className="w-4 h-4" />,
     color: 'text-amber-600',
     bgColor: 'bg-amber-100',
     borderColor: 'border-amber-300',
   },
   {
-    key: 'EM_TRANSITO',
-    label: STATUS_LABELS.EM_TRANSITO,
-    description: 'Veículo em deslocamento para destino',
+    key: 'AGUARDANDO_NFE',
+    label: 'AGUARDANDO NF-e',
+    description: 'Aguardando troca de nota',
+    icon: <ClockIcon className="w-4 h-4" />,
+    color: 'text-amber-600',
+    bgColor: 'bg-amber-100',
+    borderColor: 'border-amber-300',
+  },
+  {
+    key: 'AGUARDANDO_CTE',
+    label: 'AGUARDANDO CT-e',
+    description: 'Aguardando filial enviar o manifesto',
+    icon: <ClockIcon className="w-4 h-4" />,
+    color: 'text-amber-600',
+    bgColor: 'bg-amber-100',
+    borderColor: 'border-amber-300',
+  },
+  {
+    key: 'FALTA_AGENDAR',
+    label: STATUS_LABELS.FALTA_AGENDAR,
+    description: 'Veículo em trânsito para o destino',
     icon: <TruckIcon className="w-4 h-4" />,
     color: 'text-orange-600',
     bgColor: 'bg-orange-100',
     borderColor: 'border-orange-300',
+  },
+  {
+    key: 'AGENDADO',
+    label: STATUS_LABELS.AGENDADO,
+    description: 'Veículo agendado para descarregar',
+    icon: <ClockIcon className="w-4 h-4" />,
+    color: 'text-blue-600',
+    bgColor: 'bg-blue-100',
+    borderColor: 'border-blue-300',
   },
   {
     key: 'AGUARDANDO_DESCARGA',
@@ -116,7 +130,7 @@ const STATUS_FLOW: StatusStep[] = [
   {
     key: 'FINALIZADO',
     label: STATUS_LABELS.FINALIZADO,
-    description: 'Entrega concluída com sucesso',
+    description: 'Transporte finalizado com sucesso',
     icon: <CheckCircleIcon className="w-4 h-4" />,
     color: 'text-green-600',
     bgColor: 'bg-green-100',
@@ -148,7 +162,7 @@ function formatDateTime(dateStr?: string | null): string | null {
   return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
 }
 
-function getStepDate(stepKey: VeiculoStatus, dataAgendamento?: string | null, dataCarregamento?: string | null, dataDescarga?: string | null): string | null {
+function getStepDate(stepKey: StatusStepKey, dataAgendamento?: string | null, dataCarregamento?: string | null, dataDescarga?: string | null): string | null {
   switch (stepKey) {
     case 'AGENDADO':
     case 'LIBERADO':

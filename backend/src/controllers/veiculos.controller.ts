@@ -3,7 +3,7 @@ import { z } from 'zod';
 import prisma from '../database/prisma';
 import { AppError } from '../middleware/errorHandler';
 import { AuthRequest } from '../middleware/auth';
-import { StatusLiberacao, StatusVeiculo } from '@prisma/client';
+import { StatusLiberacao, StatusVeiculo, StatusSM } from '@prisma/client';
 
 const criarSchema = z.object({
   liberacaoId: z.number().int().positive(),
@@ -23,6 +23,7 @@ const criarSchema = z.object({
   motoristaEmail: z.string().email().optional(),
   transportadoraId: z.number().int().positive().optional(),
   status: z.nativeEnum(StatusVeiculo).optional().default(StatusVeiculo.AGENDADO),
+  statusSm: z.nativeEnum(StatusSM).optional().default(StatusSM.PENDENTE),
   dataAgendamento: z.string().datetime({ offset: true }).optional().nullable(),
   dataCarregamento: z.string().datetime({ offset: true }).optional().nullable(),
   dataDescarga: z.string().datetime({ offset: true }).optional().nullable(),
@@ -193,12 +194,21 @@ export async function buscarPorPlaca(req: AuthRequest, res: Response) {
 
 export async function buscarMotoristaPorCpf(req: AuthRequest, res: Response) {
   const cpf = req.params.cpf.replace(/\D/g, '');
-  const veiculo = await prisma.veiculo.findFirst({
-    where: { motoristaCpf: cpf },
-    orderBy: { updatedAt: 'desc' },
-    select: { motoristaNome: true, motoristaTelefone: true, motoristaCpf: true },
-  });
-  return res.json(veiculo);
+  if (!cpf) return res.json(null);
+
+  // Comparação normalizada dos dois lados: cadastros antigos/importados podem
+  // ter o CPF salvo com pontuação (ex: 123.456.789-00), e a busca por dígitos
+  // puros (o que o frontend sempre envia) não batia com esses registros.
+  const [veiculo] = await prisma.$queryRaw<
+    Array<{ motoristaNome: string; motoristaTelefone: string; motoristaCpf: string }>
+  >`
+    SELECT motorista_nome AS "motoristaNome", motorista_telefone AS "motoristaTelefone", motorista_cpf AS "motoristaCpf"
+    FROM veiculos
+    WHERE regexp_replace(motorista_cpf, '\\D', '', 'g') = ${cpf}
+    ORDER BY updated_at DESC
+    LIMIT 1
+  `;
+  return res.json(veiculo ?? null);
 }
 
 export async function criar(req: AuthRequest, res: Response) {

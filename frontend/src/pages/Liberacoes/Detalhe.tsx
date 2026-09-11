@@ -4,7 +4,7 @@ import { useState } from 'react';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
 import { formatDate, formatMoney, formatTelefone } from '@/utils/format';
-import { STATUS_OPTIONS, STATUS_LABELS, STATUS_SEM_MONITORAMENTO } from '@/utils/status';
+import { STATUS_OPTIONS, STATUS_LABELS, STATUS_SEM_MONITORAMENTO, SM_OPTIONS, SM_LABELS } from '@/utils/status';
 import UrgenciaBadge from '@/components/UrgenciaBadge';
 import ConfirmModal from '@/components/ConfirmModal';
 import TimelineStatus from '@/components/TimelineStatus';
@@ -49,6 +49,22 @@ export default function LiberacaoDetalhe() {
     onError: () => {
       toast.error('Erro ao atualizar status do veículo');
       setSavingStatusId(null);
+    },
+  });
+
+  const [savingSmId, setSavingSmId] = useState<number | null>(null);
+
+  const atualizarSmVeiculo = useMutation({
+    mutationFn: ({ veiculoId, statusSm }: { veiculoId: number; statusSm: string }) =>
+      api.put(`/veiculos/${veiculoId}`, { statusSm }),
+    onSuccess: () => {
+      toast.success('SM do veículo atualizado');
+      qc.invalidateQueries({ queryKey: ['liberacao', id] });
+      setSavingSmId(null);
+    },
+    onError: () => {
+      toast.error('Erro ao atualizar SM do veículo');
+      setSavingSmId(null);
     },
   });
 
@@ -183,6 +199,24 @@ export default function LiberacaoDetalhe() {
                     <PhoneIcon className="w-3 h-3" />
                     {formatTelefone(v.motoristaTelefone)}
                   </a>
+                </div>
+
+                {/* SM - Monitoramento do Veículo */}
+                <div className="min-w-[120px]">
+                  <label className="block text-[10px] text-gray-500 mb-1">SM (Monitoramento)</label>
+                  <select
+                    value={v.statusSm}
+                    onChange={(e) => {
+                      setSavingSmId(v.id);
+                      atualizarSmVeiculo.mutate({ veiculoId: v.id, statusSm: e.target.value });
+                    }}
+                    disabled={savingSmId === v.id}
+                    className="w-full border border-gray-200 rounded px-2 py-1 text-xs bg-white"
+                  >
+                    {SM_OPTIONS.map((sm) => (
+                      <option key={sm} value={sm}>{SM_LABELS[sm]}</option>
+                    ))}
+                  </select>
                 </div>
 
                 {/* Fardos + Frete */}
