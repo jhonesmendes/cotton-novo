@@ -83,10 +83,10 @@ export async function getVeiculosVencendo(req: AuthRequest, res: Response) {
   } else {
     veiculoWhere.status = { in: STATUS_MONITORAMENTO };
   }
-  if (placa) veiculoWhere.placa = { contains: placa };
+  if (placa) veiculoWhere.placa = { contains: placa, mode: 'insensitive' };
   if (motorista) {
     veiculoWhere.OR = [
-      { motoristaNome: { contains: motorista } },
+      { motoristaNome: { contains: motorista, mode: 'insensitive' } },
       { motoristaTelefone: { contains: motorista } },
     ];
   }

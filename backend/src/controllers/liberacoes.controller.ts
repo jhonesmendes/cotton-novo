@@ -97,12 +97,12 @@ export async function listar(req: AuthRequest, res: Response) {
 
   if (busca) {
     where.OR = [
-      { instrucao: { contains: busca } },
-      { veiculos: { some: { placa: { contains: busca } } } },
-      { veiculos: { some: { motoristaNome: { contains: busca } } } },
-      { cliente: { nome: { contains: busca } } },
+      { instrucao: { contains: busca, mode: 'insensitive' } },
+      { veiculos: { some: { placa: { contains: busca, mode: 'insensitive' } } } },
+      { veiculos: { some: { motoristaNome: { contains: busca, mode: 'insensitive' } } } },
+      { cliente: { nome: { contains: busca, mode: 'insensitive' } } },
       // campo denormalizado — cadastros antigos podem ter o nome aqui divergente da relação
-      { clienteNome: { contains: busca } },
+      { clienteNome: { contains: busca, mode: 'insensitive' } },
     ];
   }
 

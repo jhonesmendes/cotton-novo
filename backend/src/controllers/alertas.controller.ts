@@ -36,7 +36,7 @@ export async function listarAlertas(req: AuthRequest, res: Response) {
   const veiculoWhere: any = { liberacao: liberacaoWhere, status: { in: STATUS_MONITORAMENTO } };
   if (motorista) {
     veiculoWhere.OR = [
-      { motoristaNome: { contains: motorista } },
+      { motoristaNome: { contains: motorista, mode: 'insensitive' } },
       { motoristaTelefone: { contains: motorista } },
     ];
   }

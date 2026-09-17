@@ -96,10 +96,10 @@ export async function listar(req: AuthRequest, res: Response) {
   const where: any = {};
   if (liberacaoId) where.liberacaoId = parseInt(liberacaoId);
   if (status) where.status = status as StatusVeiculo;
-  if (placa) where.placa = { contains: placa };
+  if (placa) where.placa = { contains: placa, mode: 'insensitive' };
   if (motorista) {
     where.OR = [
-      { motoristaNome: { contains: motorista } },
+      { motoristaNome: { contains: motorista, mode: 'insensitive' } },
       { motoristaTelefone: { contains: motorista } },
     ];
   }

@@ -17,8 +17,8 @@ export async function listar(req: AuthRequest, res: Response) {
   const where: any = {};
   if (busca) {
     where.OR = [
-      { nome: { contains: busca } },
-      { estado: { contains: busca } },
+      { nome: { contains: busca, mode: 'insensitive' } },
+      { estado: { contains: busca, mode: 'insensitive' } },
     ];
   }
 
