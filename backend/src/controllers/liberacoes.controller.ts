@@ -100,6 +100,9 @@ export async function listar(req: AuthRequest, res: Response) {
       { instrucao: { contains: busca } },
       { veiculos: { some: { placa: { contains: busca } } } },
       { veiculos: { some: { motoristaNome: { contains: busca } } } },
+      { cliente: { nome: { contains: busca } } },
+      // campo denormalizado — cadastros antigos podem ter o nome aqui divergente da relação
+      { clienteNome: { contains: busca } },
     ];
   }
 
