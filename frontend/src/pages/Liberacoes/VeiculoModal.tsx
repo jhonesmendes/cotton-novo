@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
 import { XMarkIcon } from '@heroicons/react/24/outline';
-import { STATUS_OPTIONS, STATUS_LABELS, STATUS_SEM_MONITORAMENTO } from '@/utils/status';
+import { STATUS_OPTIONS, STATUS_LABELS, STATUS_SEM_MONITORAMENTO, RASTREAMENTO_OPTIONS, RASTREAMENTO_LABELS } from '@/utils/status';
 
 interface Props {
   liberacaoId: number;
@@ -19,7 +19,7 @@ export default function VeiculoModal({ liberacaoId, veiculoId, onClose, onSaved 
     liberacaoId, placa: '', modeloCarretaId: '', nomeDescricao: '',
     freteMotorista: '', qtdFardos: '',
     motoristaNome: '', motoristaTelefone: '', motoristaCpf: '',
-    status: 'AGENDADO', observacao: '',
+    status: 'AGENDADO', statusRastreamento: 'NAO_RASTREADO', numeroIsca: '', observacao: '',
   });
 
   const { data: veiculoData } = useQuery({
@@ -74,6 +74,8 @@ export default function VeiculoModal({ liberacaoId, veiculoId, onClose, onSaved 
       // null permite remover um CPF incorreto já gravado.
       motoristaCpf: form.motoristaCpf?.replace(/\D/g, '') || null,
       status: form.status,
+      statusRastreamento: form.statusRastreamento,
+      numeroIsca: form.numeroIsca?.trim() || null,
       observacao: form.observacao?.trim() || undefined,
     };
 
@@ -143,6 +145,16 @@ export default function VeiculoModal({ liberacaoId, veiculoId, onClose, onSaved 
             </select>
             <p className="text-[11px] text-gray-500 mt-1">Itens em "Sem Dead Line" mantêm o mesmo estilo, sem alterar a sequência.</p>
           </div>
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Status do Rastreamento</label>
+            <select value={form.statusRastreamento} onChange={(e) => set('statusRastreamento', e.target.value)}
+              className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm">
+              {RASTREAMENTO_OPTIONS.map((r) => (
+                <option key={r} value={r}>{RASTREAMENTO_LABELS[r]}</option>
+              ))}
+            </select>
+          </div>
+          <Field label="Controle de Isca" value={form.numeroIsca} onChange={(v: string) => set('numeroIsca', v)} placeholder="Número da isca" />
           <div className="col-span-2">
             <label className="block text-xs text-gray-500 mb-1">Observação</label>
             <textarea value={form.observacao ?? ''} onChange={(e) => set('observacao', e.target.value)}

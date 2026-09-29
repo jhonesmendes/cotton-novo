@@ -40,6 +40,12 @@ enum StatusSM {
   LIBERADA
   ENCERRADA
 }
+enum StatusRastreamento {
+  RASTREADOR
+  LOCALIZADO
+  APLICATIVO
+  NAO_RASTREADO
+}
 enum TipoAcesso {
   EMAIL
   LINK
@@ -218,6 +224,8 @@ model Veiculo {
   transportadoraId   Int? @map("transportadora_id")
   status             StatusVeiculo @default(AGENDADO)
   statusSm           StatusSM      @default(PENDENTE) @map("status_sm")
+  statusRastreamento StatusRastreamento @default(NAO_RASTREADO) @map("status_rastreamento")
+  numeroIsca         String?       @map("numero_isca")
   dataAgendamento    DateTime? @map("data_agendamento")
   dataCarregamento   DateTime? @map("data_carregamento")
   dataDescarga       DateTime? @map("data_descarga")

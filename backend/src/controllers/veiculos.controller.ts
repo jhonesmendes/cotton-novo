@@ -3,7 +3,7 @@ import { z } from 'zod';
 import prisma from '../database/prisma';
 import { AppError } from '../middleware/errorHandler';
 import { AuthRequest } from '../middleware/auth';
-import { StatusLiberacao, StatusVeiculo, StatusSM } from '@prisma/client';
+import { StatusLiberacao, StatusVeiculo, StatusSM, StatusRastreamento } from '@prisma/client';
 
 const criarSchema = z.object({
   liberacaoId: z.number().int().positive(),
@@ -24,6 +24,8 @@ const criarSchema = z.object({
   transportadoraId: z.number().int().positive().optional(),
   status: z.nativeEnum(StatusVeiculo).optional().default(StatusVeiculo.AGENDADO),
   statusSm: z.nativeEnum(StatusSM).optional().default(StatusSM.PENDENTE),
+  statusRastreamento: z.nativeEnum(StatusRastreamento).optional().default(StatusRastreamento.NAO_RASTREADO),
+  numeroIsca: z.string().optional().nullable(),
   dataAgendamento: z.string().datetime({ offset: true }).optional().nullable(),
   dataCarregamento: z.string().datetime({ offset: true }).optional().nullable(),
   dataDescarga: z.string().datetime({ offset: true }).optional().nullable(),

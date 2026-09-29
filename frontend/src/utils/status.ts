@@ -84,3 +84,15 @@ export const SM_LABELS: Record<StatusSM, string> = {
   LIBERADA: 'LIBERADA',
   ENCERRADA: 'ENCERRADA',
 };
+
+// Status do rastreamento do veículo — independente do status/SM acima.
+export type StatusRastreamento = 'RASTREADOR' | 'LOCALIZADO' | 'APLICATIVO' | 'NAO_RASTREADO';
+
+export const RASTREAMENTO_OPTIONS: StatusRastreamento[] = ['RASTREADOR', 'LOCALIZADO', 'APLICATIVO', 'NAO_RASTREADO'];
+
+export const RASTREAMENTO_LABELS: Record<StatusRastreamento, string> = {
+  RASTREADOR: 'Rastreador',
+  LOCALIZADO: 'Localizado',
+  APLICATIVO: 'Aplicativo',
+  NAO_RASTREADO: 'Não rastreado',
+};

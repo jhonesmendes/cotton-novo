@@ -4,7 +4,7 @@ import { useState } from 'react';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
 import { formatDate, formatMoney, formatTelefone } from '@/utils/format';
-import { STATUS_OPTIONS, STATUS_LABELS, STATUS_SEM_MONITORAMENTO, SM_OPTIONS, SM_LABELS } from '@/utils/status';
+import { STATUS_OPTIONS, STATUS_LABELS, STATUS_SEM_MONITORAMENTO, SM_OPTIONS, SM_LABELS, RASTREAMENTO_LABELS } from '@/utils/status';
 import UrgenciaBadge from '@/components/UrgenciaBadge';
 import ConfirmModal from '@/components/ConfirmModal';
 import TimelineStatus from '@/components/TimelineStatus';
@@ -210,6 +210,18 @@ export default function LiberacaoDetalhe() {
                     <PhoneIcon className="w-3 h-3" />
                     {formatTelefone(v.motoristaTelefone)}
                   </a>
+                </div>
+
+                {/* Rastreamento + Isca */}
+                <div className="min-w-[130px]">
+                  <p className="text-[10px] text-gray-500">Rastreamento</p>
+                  <p className="text-xs font-semibold text-gray-800">{RASTREAMENTO_LABELS[v.statusRastreamento as keyof typeof RASTREAMENTO_LABELS] ?? v.statusRastreamento}</p>
+                  <p className="text-xs mt-0.5">
+                    {v.numeroIsca
+                      ? <span>🟢 <span className="font-mono text-gray-700">{v.numeroIsca}</span></span>
+                      : <span>🔴 <span className="text-gray-400">Isca não informada</span></span>
+                    }
+                  </p>
                 </div>
 
                 {/* SM - Monitoramento do Veículo */}
