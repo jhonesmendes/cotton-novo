@@ -11,26 +11,27 @@ export default function LiberacoesPage() {
   const podeCriar = useAuthStore((s) => s.user?.perfil) !== 'OPERADOR';
   const [busca, setBusca] = useState('');
   const [status, setStatus] = useState('ATIVA');
-  const [clienteId, setClienteId] = useState('');
+  const [origemId, setOrigemId] = useState('');
   const [page, setPage] = useState(1);
 
   const params = new URLSearchParams({
     page: String(page), limit: '50',
     ...(status && { status }),
     ...(busca && { busca }),
-    ...(clienteId && { clienteId }),
+    ...(origemId && { origemId }),
   });
 
   const { data, isLoading } = useQuery({
-    queryKey: ['liberacoes', { busca, status, clienteId, page }],
+    queryKey: ['liberacoes', { busca, status, origemId, page }],
     queryFn: () => api.get(`/liberacoes?${params}`).then((r) => r.data),
   });
 
-  const { data: clientes } = useQuery({
-    queryKey: ['clientes'],
-    queryFn: () => api.get('/clientes?limit=1000').then((r) => r.data),
+  // "Origem" no modelo de dados representa a Filial Embarcadora.
+  const { data: origens } = useQuery({
+    queryKey: ['origens'],
+    queryFn: () => api.get('/origens?limit=1000').then((r) => r.data),
   });
-  const listaClientes = Array.isArray(clientes) ? clientes : clientes?.data ?? [];
+  const listaOrigens = Array.isArray(origens) ? origens : origens?.data ?? [];
 
   return (
     <div className="ui-page space-y-6">
@@ -47,11 +48,11 @@ export default function LiberacoesPage() {
         <input value={busca} onChange={(e) => { setBusca(e.target.value); setPage(1); }}
           placeholder="Instrução, placa ou motorista..."
           className="ui-input min-w-[200px] flex-1" />
-        <select value={clienteId} onChange={(e) => { setClienteId(e.target.value); setPage(1); }}
+        <select value={origemId} onChange={(e) => { setOrigemId(e.target.value); setPage(1); }}
           className="ui-input w-auto">
-          <option value="">Todos clientes</option>
-          {listaClientes.map((c: any) => (
-            <option key={c.id} value={c.id}>{c.nome}</option>
+          <option value="">Todas filiais</option>
+          {listaOrigens.map((o: any) => (
+            <option key={o.id} value={o.id}>{o.nome}</option>
           ))}
         </select>
         <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}
