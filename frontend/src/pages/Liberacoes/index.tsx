@@ -76,9 +76,9 @@ export default function LiberacoesPage() {
                 <tr>
                   <th className="px-4 py-3 text-left">Instrução</th>
                   <th className="px-4 py-3 text-left">Cliente</th>
-                  <th className="px-4 py-3 text-left">Filial Embarcadora</th>
                   <th className="px-4 py-3 text-left">Origem</th>
                   <th className="px-4 py-3 text-left">Local de Coleta</th>
+                  <th className="px-4 py-3 text-left">Destino</th>
                   <th className="px-4 py-3 text-right">Total</th>
                   <th className="px-4 py-3 text-right">Saldo</th>
                   <th className="px-4 py-3 text-right">Deadline</th>
@@ -94,9 +94,9 @@ export default function LiberacoesPage() {
                       <Link to={`/liberacoes/${l.id}`} className="hover:underline">{l.instrucao}</Link>
                     </td>
                     <td className="px-4 py-3 text-xs">{l.clienteNome ?? l.cliente?.nome}</td>
-                    <td className="px-4 py-3 text-xs text-gray-500">{l.filialNome ?? l.origem?.nome}</td>
                     <td className="px-4 py-3 text-xs text-gray-500">{l.origemNome ?? l.terminal?.nome}</td>
                     <td className="px-4 py-3 text-xs text-gray-500">{l.localColetaNome ?? l.localColeta?.nome}</td>
+                    <td className="px-4 py-3 text-xs text-gray-500">{l.destinoNome ?? l.destino?.nome}</td>
                     <td className="px-4 py-3 text-right">{l.totalFardos}</td>
                     <td className="px-4 py-3 text-right font-semibold">{l.saldo}</td>
                     <td className="px-4 py-3 text-right text-xs">{formatDate(l.deadline)}</td>
