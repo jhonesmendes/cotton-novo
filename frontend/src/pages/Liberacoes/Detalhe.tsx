@@ -8,7 +8,7 @@ import { STATUS_OPTIONS, STATUS_LABELS, STATUS_SEM_MONITORAMENTO, SM_OPTIONS, SM
 import UrgenciaBadge from '@/components/UrgenciaBadge';
 import ConfirmModal from '@/components/ConfirmModal';
 import TimelineStatus from '@/components/TimelineStatus';
-import { PlusIcon, PencilSquareIcon, TrashIcon, PhoneIcon, ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, PencilSquareIcon, TrashIcon, PhoneIcon, ChevronDownIcon, ChevronUpIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import VeiculoModal from './VeiculoModal';
 import { useAuthStore } from '@/stores/auth.store';
 
@@ -19,6 +19,9 @@ export default function LiberacaoDetalhe() {
   const [veiculoModal, setVeiculoModal] = useState<'novo' | number | null>(null);
   const [expandedTimeline, setExpandedTimeline] = useState<number | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<{ type: 'veiculo' | 'liberacao'; id?: number } | null>(null);
+  // Oculta os valores de frete antes de tirar print pra enviar pra fora — o valor
+  // combinado com o motorista/empresa não pode aparecer no print.
+  const [ocultarValores, setOcultarValores] = useState(false);
   const qc = useQueryClient();
 
   const { data: lib, isLoading } = useQuery({
@@ -101,6 +104,14 @@ export default function LiberacaoDetalhe() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setOcultarValores((o) => !o)}
+            className="flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm hover:bg-gray-50 transition-colors"
+            title={ocultarValores ? 'Mostrar valores de frete' : 'Ocultar valores de frete antes de enviar print'}
+          >
+            {ocultarValores ? <EyeSlashIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
+            {ocultarValores ? 'Mostrar valores' : 'Ocultar valores'}
+          </button>
           {podeEditarLiberacao && (
             <Link to={`/liberacoes/${id}/editar`}
               className="flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm hover:bg-gray-50 transition-colors">
@@ -130,7 +141,7 @@ export default function LiberacaoDetalhe() {
             label: 'Deadline',
             value: <><span>{formatDate(lib.deadline)}</span><span className="ml-2 text-xs">({diasParaDeadline}d)</span></>
           },
-          { label: 'Frete Empresa', value: formatMoney(lib.freteEmpresa) },
+          { label: 'Frete Empresa', value: ocultarValores ? 'R$ ••••••' : formatMoney(lib.freteEmpresa) },
           { label: 'Local de Coleta', value: lib.localColetaNome ?? lib.localColeta?.nome },
           { label: 'Tipo de Fardo', value: lib.tipoFardo },
           {
@@ -222,7 +233,7 @@ export default function LiberacaoDetalhe() {
                 {/* Fardos + Frete */}
                 <div className="text-right">
                   <p className="text-sm font-bold text-gray-900">{v.qtdFardos} fardos</p>
-                  <p className="text-xs text-gray-400">{formatMoney(v.freteMotorista)}</p>
+                  <p className="text-xs text-gray-400">{ocultarValores ? 'R$ ••••••' : formatMoney(v.freteMotorista)}</p>
                 </div>
 
                 {/* Status update */}
