@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
+import { useAuthStore } from '@/stores/auth.store';
 
 const liberacaoSchema = z.object({
   instrucao: z.string().min(1, 'Instrução é obrigatória'),
@@ -30,6 +31,8 @@ export default function LiberacaoForm() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const isEdit = !!id;
+  // Só ADMIN cadastra filial nova digitando; os demais escolhem uma existente.
+  const isAdmin = useAuthStore((s) => s.user?.perfil) === 'ADMIN';
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<LiberacaoFormData>({
     resolver: zodResolver(liberacaoSchema) as any,
@@ -51,7 +54,8 @@ export default function LiberacaoForm() {
 
 
   useEffect(() => {
-    if (editData) {
+    // Espera as referências carregarem: o <select> de filial descarta valor sem <option> correspondente.
+    if (editData && referencias) {
       reset({
         ...editData,
         dataLiberacao: editData.dataLiberacao?.slice(0, 10),
@@ -64,13 +68,14 @@ export default function LiberacaoForm() {
         localColetaNome: editData.localColetaNome ?? editData.localColeta?.nome ?? '',
       });
     }
-  }, [editData, reset]);
+  }, [editData, referencias, reset]);
 
   const mutation = useMutation({
     mutationFn: (data: LiberacaoFormData) => isEdit ? api.put(`/liberacoes/${id}`, data) : api.post('/liberacoes', data),
     onSuccess: (res) => {
       toast.success(isEdit ? 'Liberação atualizada' : 'Liberação criada');
       qc.invalidateQueries({ queryKey: ['liberacoes'] });
+      qc.invalidateQueries({ queryKey: ['liberacao', String(res.data.id)] });
       navigate(`/liberacoes/${res.data.id}`);
     },
     onError: (e: any) => toast.error(e?.response?.data?.error?.message || 'Erro ao salvar'),
@@ -94,7 +99,18 @@ export default function LiberacaoForm() {
           <div className="grid grid-cols-2 gap-4">
             <Field label="Instrução*" {...register('instrucao')} error={errors.instrucao?.message} placeholder="S07453-MÃE-JAN-01" />
             <Field label="Cliente*" {...register('clienteNome')} error={errors.clienteNome?.message} placeholder="Digite o cliente" suggestions={referencias?.clientes} />
-            <Field label="Filial Embarcadora*" {...register('filialNome')} error={errors.filialNome?.message} placeholder="Digite a filial" suggestions={referencias?.filiais} />
+            {isAdmin ? (
+              <Field label="Filial Embarcadora*" {...register('filialNome')} error={errors.filialNome?.message} placeholder="Digite a filial" suggestions={referencias?.filiais} />
+            ) : (
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Filial Embarcadora*</label>
+                <select {...register('filialNome')} className={`w-full border ${errors.filialNome ? 'border-red-500' : 'border-gray-200'} rounded px-2 py-1.5 text-sm`}>
+                  <option value="">Selecione a filial</option>
+                  {(referencias?.filiais ?? []).map((item: string) => <option key={item} value={item}>{item}</option>)}
+                </select>
+                {errors.filialNome && <p className="text-[10px] text-red-500 mt-0.5">{errors.filialNome.message}</p>}
+              </div>
+            )}
             <Field label="Destino*" {...register('destinoNome')} error={errors.destinoNome?.message} placeholder="Digite o destino" suggestions={referencias?.destinos} />
             <Field label="Origem*" {...register('origemNome')} error={errors.origemNome?.message} placeholder="Digite a origem" suggestions={referencias?.origens} />
             <Field label="Local de Coleta*" {...register('localColetaNome')} error={errors.localColetaNome?.message} placeholder="Digite o local de coleta" suggestions={referencias?.locaisColeta} />

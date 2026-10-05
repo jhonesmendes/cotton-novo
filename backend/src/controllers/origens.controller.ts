@@ -54,7 +54,7 @@ export async function criar(req: AuthRequest, res: Response) {
   const data = criarSchema.parse(req.body);
 
   const existe = await prisma.origem.findFirst({
-    where: { nome: { equals: data.nome } },
+    where: { nome: { equals: data.nome.trim(), mode: 'insensitive' } },
   });
   if (existe) throw new AppError(`Filial/Origem "${data.nome}" já existe`, 409, 'DUPLICATE');
 

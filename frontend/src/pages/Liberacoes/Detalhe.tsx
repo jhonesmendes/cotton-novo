@@ -75,6 +75,7 @@ export default function LiberacaoDetalhe() {
     mutationFn: () => api.delete(`/liberacoes/${id}`),
     onSuccess: () => {
       toast.success('Liberação removida com sucesso');
+      qc.invalidateQueries({ queryKey: ['liberacoes'] });
       navigate('/liberacoes');
     },
     onError: () => toast.error('Erro ao remover liberação'),

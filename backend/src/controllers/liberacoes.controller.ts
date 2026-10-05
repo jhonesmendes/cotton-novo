@@ -26,7 +26,10 @@ const criarSchema = z.object({
   observacao: z.string().optional(),
 });
 
-async function resolverCadastros(data: any) {
+// Filial embarcadora (model Origem) só pode ser criada por ADMIN — os demais
+// perfis só escolhem uma já cadastrada, pra não surgir "SORRISO-MT" e
+// "SORRISO - MT" como filiais diferentes.
+async function resolverCadastros(data: any, podeCriarFilial: boolean) {
   const buscarOuCriar = async (tipo: 'cliente' | 'origem' | 'destino' | 'terminal' | 'localColeta', id: number | undefined, nome: string | undefined) => {
     if (id) return id;
     const valor = nome?.trim();
@@ -36,8 +39,15 @@ async function resolverCadastros(data: any) {
       return item?.id ?? (await prisma.cliente.create({ data: { nome: valor, cnpj: `PENDENTE-${Date.now()}-${Math.random().toString(36).slice(2, 7)}` } })).id;
     }
     if (tipo === 'origem') {
-      const item = await prisma.origem.findFirst({ where: { nome: valor } });
-      return item?.id ?? (await prisma.origem.create({ data: { nome: valor, localizacao: 'Pendente', estado: '--' } })).id;
+      const item = await prisma.origem.findFirst({ where: { nome: { equals: valor, mode: 'insensitive' } } });
+      if (item) {
+        data.filialNome = item.nome;
+        return item.id;
+      }
+      if (!podeCriarFilial) {
+        throw new AppError(`Filial embarcadora "${valor}" não está cadastrada. Selecione uma filial da lista ou peça a um administrador para cadastrá-la.`, 400, 'FILIAL_NAO_CADASTRADA');
+      }
+      return (await prisma.origem.create({ data: { nome: valor, localizacao: 'Pendente', estado: '--' } })).id;
     }
     if (tipo === 'destino') {
       const item = await prisma.destino.findFirst({ where: { nome: valor } });
@@ -149,9 +159,12 @@ export async function listar(req: AuthRequest, res: Response) {
 }
 
 export async function referencias(_req: AuthRequest, res: Response) {
-  const [liberacoes, cadastradas, veiculos] = await Promise.all([prisma.liberacao.findMany({
+  const [liberacoes, cadastradas, veiculos, filiais] = await Promise.all([prisma.liberacao.findMany({
     select: { clienteNome: true, filialNome: true, destinoNome: true, origemNome: true, localColetaNome: true },
-  }), prisma.referenciaCadastro.findMany({ select: { tipo: true, valor: true } }), prisma.veiculo.findMany({ include: { modeloCarreta: { select: { nomeDescricao: true } } } })]);
+  }), prisma.referenciaCadastro.findMany({ select: { tipo: true, valor: true } }), prisma.veiculo.findMany({ include: { modeloCarreta: { select: { nomeDescricao: true } } } }),
+  prisma.origem.findMany({ select: { nome: true } })]);
+  // Filiais cadastradas (model Origem) também entram na lista, mesmo sem liberação — são as mesmas do filtro da tela de Liberações.
+  cadastradas.push(...filiais.map((f) => ({ tipo: 'filiais', valor: f.nome })));
   const valores = (campo: keyof (typeof liberacoes)[number], tipo: string) =>
     [...new Set([...liberacoes.map((item) => item[campo]?.trim()), ...cadastradas.filter((item) => item.tipo === tipo).map((item) => item.valor)].filter(Boolean))].sort();
 
@@ -162,14 +175,103 @@ export async function referencias(_req: AuthRequest, res: Response) {
   });
 }
 
+function exigirAdminParaFiliais(req: AuthRequest, tipo: string) {
+  if (tipo === 'filiais' && req.user?.perfil !== 'ADMIN') {
+    throw new AppError('Somente administradores podem gerenciar filiais embarcadoras', 403, 'FORBIDDEN');
+  }
+}
+
 export async function criarReferencia(req: AuthRequest, res: Response) {
   const data = z.object({ tipo: z.enum(['clientes', 'filiais', 'destinos', 'origens', 'locaisColeta']), valor: z.string().min(2) }).parse(req.body);
-  const referencia = await prisma.referenciaCadastro.upsert({ where: { tipo_valor: { tipo: data.tipo, valor: data.valor.trim() } }, update: {}, create: { tipo: data.tipo, valor: data.valor.trim() } });
+  exigirAdminParaFiliais(req, data.tipo);
+  const valor = data.valor.trim();
+  if (data.tipo === 'filiais') {
+    const existe = await prisma.origem.findFirst({ where: { nome: { equals: valor, mode: 'insensitive' } } });
+    if (existe) throw new AppError(`Filial embarcadora "${existe.nome}" já existe`, 409, 'DUPLICATE');
+    await prisma.origem.create({ data: { nome: valor, localizacao: 'Pendente', estado: '--' } });
+  }
+  const referencia = await prisma.referenciaCadastro.upsert({ where: { tipo_valor: { tipo: data.tipo, valor } }, update: {}, create: { tipo: data.tipo, valor } });
   return res.status(201).json(referencia);
+}
+
+// Cada tipo de referência: campo texto na Liberação, FK correspondente e o model do cadastro.
+const vinculosReferencia = {
+  clientes: { campo: 'clienteNome', fk: 'clienteId', model: 'cliente' },
+  filiais: { campo: 'filialNome', fk: 'origemId', model: 'origem' },
+  destinos: { campo: 'destinoNome', fk: 'destinoId', model: 'destino' },
+  origens: { campo: 'origemNome', fk: 'terminalId', model: 'terminal' },
+  locaisColeta: { campo: 'localColetaNome', fk: 'localColetaId', model: 'localColeta' },
+} as const;
+
+// Exclui uma referência (ex: filial duplicada). Se estiver em uso, as liberações
+// (e usuários, no caso de filial) são movidas para o `substituto` antes.
+export async function excluirReferencia(req: AuthRequest, res: Response) {
+  const body = z.object({
+    tipo: z.enum(['clientes', 'filiais', 'destinos', 'origens', 'locaisColeta']),
+    valor: z.string().min(1),
+    substituto: z.string().trim().min(2).optional(),
+  }).parse(req.body);
+  const { campo, fk, model } = vinculosReferencia[body.tipo];
+  if (body.substituto && body.substituto === body.valor) {
+    throw new AppError('O substituto deve ser diferente do item excluído', 400);
+  }
+
+  const entidadeAtual: { id: number } | null = await (prisma as any)[model].findFirst({ where: { nome: body.valor } });
+  const filtroLiberacoes: any = { OR: [{ [campo]: body.valor }, ...(entidadeAtual ? [{ [fk]: entidadeAtual.id }] : [])] };
+  const [liberacoesEmUso, usuariosEmUso, referenciaCadastrada] = await Promise.all([
+    prisma.liberacao.count({ where: filtroLiberacoes }),
+    body.tipo === 'filiais' && entidadeAtual ? prisma.usuario.count({ where: { filialId: entidadeAtual.id } }) : 0,
+    prisma.referenciaCadastro.count({ where: { tipo: body.tipo, valor: body.valor } }),
+  ]);
+
+  if (!entidadeAtual && liberacoesEmUso + referenciaCadastrada === 0) {
+    throw new AppError('Referência não encontrada', 404, 'NOT_FOUND');
+  }
+  if (liberacoesEmUso + usuariosEmUso > 0 && !body.substituto) {
+    throw new AppError(
+      `Em uso por ${liberacoesEmUso} liberação(ões)${usuariosEmUso ? ` e ${usuariosEmUso} usuário(s)` : ''}. Escolha um substituto para transferi-los antes de excluir.`,
+      400,
+      'HAS_DEPENDENCIES',
+    );
+  }
+
+  let novoId: number | undefined;
+  let novoNome: string | undefined;
+  if (body.substituto) {
+    const dadosSubstituto: any = { [campo]: body.substituto };
+    novoId = (await resolverCadastros(dadosSubstituto, true))[fk];
+    novoNome = dadosSubstituto[campo];
+    if (entidadeAtual && novoId === entidadeAtual.id) {
+      throw new AppError('O substituto deve ser diferente do item excluído', 400);
+    }
+  }
+
+  await prisma.$transaction(async (tx) => {
+    if (novoId) {
+      await tx.liberacao.updateMany({ where: filtroLiberacoes, data: { [campo]: novoNome, [fk]: novoId } });
+      if (body.tipo === 'filiais' && entidadeAtual) {
+        await tx.usuario.updateMany({ where: { filialId: entidadeAtual.id }, data: { filialId: novoId } });
+      }
+    }
+    await tx.referenciaCadastro.deleteMany({ where: { tipo: body.tipo, valor: body.valor } });
+    // Filial só tem vínculo com liberações e usuários (já transferidos acima).
+    if (body.tipo === 'filiais' && entidadeAtual) {
+      await tx.origem.delete({ where: { id: entidadeAtual.id } });
+    }
+  });
+
+  // Demais cadastros podem ter outros vínculos (ex: alertas); se sobrar algum,
+  // o registro fica, mas some da lista de referências do mesmo jeito.
+  if (body.tipo !== 'filiais' && entidadeAtual) {
+    await (prisma as any)[model].delete({ where: { id: entidadeAtual.id } }).catch(() => undefined);
+  }
+
+  return res.json({ transferidos: novoId ? liberacoesEmUso : 0 });
 }
 
 export async function atualizarReferencia(req: AuthRequest, res: Response) {
   const body = z.object({ tipo: z.enum(['clientes', 'filiais', 'destinos', 'origens', 'locaisColeta', 'modelosCarreta', 'motoristas']), atual: z.string().min(1), novo: z.string().min(2) }).parse(req.body);
+  exigirAdminParaFiliais(req, body.tipo);
   if (body.tipo === 'modelosCarreta') {
     const resultado = await prisma.modeloCarreta.updateMany({ where: { nomeDescricao: body.atual }, data: { nomeDescricao: body.novo.trim() } });
     return res.json({ atualizados: resultado.count });
@@ -180,10 +282,17 @@ export async function atualizarReferencia(req: AuthRequest, res: Response) {
     const resultado = await prisma.veiculo.updateMany({ where: { motoristaCpf: cpf }, data: { motoristaNome: body.novo.trim() } });
     return res.json({ atualizados: resultado.count });
   }
-  const campos = { clientes: 'clienteNome', filiais: 'filialNome', destinos: 'destinoNome', origens: 'origemNome', locaisColeta: 'localColetaNome' } as const;
-  const campo = campos[body.tipo];
+  const campo = vinculosReferencia[body.tipo].campo;
   const novoValor = body.novo.trim();
+  const filialAtual = body.tipo === 'filiais' ? await prisma.origem.findFirst({ where: { nome: body.atual } }) : null;
+  if (body.tipo === 'filiais') {
+    const conflito = await prisma.origem.findFirst({ where: { nome: { equals: novoValor, mode: 'insensitive' } } });
+    if (conflito && conflito.id !== filialAtual?.id) {
+      throw new AppError(`Já existe a filial "${conflito.nome}". Para unificar, exclua "${body.atual}" e escolha "${conflito.nome}" como substituta.`, 409, 'DUPLICATE');
+    }
+  }
   const resultado = await prisma.$transaction(async (tx) => {
+    if (filialAtual) await tx.origem.update({ where: { id: filialAtual.id }, data: { nome: novoValor } });
     const liberacoes = await tx.liberacao.updateMany({ where: { [campo]: body.atual }, data: { [campo]: novoValor } });
     const referenciaAtual = await tx.referenciaCadastro.findUnique({ where: { tipo_valor: { tipo: body.tipo, valor: body.atual } } });
 
@@ -250,7 +359,7 @@ export async function buscarPorId(req: AuthRequest, res: Response) {
 
 export async function criar(req: AuthRequest, res: Response) {
   const recebido = criarSchema.parse(req.body);
-  const cadastros = await resolverCadastros(recebido);
+  const cadastros = await resolverCadastros(recebido, req.user?.perfil === 'ADMIN');
   if (Object.values(cadastros).some((valor) => !valor)) {
     throw new AppError('Preencha Cliente, Filial, Destino, Origem e Local de Coleta', 400);
   }
@@ -308,7 +417,7 @@ export async function criar(req: AuthRequest, res: Response) {
 export async function atualizar(req: AuthRequest, res: Response) {
   const { id } = req.params;
   const recebido = criarSchema.partial().parse(req.body);
-  const cadastros = await resolverCadastros(recebido);
+  const cadastros = await resolverCadastros(recebido, req.user?.perfil === 'ADMIN');
   const data: any = { ...recebido, ...cadastros };
 
   // Validar se liberação existe
