@@ -27,6 +27,22 @@ function SaldoBarShape(props: any) {
   return <rect x={x} y={y} width={w} height={height} rx={4} ry={4} fill={isZero ? '#22c55e' : '#4f46e5'} />;
 }
 
+// Rótulo do eixo em uma linha só (o tick padrão quebra nomes longos em duas,
+// e o Recharts passa a esconder os que se sobrepõem). Nome completo fica no tooltip.
+const MAX_CHARS_ROTULO = 18;
+const ALTURA_POR_CLIENTE = 30;
+
+function ClienteTick({ x, y, payload }: any) {
+  const nome: string = payload?.value ?? '';
+  const rotulo = nome.length > MAX_CHARS_ROTULO ? `${nome.slice(0, MAX_CHARS_ROTULO - 1)}…` : nome;
+  return (
+    <text x={x} y={y} dx={-4} fill="#94a3b8" fontSize={11} textAnchor="end" dominantBaseline="central">
+      <title>{nome}</title>
+      {rotulo}
+    </text>
+  );
+}
+
 const MAX_DETALHES_TOOLTIP = 3;
 
 function SaldoClienteTooltip({ active, payload }: any) {
@@ -67,10 +83,10 @@ export default function DashboardKPIs() {
       {/* Por Cliente */}
       <div className="ui-card p-5">
         <h2 className="mb-4 text-sm font-semibold text-ui-text">Fardos Pendentes por Cliente</h2>
-        <ResponsiveContainer width="100%" height={220}>
-          <BarChart data={data.porCliente} layout="vertical" margin={{ left: 20 }}>
+        <ResponsiveContainer width="100%" height={Math.max(220, data.porCliente.length * ALTURA_POR_CLIENTE + 40)}>
+          <BarChart data={data.porCliente} layout="vertical" margin={{ left: 0 }}>
             <XAxis type="number" tick={{ fontSize: 11, fill: '#94a3b8' }} />
-            <YAxis type="category" dataKey="nome" width={90} tick={{ fontSize: 11, fill: '#94a3b8' }} />
+            <YAxis type="category" dataKey="nome" width={130} interval={0} tick={<ClienteTick />} />
             <Tooltip content={<SaldoClienteTooltip />} />
             <Bar dataKey="saldo" name="Saldo" shape={<SaldoBarShape />} />
           </BarChart>
