@@ -159,10 +159,10 @@ export async function listar(req: AuthRequest, res: Response) {
 }
 
 export async function referencias(_req: AuthRequest, res: Response) {
-  const [liberacoes, cadastradas, veiculos, filiais] = await Promise.all([prisma.liberacao.findMany({
+  const [liberacoes, cadastradas, veiculos, filiais, modelos] = await Promise.all([prisma.liberacao.findMany({
     select: { clienteNome: true, filialNome: true, destinoNome: true, origemNome: true, localColetaNome: true },
   }), prisma.referenciaCadastro.findMany({ select: { tipo: true, valor: true } }), prisma.veiculo.findMany({ include: { modeloCarreta: { select: { nomeDescricao: true } } } }),
-  prisma.origem.findMany({ select: { nome: true } })]);
+  prisma.origem.findMany({ select: { nome: true } }), prisma.modeloCarreta.findMany({ select: { nomeDescricao: true } })]);
   // Filiais cadastradas (model Origem) também entram na lista, mesmo sem liberação — são as mesmas do filtro da tela de Liberações.
   cadastradas.push(...filiais.map((f) => ({ tipo: 'filiais', valor: f.nome })));
   const valores = (campo: keyof (typeof liberacoes)[number], tipo: string) =>
@@ -170,7 +170,8 @@ export async function referencias(_req: AuthRequest, res: Response) {
 
   return res.json({
     clientes: valores('clienteNome', 'clientes'), filiais: valores('filialNome', 'filiais'), destinos: valores('destinoNome', 'destinos'), origens: valores('origemNome', 'origens'), locaisColeta: valores('localColetaNome', 'locaisColeta'),
-    modelosCarreta: [...new Set(veiculos.map((item) => item.modeloCarreta?.nomeDescricao).filter(Boolean))].sort(),
+    // Todos os modelos cadastrados (não só os usados em veículos), para os sem uso poderem ser excluídos.
+    modelosCarreta: [...new Set(modelos.map((item) => item.nomeDescricao?.trim()).filter(Boolean))].sort(),
     motoristas: [...new Set(veiculos.map((item) => item.motoristaCpf ? `${item.motoristaNome} · CPF ${item.motoristaCpf}` : item.motoristaNome).filter(Boolean))].sort(),
   });
 }
@@ -203,21 +204,107 @@ const vinculosReferencia = {
   locaisColeta: { campo: 'localColetaNome', fk: 'localColetaId', model: 'localColeta' },
 } as const;
 
+const tiposExcluiveis = ['clientes', 'filiais', 'destinos', 'origens', 'locaisColeta', 'motoristas', 'modelosCarreta'] as const;
+
+// Motorista não tem tabela própria: vem dos veículos, listado como "NOME · CPF 123" (ou só "NOME").
+function filtroMotorista(valor: string): Prisma.VeiculoWhereInput {
+  const m = valor.match(/^(.*) · CPF (\S+)$/);
+  return m ? { motoristaNome: m[1], motoristaCpf: m[2] } : { motoristaNome: valor, OR: [{ motoristaCpf: null }, { motoristaCpf: '' }] };
+}
+
+async function filtroLiberacoesDaReferencia(tipo: keyof typeof vinculosReferencia, valor: string) {
+  const { campo, fk, model } = vinculosReferencia[tipo];
+  const entidade: { id: number } | null = await (prisma as any)[model].findFirst({ where: { nome: valor } });
+  const filtro: any = { OR: [{ [campo]: valor }, ...(entidade ? [{ [fk]: entidade.id }] : [])] };
+  return { entidade, filtro };
+}
+
+// Onde uma referência está sendo usada — mostrado antes de excluir, para o
+// usuário corrigir os dados (editar/transferir) quando houver vínculo.
+export async function usoReferencia(req: AuthRequest, res: Response) {
+  const query = z.object({ tipo: z.enum(tiposExcluiveis), valor: z.string().min(1) }).parse(req.query);
+  const liberacaoSelect = { id: true, instrucao: true, status: true } as const;
+
+  if (query.tipo === 'motoristas') {
+    const veiculos = await prisma.veiculo.findMany({
+      where: filtroMotorista(query.valor),
+      select: { id: true, placa: true, status: true, liberacao: { select: liberacaoSelect } },
+      orderBy: { createdAt: 'desc' },
+    });
+    return res.json({ liberacoes: [], veiculos, usuarios: [] });
+  }
+  if (query.tipo === 'modelosCarreta') {
+    const veiculos = await prisma.veiculo.findMany({
+      where: { modeloCarreta: { nomeDescricao: query.valor } },
+      select: { id: true, placa: true, status: true, liberacao: { select: liberacaoSelect } },
+      orderBy: { createdAt: 'desc' },
+    });
+    return res.json({ liberacoes: [], veiculos, usuarios: [] });
+  }
+
+  const { entidade, filtro } = await filtroLiberacoesDaReferencia(query.tipo, query.valor);
+  const [liberacoes, usuarios] = await Promise.all([
+    prisma.liberacao.findMany({ where: filtro, select: liberacaoSelect, orderBy: { createdAt: 'desc' } }),
+    query.tipo === 'filiais' && entidade
+      ? prisma.usuario.findMany({ where: { filialId: entidade.id }, select: { id: true, nome: true, email: true } })
+      : [],
+  ]);
+  return res.json({ liberacoes, veiculos: [], usuarios });
+}
+
+async function excluirMotorista(valor: string, substituto: string | undefined) {
+  const filtro = filtroMotorista(valor);
+  const emUso = await prisma.veiculo.count({ where: filtro });
+  if (emUso === 0) return 0;
+  if (!substituto) {
+    throw new AppError(`Em uso por ${emUso} veículo(s). Corrija os dados ou escolha um substituto antes de excluir.`, 400, 'HAS_DEPENDENCIES');
+  }
+  const destino = await prisma.veiculo.findFirst({ where: filtroMotorista(substituto), orderBy: { createdAt: 'desc' } });
+  if (!destino) throw new AppError('Motorista substituto não encontrado', 404, 'NOT_FOUND');
+  const resultado = await prisma.veiculo.updateMany({
+    where: filtro,
+    data: { motoristaNome: destino.motoristaNome, motoristaCpf: destino.motoristaCpf, motoristaTelefone: destino.motoristaTelefone, motoristaEmail: destino.motoristaEmail },
+  });
+  return resultado.count;
+}
+
+// Modelo de carreta: vários registros podem ter o mesmo nome (cada um guarda
+// placa/capacidade de um veículo). Sem uso, os registros são apagados; com
+// substituto, só são renomeados para ele — unifica o nome sem perder os dados.
+async function excluirModeloCarreta(valor: string, substituto: string | undefined) {
+  const emUso = await prisma.veiculo.count({ where: { modeloCarreta: { nomeDescricao: valor } } });
+  if (emUso > 0 && !substituto) {
+    throw new AppError(`Em uso por ${emUso} veículo(s). Corrija os dados ou escolha um substituto antes de excluir.`, 400, 'HAS_DEPENDENCIES');
+  }
+  if (substituto) {
+    await prisma.modeloCarreta.updateMany({ where: { nomeDescricao: valor }, data: { nomeDescricao: substituto } });
+    return emUso;
+  }
+  const removidos = await prisma.modeloCarreta.deleteMany({ where: { nomeDescricao: valor } });
+  if (removidos.count === 0) throw new AppError('Modelo de carreta não encontrado', 404, 'NOT_FOUND');
+  return 0;
+}
+
 // Exclui uma referência (ex: filial duplicada). Se estiver em uso, as liberações
 // (e usuários, no caso de filial) são movidas para o `substituto` antes.
 export async function excluirReferencia(req: AuthRequest, res: Response) {
   const body = z.object({
-    tipo: z.enum(['clientes', 'filiais', 'destinos', 'origens', 'locaisColeta']),
+    tipo: z.enum(tiposExcluiveis),
     valor: z.string().min(1),
     substituto: z.string().trim().min(2).optional(),
   }).parse(req.body);
-  const { campo, fk, model } = vinculosReferencia[body.tipo];
   if (body.substituto && body.substituto === body.valor) {
     throw new AppError('O substituto deve ser diferente do item excluído', 400);
   }
+  if (body.tipo === 'motoristas') {
+    return res.json({ transferidos: await excluirMotorista(body.valor, body.substituto) });
+  }
+  if (body.tipo === 'modelosCarreta') {
+    return res.json({ transferidos: await excluirModeloCarreta(body.valor, body.substituto) });
+  }
+  const { campo, fk, model } = vinculosReferencia[body.tipo];
 
-  const entidadeAtual: { id: number } | null = await (prisma as any)[model].findFirst({ where: { nome: body.valor } });
-  const filtroLiberacoes: any = { OR: [{ [campo]: body.valor }, ...(entidadeAtual ? [{ [fk]: entidadeAtual.id }] : [])] };
+  const { entidade: entidadeAtual, filtro: filtroLiberacoes } = await filtroLiberacoesDaReferencia(body.tipo, body.valor);
   const [liberacoesEmUso, usuariosEmUso, referenciaCadastrada] = await Promise.all([
     prisma.liberacao.count({ where: filtroLiberacoes }),
     body.tipo === 'filiais' && entidadeAtual ? prisma.usuario.count({ where: { filialId: entidadeAtual.id } }) : 0,
@@ -277,9 +364,12 @@ export async function atualizarReferencia(req: AuthRequest, res: Response) {
     return res.json({ atualizados: resultado.count });
   }
   if (body.tipo === 'motoristas') {
-    const cpf = body.atual.match(/CPF\s+(\d+)/)?.[1];
-    if (!cpf) throw new AppError('CPF do motorista não encontrado', 400);
-    const resultado = await prisma.veiculo.updateMany({ where: { motoristaCpf: cpf }, data: { motoristaNome: body.novo.trim() } });
+    // Aceita "NOME" ou "NOME · CPF 123" — o segundo permite corrigir motorista
+    // que ficou sem CPF (ex: CPF digitado no campo do nome).
+    const novo = body.novo.trim().match(/^(.*?)\s*·\s*CPF\s+(\d+)$/);
+    const data = novo ? { motoristaNome: novo[1].trim(), motoristaCpf: novo[2] } : { motoristaNome: body.novo.trim() };
+    const resultado = await prisma.veiculo.updateMany({ where: filtroMotorista(body.atual), data });
+    if (resultado.count === 0) throw new AppError('Motorista não encontrado', 404, 'NOT_FOUND');
     return res.json({ atualizados: resultado.count });
   }
   const campo = vinculosReferencia[body.tipo].campo;
