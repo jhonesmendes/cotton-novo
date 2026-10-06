@@ -12,6 +12,7 @@ import AlertasPage from '@/pages/Alertas';
 import UsuariosPage from '@/pages/Usuarios';
 import CadastrosPage from '@/pages/Cadastros';
 import ModelosPage from '@/pages/Cadastros/ModelosTab';
+import AuditoriaPage from '@/pages/Auditoria';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const token = useAuthStore((s) => s.token);
@@ -59,6 +60,7 @@ export default function App() {
           <Route path="cadastros/modelos" element={<ModelosPage />} />
           <Route path="configuracoes" element={<Navigate to="/configuracoes/usuarios" replace />} />
           <Route path="configuracoes/usuarios" element={<RequireAdmin><UsuariosPage /></RequireAdmin>} />
+          <Route path="auditoria" element={<RequireAdmin><AuditoriaPage /></RequireAdmin>} />
         </Route>
       </Routes>
     </BrowserRouter>

@@ -439,8 +439,30 @@ export async function buscarPorId(req: AuthRequest, res: Response) {
   
   const carregado = liberacao.veiculos.reduce((s, v) => s + v.qtdFardos, 0);
 
-  return res.json({ 
-    ...liberacao, 
+  // Quem mexeu por último em cada veículo (status, SM, dados) — vem da auditoria.
+  const ultimasAlteracoes = await prisma.auditoriaLog.findMany({
+    where: { tabelaAfetada: 'Veiculo', registroId: { in: liberacao.veiculos.map((v) => v.id) } },
+    distinct: ['registroId'],
+    orderBy: { createdAt: 'desc' },
+    select: {
+      registroId: true, acao: true, camposAlterados: true, createdAt: true,
+      usuario: { select: { id: true, nome: true } },
+    },
+  });
+  const ultimaPorVeiculo = new Map(ultimasAlteracoes.map((a) => [a.registroId, a]));
+  const veiculos = liberacao.veiculos.map((v) => {
+    const ultima = ultimaPorVeiculo.get(v.id);
+    return {
+      ...v,
+      ultimaAlteracao: ultima
+        ? { usuario: ultima.usuario, em: ultima.createdAt, acao: ultima.acao, campos: ultima.camposAlterados?.split(',') ?? [] }
+        : null,
+    };
+  });
+
+  return res.json({
+    ...liberacao,
+    veiculos,
     carregado, 
     saldo: liberacao.totalFardos - carregado, 
     diasParaDeadline 

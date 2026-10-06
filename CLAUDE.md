@@ -70,8 +70,18 @@ npm run lint          # eslint src/
 
 - `backend/src/controllers` + `backend/src/routes` — um par por módulo (auth, clientes,
   destinos, liberacoes, alertas, dashboard, usuarios, veiculos, terminais, origens,
-  modelos, locais-coleta).
+  modelos, locais-coleta, auditoria).
 - `backend/src/middleware` — `auth.ts` (JWT) e `errorHandler.ts`.
+- **Auditoria automática**: `backend/src/database/prisma.ts` exporta o client com uma
+  extensão (`$extends`) que grava em `auditoria_log` toda escrita (create/update/upsert/
+  delete/updateMany/deleteMany) feita dentro de uma requisição autenticada — o usuário vem
+  do `AsyncLocalStorage` preenchido pelo `authenticate` (`services/auditoria-contexto.ts`).
+  Grava só os campos que mudaram (antes/depois), mascara `senha`/`senhaHash` e ignora
+  `createdAt`/`updatedAt`/`lastLogin`. Controllers novos não precisam fazer nada — basta usar
+  o `prisma` padrão. `prismaBase` (sem auditoria) só deve ser usado pela própria auditoria.
+  Escritas fora de requisição autenticada (login, reset de senha, seed) não são auditadas.
+  Telas: histórico na tela da liberação (`GET /api/auditoria/liberacao/:id`) e `/auditoria`
+  (só ADMIN, `GET /api/auditoria`).
 - `backend/prisma/schema.prisma` — schema fonte da verdade do domínio.
 - `frontend/src/pages` — uma pasta por área (Dashboard, Liberacoes, Alertas, Cadastros,
   Usuarios) + `Login.tsx`.

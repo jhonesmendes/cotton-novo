@@ -315,9 +315,21 @@ model AuditoriaLog {
   acao           AcaoAuditoria
   dadosAntigos   String? @map("dados_antigos")
   dadosNovos     String? @map("dados_novos")
+  // Nomes dos campos alterados (separados por vírgula) — facilita filtro/resumo sem parsear o JSON.
+  camposAlterados String? @map("campos_alterados")
+  // Identificação legível do registro no momento da alteração (placa, instrução, nome...) —
+  // continua valendo mesmo depois que o registro é excluído.
+  descricao      String?
+  // Liberação a que o registro pertence (a própria, ou a do veículo) — agrupa o histórico da carga.
+  liberacaoId    Int?    @map("liberacao_id")
+  ip             String?
+  rota           String?
   createdAt      DateTime      @default(now()) @map("created_at")
   usuario Usuario @relation(fields: [usuarioId], references: [id])
   @@index([tabelaAfetada])
+  @@index([tabelaAfetada, registroId])
+  @@index([liberacaoId])
+  @@index([usuarioId])
   @@index([createdAt])
   @@map("auditoria_log")
 }

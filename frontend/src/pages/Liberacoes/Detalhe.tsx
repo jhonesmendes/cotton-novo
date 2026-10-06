@@ -3,18 +3,23 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useState } from 'react';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
-import { formatDate, formatMoney, formatTelefone } from '@/utils/format';
+import { formatDate, formatDateTime, formatMoney, formatTelefone } from '@/utils/format';
 import { STATUS_OPTIONS, STATUS_LABELS, STATUS_SEM_MONITORAMENTO, SM_OPTIONS, SM_LABELS, RASTREAMENTO_LABELS } from '@/utils/status';
 import UrgenciaBadge from '@/components/UrgenciaBadge';
 import ConfirmModal from '@/components/ConfirmModal';
 import TimelineStatus from '@/components/TimelineStatus';
-import { PlusIcon, PencilSquareIcon, TrashIcon, PhoneIcon, ChevronDownIcon, ChevronUpIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, PencilSquareIcon, TrashIcon, PhoneIcon, ChevronDownIcon, ChevronUpIcon, EyeIcon, EyeSlashIcon, ClockIcon } from '@heroicons/react/24/outline';
 import VeiculoModal from './VeiculoModal';
 import { useAuthStore } from '@/stores/auth.store';
+import AlteracoesDetalhe from '@/components/AlteracoesDetalhe';
+import { ACAO_LABELS, RegistroAuditoria, labelCampo, labelTabela } from '@/utils/auditoria';
 
 export default function LiberacaoDetalhe() {
   const { id } = useParams<{ id: string }>();
-  const podeEditarLiberacao = useAuthStore((s) => s.user?.perfil) !== 'OPERADOR';
+  const perfil = useAuthStore((s) => s.user?.perfil);
+  const podeEditarLiberacao = perfil !== 'OPERADOR';
+  const podeVerHistorico = perfil !== 'CLIENTE';
+  const [historicoAberto, setHistoricoAberto] = useState(false);
   const navigate = useNavigate();
   const [veiculoModal, setVeiculoModal] = useState<'novo' | number | null>(null);
   const [expandedTimeline, setExpandedTimeline] = useState<number | null>(null);
@@ -27,6 +32,13 @@ export default function LiberacaoDetalhe() {
   const { data: lib, isLoading } = useQuery({
     queryKey: ['liberacao', id],
     queryFn: () => api.get(`/liberacoes/${id}`).then((r) => r.data),
+  });
+
+  // Chave começa com ['liberacao', id] — os invalidateQueries das mutações já recarregam o histórico junto.
+  const { data: historico, isLoading: carregandoHistorico } = useQuery<RegistroAuditoria[]>({
+    queryKey: ['liberacao', id, 'historico'],
+    queryFn: () => api.get(`/auditoria/liberacao/${id}`).then((r) => r.data),
+    enabled: podeVerHistorico && historicoAberto,
   });
 
   const deletarVeiculo = useMutation({
@@ -271,6 +283,17 @@ export default function LiberacaoDetalhe() {
                       </option>
                     ))}
                   </select>
+                  {v.ultimaAlteracao && (
+                    <p
+                      className="mt-1 flex items-center gap-1 text-[10px] text-gray-400"
+                      title={`${ACAO_LABELS[v.ultimaAlteracao.acao as keyof typeof ACAO_LABELS]?.label ?? ''}: ${v.ultimaAlteracao.campos.map(labelCampo).join(', ')}`}
+                    >
+                      <ClockIcon className="w-3 h-3 shrink-0" />
+                      <span className="truncate max-w-[180px]">
+                        {v.ultimaAlteracao.usuario?.nome} · {formatDateTime(v.ultimaAlteracao.em)}
+                      </span>
+                    </p>
+                  )}
                 </div>
 
                 {/* Actions */}
@@ -321,6 +344,54 @@ export default function LiberacaoDetalhe() {
           ))}
         </div>
       </div>
+
+      {/* Histórico de alterações (auditoria) */}
+      {podeVerHistorico && (
+        <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setHistoricoAberto((a) => !a)}
+            className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-gray-50 transition-colors"
+          >
+            <div>
+              <h2 className="font-bold text-gray-800 flex items-center gap-2">
+                <ClockIcon className="w-4 h-4 text-gray-400" />
+                Histórico de alterações
+              </h2>
+              <p className="text-xs text-gray-400 mt-0.5">Quem alterou a liberação e os veículos, e quando</p>
+            </div>
+            {historicoAberto ? <ChevronUpIcon className="w-4 h-4 text-gray-400" /> : <ChevronDownIcon className="w-4 h-4 text-gray-400" />}
+          </button>
+          {historicoAberto && (
+            <div className="border-t divide-y divide-gray-100 max-h-[480px] overflow-y-auto">
+              {carregandoHistorico && <div className="p-6 text-center text-gray-400 text-sm">Carregando...</div>}
+              {!carregandoHistorico && (historico ?? []).length === 0 && (
+                <div className="p-6 text-center text-gray-400 text-sm">Nenhuma alteração registrada ainda.</div>
+              )}
+              {(historico ?? []).map((h) => (
+                <div key={h.id} className="px-5 py-3 flex gap-4 flex-wrap sm:flex-nowrap">
+                  <div className="min-w-[150px]">
+                    <p className="text-sm font-semibold text-gray-800">{h.usuario?.nome}</p>
+                    <p className="text-xs text-gray-400">{formatDateTime(h.createdAt)}</p>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${ACAO_LABELS[h.acao].className}`}>
+                        {ACAO_LABELS[h.acao].label}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        {labelTabela(h.tabelaAfetada)}
+                        {h.descricao && <span className="font-mono font-semibold text-gray-700"> {h.descricao}</span>}
+                      </span>
+                    </div>
+                    <AlteracoesDetalhe registro={h} ocultarValores={ocultarValores} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Modal Veículo */}
       {veiculoModal !== null && (

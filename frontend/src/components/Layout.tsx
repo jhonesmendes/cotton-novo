@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   ArrowRightOnRectangleIcon, Bars3Icon, BellAlertIcon, ClipboardDocumentListIcon,
-  Cog6ToothIcon, FolderIcon, HomeIcon, MoonIcon, SunIcon, XMarkIcon,
+  Cog6ToothIcon, FolderIcon, HomeIcon, MoonIcon, ShieldCheckIcon, SunIcon, XMarkIcon,
 } from '@heroicons/react/24/outline';
 import clsx from 'clsx';
 import { useAuthStore } from '@/stores/auth.store';
@@ -18,6 +18,7 @@ const pageTitles: Record<string, string> = {
   '/dashboard': 'Dashboard', '/liberacoes': 'Liberações', '/alertas': 'Alertas',
   '/configuracoes': 'Configurações', '/configuracoes/usuarios': 'Configurações',
   '/cadastros': 'Revisão de Dados', '/cadastros/modelos': 'Revisão de Dados',
+  '/auditoria': 'Auditoria',
 };
 
 type SidebarContentProps = { onNavigate?: () => void; onLogout: () => void; userName?: string; isAdmin?: boolean };
@@ -43,6 +44,11 @@ function SidebarContent({ onNavigate, onLogout, userName, isAdmin }: SidebarCont
       <NavLink to="/cadastros" onClick={onNavigate} className={({ isActive }) => itemClass(isActive)}>
         <FolderIcon className="h-4 w-4" />Revisão de Dados
       </NavLink>
+      {isAdmin && (
+        <NavLink to="/auditoria" onClick={onNavigate} className={({ isActive }) => itemClass(isActive)}>
+          <ShieldCheckIcon className="h-4 w-4" />Auditoria
+        </NavLink>
+      )}
       {isAdmin && (
         <NavLink to="/configuracoes" onClick={onNavigate} className={({ isActive }) => itemClass(isActive)}>
           <Cog6ToothIcon className="h-4 w-4" />Configurações
