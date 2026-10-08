@@ -8,8 +8,9 @@ import { STATUS_OPTIONS, STATUS_LABELS, STATUS_SEM_MONITORAMENTO, SM_OPTIONS, SM
 import UrgenciaBadge from '@/components/UrgenciaBadge';
 import ConfirmModal from '@/components/ConfirmModal';
 import TimelineStatus from '@/components/TimelineStatus';
-import { PlusIcon, PencilSquareIcon, TrashIcon, PhoneIcon, ChevronDownIcon, ChevronUpIcon, EyeIcon, EyeSlashIcon, ClockIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, PencilSquareIcon, TrashIcon, PhoneIcon, ChevronDownIcon, ChevronUpIcon, EyeIcon, EyeSlashIcon, ClockIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
 import VeiculoModal from './VeiculoModal';
+import { urlListaLiberacoes } from './navegacao';
 import { useAuthStore } from '@/stores/auth.store';
 import AlteracoesDetalhe from '@/components/AlteracoesDetalhe';
 import { ACAO_LABELS, RegistroAuditoria, labelCampo, labelTabela } from '@/utils/auditoria';
@@ -88,7 +89,7 @@ export default function LiberacaoDetalhe() {
     onSuccess: () => {
       toast.success('Liberação removida com sucesso');
       qc.invalidateQueries({ queryKey: ['liberacoes'] });
-      navigate('/liberacoes');
+      navigate(urlListaLiberacoes());
     },
     onError: () => toast.error('Erro ao remover liberação'),
   });
@@ -105,6 +106,14 @@ export default function LiberacaoDetalhe() {
 
   return (
     <div className="p-6 space-y-6">
+      <Link
+        to={urlListaLiberacoes()}
+        className="inline-flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-gray-800 transition-colors"
+      >
+        <ArrowLeftIcon className="w-4 h-4" />
+        Voltar para Liberações
+      </Link>
+
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>

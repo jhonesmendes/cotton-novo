@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
+import { useEffect } from 'react';
+import { salvarFiltrosLista } from './navegacao';
 import api from '@/services/api';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import { formatDate } from '@/utils/format';
@@ -9,10 +10,29 @@ import { useAuthStore } from '@/stores/auth.store';
 
 export default function LiberacoesPage() {
   const podeCriar = useAuthStore((s) => s.user?.perfil) !== 'OPERADOR';
-  const [busca, setBusca] = useState('');
-  const [status, setStatus] = useState('ATIVA');
-  const [origemId, setOrigemId] = useState('');
-  const [page, setPage] = useState(1);
+  // Filtros ficam na URL: ao abrir uma liberação e voltar, a lista volta
+  // exatamente como estava (busca, filial, status e página).
+  const [searchParams, setSearchParams] = useSearchParams();
+  const busca = searchParams.get('busca') ?? '';
+  // Sem o parâmetro = padrão ATIVA; "status=" vazio = todos os status.
+  const status = searchParams.get('status') ?? 'ATIVA';
+  const origemId = searchParams.get('origemId') ?? '';
+  const page = Number(searchParams.get('page')) || 1;
+
+  const atualizarFiltro = (campo: string, valor: string) =>
+    setSearchParams((sp) => {
+      sp.set(campo, valor);
+      if (campo !== 'page') sp.delete('page');
+      if (campo !== 'status' && !valor) sp.delete(campo);
+      return sp;
+    }, { replace: true });
+  const setBusca = (v: string) => atualizarFiltro('busca', v);
+  const setStatus = (v: string) => atualizarFiltro('status', v);
+  const setOrigemId = (v: string) => atualizarFiltro('origemId', v);
+  const setPage = (v: number | ((p: number) => number)) =>
+    atualizarFiltro('page', String(typeof v === 'function' ? v(page) : v));
+
+  useEffect(() => { salvarFiltrosLista(searchParams.toString()); }, [searchParams]);
 
   const params = new URLSearchParams({
     page: String(page), limit: '50',
@@ -45,17 +65,17 @@ export default function LiberacoesPage() {
       } />
 
       <div className="ui-card flex flex-wrap gap-3 p-4">
-        <input value={busca} onChange={(e) => { setBusca(e.target.value); setPage(1); }}
+        <input value={busca} onChange={(e) => setBusca(e.target.value)}
           placeholder="Instrução, placa ou motorista..."
           className="ui-input min-w-[200px] flex-1" />
-        <select value={origemId} onChange={(e) => { setOrigemId(e.target.value); setPage(1); }}
+        <select value={origemId} onChange={(e) => setOrigemId(e.target.value)}
           className="ui-input w-auto">
           <option value="">Todas filiais</option>
           {listaOrigens.map((o: any) => (
             <option key={o.id} value={o.id}>{o.nome}</option>
           ))}
         </select>
-        <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}
+        <select value={status} onChange={(e) => setStatus(e.target.value)}
           className="ui-input w-auto">
           <option value="">Todos status</option>
           <option value="ATIVA">Ativas</option>
