@@ -100,6 +100,12 @@ SOLICITADO → FALTA_CONTRATAR → FALTA_AGENDAR → AGENDADO
 
 - Monitoramento de deadline liga ao entrar em qualquer status de `LIBERADO` até
   `AGUARDANDO_DESCARGA`, e desliga em `FINALIZADO` (ver `monitor.md` na raiz).
+- **Conclusão da liberação** (`backend/src/services/liberacao-status.ts`): conclui sozinha só
+  com todos os veículos `FINALIZADO` **e** saldo de fardos `<= 0`. Todos finalizados com saldo
+  pendente → continua `ATIVA` (`aguardandoFechamento` na API, pop-up na tela) até um ADMIN
+  fechar manualmente (`POST /liberacoes/:id/finalizar`), o que grava `fechamentoManual`,
+  `fardosPendentesFechamento`, motivo, quem e quando — aparece em amarelo na lista. Se algum
+  veículo sair de `FINALIZADO`, a liberação reabre e o fechamento manual é limpo.
 - Outros enums relevantes do domínio: `TipoFardo` (FARDAO/FARDINHO), `TipoAlerta`,
   `StatusAlerta`, `PerfilUsuario` (ADMIN/OPERADOR/GESTOR_FILIAL/VISUALIZADOR/CLIENTE),
   `StatusLiberacao`, `TipoAcesso`.

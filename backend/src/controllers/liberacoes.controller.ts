@@ -4,6 +4,7 @@ import prisma from '../database/prisma';
 import { AppError } from '../middleware/errorHandler';
 import { AuthRequest } from '../middleware/auth';
 import { StatusLiberacao, TipoFardo, Prisma } from '@prisma/client';
+import { reavaliarStatusLiberacao, situacaoFechamento } from '../services/liberacao-status';
 
 const criarSchema = z.object({
   instrucao: z.string().min(3),
@@ -152,7 +153,8 @@ export async function listar(req: AuthRequest, res: Response) {
     const diasParaDeadline = Math.ceil(
       (deadlineDate.getTime() - hoje.getTime()) / 86400000,
     );
-    return { ...l, carregado, saldo, diasParaDeadline };
+    const { aguardandoFechamento } = situacaoFechamento(l, l.veiculos);
+    return { ...l, carregado, saldo, diasParaDeadline, aguardandoFechamento };
   });
 
   return res.json({ data, total, page: parseInt(page), limit: take });
@@ -465,7 +467,8 @@ export async function buscarPorId(req: AuthRequest, res: Response) {
     veiculos,
     carregado, 
     saldo: liberacao.totalFardos - carregado, 
-    diasParaDeadline 
+    diasParaDeadline,
+    aguardandoFechamento: situacaoFechamento(liberacao, liberacao.veiculos).aguardandoFechamento,
   });
 }
 
@@ -593,6 +596,9 @@ export async function atualizar(req: AuthRequest, res: Response) {
     },
   });
 
+  // Total de fardos pode ter mudado — conclui/reabre conforme a regra de saldo.
+  await reavaliarStatusLiberacao(liberacaoAtualizada.id);
+
   return res.json(liberacaoAtualizada);
 }
 
@@ -632,6 +638,45 @@ export async function atualizarStatus(req: AuthRequest, res: Response) {
       terminal: { select: { id: true, nome: true } },
       localColeta: { select: { id: true, nome: true } },
     },
+  });
+
+  return res.json(atualizada);
+}
+
+// Fechamento manual (somente ADMIN): todos os veículos finalizados, mas ainda
+// com fardos pendentes — a regra automática não conclui nesse caso.
+export async function finalizarManual(req: AuthRequest, res: Response) {
+  const id = parseInt(req.params.id);
+  const { motivo } = z.object({ motivo: z.string().trim().max(500).optional() }).parse(req.body ?? {});
+
+  const liberacao = await prisma.liberacao.findUnique({
+    where: { id },
+    include: { veiculos: { select: { status: true, qtdFardos: true } } },
+  });
+  if (!liberacao) throw new AppError('Liberação não encontrada', 404, 'LIBERACAO_NOT_FOUND');
+  if (liberacao.status !== StatusLiberacao.ATIVA) {
+    throw new AppError('Só é possível finalizar uma liberação ativa', 400, 'INVALID_STATUS');
+  }
+
+  const { saldo, todosFinalizados } = situacaoFechamento(liberacao, liberacao.veiculos);
+  if (!todosFinalizados) {
+    throw new AppError('Todos os veículos precisam estar FINALIZADOS antes de fechar a instrução', 400, 'VEICULOS_PENDENTES');
+  }
+
+  const usuario = await prisma.usuario.findUnique({ where: { id: req.user!.id }, select: { nome: true } });
+  const atualizada = await prisma.liberacao.update({
+    where: { id },
+    data: saldo > 0
+      ? {
+          status: StatusLiberacao.CONCLUIDA,
+          fechamentoManual: true,
+          fardosPendentesFechamento: saldo,
+          motivoFechamento: motivo || null,
+          fechamentoManualPor: usuario?.nome ?? null,
+          fechamentoManualEm: new Date(),
+        }
+      // Sem saldo pendente é a conclusão normal.
+      : { status: StatusLiberacao.CONCLUIDA },
   });
 
   return res.json(atualizada);

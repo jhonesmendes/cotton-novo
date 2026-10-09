@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
 import { formatDate, formatDateTime, formatMoney, formatTelefone } from '@/utils/format';
@@ -8,7 +8,7 @@ import { STATUS_OPTIONS, STATUS_LABELS, STATUS_SEM_MONITORAMENTO, SM_OPTIONS, SM
 import UrgenciaBadge from '@/components/UrgenciaBadge';
 import ConfirmModal from '@/components/ConfirmModal';
 import TimelineStatus from '@/components/TimelineStatus';
-import { PlusIcon, PencilSquareIcon, TrashIcon, PhoneIcon, ChevronDownIcon, ChevronUpIcon, EyeIcon, EyeSlashIcon, ClockIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, PencilSquareIcon, TrashIcon, PhoneIcon, ChevronDownIcon, ChevronUpIcon, EyeIcon, EyeSlashIcon, ClockIcon, ArrowLeftIcon, ExclamationTriangleIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import VeiculoModal from './VeiculoModal';
 import { urlListaLiberacoes } from './navegacao';
 import { useAuthStore } from '@/stores/auth.store';
@@ -20,6 +20,10 @@ export default function LiberacaoDetalhe() {
   const perfil = useAuthStore((s) => s.user?.perfil);
   const podeEditarLiberacao = perfil !== 'OPERADOR';
   const podeVerHistorico = perfil !== 'CLIENTE';
+  const isAdmin = perfil === 'ADMIN';
+  // Pop-up de "faltam fardos" — todos os veículos finalizados, mas com saldo pendente.
+  const [avisoFechamento, setAvisoFechamento] = useState(false);
+  const [motivoFechamento, setMotivoFechamento] = useState('');
   const [historicoAberto, setHistoricoAberto] = useState(false);
   const navigate = useNavigate();
   const [veiculoModal, setVeiculoModal] = useState<'novo' | number | null>(null);
@@ -40,6 +44,27 @@ export default function LiberacaoDetalhe() {
     queryKey: ['liberacao', id, 'historico'],
     queryFn: () => api.get(`/auditoria/liberacao/${id}`).then((r) => r.data),
     enabled: podeVerHistorico && historicoAberto,
+  });
+
+  // Abre o pop-up ao entrar na liberação nessa situação e sempre que ela passar
+  // a valer (ex: acabou de finalizar o último veículo).
+  const aguardandoAnterior = useRef<boolean | undefined>(undefined);
+  useEffect(() => {
+    if (lib === undefined) return;
+    if (lib.aguardandoFechamento && !aguardandoAnterior.current) setAvisoFechamento(true);
+    aguardandoAnterior.current = lib.aguardandoFechamento;
+  }, [lib]);
+
+  const finalizarManual = useMutation({
+    mutationFn: () => api.post(`/liberacoes/${id}/finalizar`, { motivo: motivoFechamento.trim() || undefined }),
+    onSuccess: () => {
+      toast.success('Instrução finalizada manualmente');
+      qc.invalidateQueries({ queryKey: ['liberacao', id] });
+      qc.invalidateQueries({ queryKey: ['liberacoes'] });
+      setAvisoFechamento(false);
+      setMotivoFechamento('');
+    },
+    onError: (err: any) => toast.error(err?.response?.data?.error?.message ?? 'Erro ao finalizar a instrução'),
   });
 
   const deletarVeiculo = useMutation({
@@ -171,9 +196,10 @@ export default function LiberacaoDetalhe() {
             value: (
               <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
                 lib.status === 'ATIVA' ? 'bg-green-100 text-green-700'
+                : lib.status === 'CONCLUIDA' && lib.fechamentoManual ? 'bg-amber-100 text-amber-700'
                 : lib.status === 'CONCLUIDA' ? 'bg-blue-100 text-blue-700'
                 : 'bg-gray-100 text-gray-500'
-              }`}>{lib.status}</span>
+              }`}>{lib.status}{lib.status === 'CONCLUIDA' && lib.fechamentoManual ? ' (MANUAL)' : ''}</span>
             )
           },
         ].map((c) => (
@@ -183,6 +209,38 @@ export default function LiberacaoDetalhe() {
           </div>
         ))}
       </div>
+
+      {lib.aguardandoFechamento && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800 flex items-center gap-3 flex-wrap">
+          <ExclamationTriangleIcon className="w-5 h-5 text-amber-600 shrink-0" />
+          <div className="flex-1 min-w-[220px]">
+            <strong>Faltam {lib.saldo} fardos a serem carregados.</strong> Todos os veículos estão finalizados, mas a
+            instrução continua ativa até carregar o restante{isAdmin ? ' ou ser finalizada manualmente.' : ' ou um administrador finalizá-la.'}
+          </div>
+          {isAdmin && (
+            <button
+              onClick={() => setAvisoFechamento(true)}
+              className="flex items-center gap-2 bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-amber-700 transition-colors"
+            >
+              <CheckCircleIcon className="w-4 h-4" />
+              Finalizar instrução
+            </button>
+          )}
+        </div>
+      )}
+
+      {lib.status === 'CONCLUIDA' && lib.fechamentoManual && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800 flex items-start gap-3">
+          <ExclamationTriangleIcon className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+          <div>
+            <strong>Fechada manualmente com {lib.fardosPendentesFechamento} fardos pendentes.</strong>
+            {(lib.fechamentoManualPor || lib.fechamentoManualEm) && (
+              <span> Por {lib.fechamentoManualPor ?? '—'} em {formatDateTime(lib.fechamentoManualEm)}.</span>
+            )}
+            {lib.motivoFechamento && <p className="mt-1"><strong>Motivo:</strong> {lib.motivoFechamento}</p>}
+          </div>
+        </div>
+      )}
 
       {lib.observacao && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800 flex items-start gap-2">
@@ -414,6 +472,33 @@ export default function LiberacaoDetalhe() {
           }}
         />
       )}
+
+      {/* Pop-up: veículos finalizados com fardos pendentes */}
+      <ConfirmModal
+        isOpen={avisoFechamento && !!lib.aguardandoFechamento}
+        title={`Faltam ${lib.saldo} fardos a serem carregados`}
+        message={isAdmin
+          ? `Todos os veículos estão finalizados, mas ainda há ${lib.saldo} de ${lib.totalFardos} fardos pendentes. A instrução não será concluída automaticamente. Deseja finalizá-la mesmo assim? Ela ficará marcada em amarelo como "fardos pendentes – fechada manualmente".`
+          : `Todos os veículos estão finalizados, mas ainda há ${lib.saldo} de ${lib.totalFardos} fardos pendentes. A instrução continua ativa até carregar o restante ou um administrador finalizá-la.`}
+        variant="warning"
+        confirmLabel={isAdmin ? 'Finalizar instrução' : 'Entendi'}
+        cancelLabel="Agora não"
+        hideCancel={!isAdmin}
+        loading={finalizarManual.isPending}
+        onConfirm={() => (isAdmin ? finalizarManual.mutate() : setAvisoFechamento(false))}
+        onCancel={() => setAvisoFechamento(false)}
+      >
+        {isAdmin && (
+          <textarea
+            value={motivoFechamento}
+            onChange={(e) => setMotivoFechamento(e.target.value)}
+            maxLength={500}
+            rows={3}
+            placeholder="Motivo do fechamento (opcional)"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white text-gray-800"
+          />
+        )}
+      </ConfirmModal>
 
       {/* Modal Confirmação - Veículo */}
       <ConfirmModal

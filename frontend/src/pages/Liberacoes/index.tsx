@@ -110,7 +110,7 @@ export default function LiberacoesPage() {
               </thead>
               <tbody className="divide-y divide-ui-border-subtle">
                 {(data?.data ?? []).map((l: any) => (
-                  <tr key={l.id} className="transition-colors hover:bg-ui-muted/60">
+                  <tr key={l.id} className={`transition-colors ${l.status === 'CONCLUIDA' && l.fechamentoManual ? 'bg-amber-50 hover:bg-amber-100' : 'hover:bg-ui-muted/60'}`}>
                     <td className="px-4 py-3 font-medium text-ui-primary">
                       <Link to={`/liberacoes/${l.id}`} className="hover:underline">{l.instrucao}</Link>
                     </td>
@@ -134,9 +134,20 @@ export default function LiberacoesPage() {
                     <td className="px-4 py-3">
                       <span className={`text-xs px-2 py-0.5 rounded-full ${
                         l.status === 'ATIVA' ? 'bg-green-100 text-green-700' :
+                        l.status === 'CONCLUIDA' && l.fechamentoManual ? 'bg-amber-100 text-amber-700' :
                         l.status === 'CONCLUIDA' ? 'bg-blue-100 text-blue-700' :
                         'bg-gray-100 text-gray-500'
                       }`}>{l.status}</span>
+                      {l.status === 'CONCLUIDA' && l.fechamentoManual && (
+                        <p className="mt-1 text-[11px] font-medium text-amber-700 whitespace-nowrap">
+                          {l.fardosPendentesFechamento} fardos pendentes · fechada manualmente
+                        </p>
+                      )}
+                      {l.aguardandoFechamento && (
+                        <p className="mt-1 text-[11px] font-medium text-amber-700 whitespace-nowrap">
+                          Faltam {l.saldo} fardos · veículos finalizados
+                        </p>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-center">
                       <Link to={`/liberacoes/${l.id}`} className="text-xs text-blue-600 hover:underline">Ver</Link>

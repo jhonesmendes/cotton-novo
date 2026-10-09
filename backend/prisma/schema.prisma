@@ -196,6 +196,13 @@ model Liberacao {
   carregado      Int              @default(0)
   observacao     String?
   status         StatusLiberacao  @default(ATIVA)
+  // Concluída pelo ADMIN com fardos ainda pendentes (todos os veículos
+  // finalizados, mas saldo > 0) — aparece em amarelo na lista de concluídas.
+  fechamentoManual          Boolean   @default(false) @map("fechamento_manual")
+  fardosPendentesFechamento Int?      @map("fardos_pendentes_fechamento")
+  motivoFechamento          String?   @map("motivo_fechamento")
+  fechamentoManualPor       String?   @map("fechamento_manual_por")
+  fechamentoManualEm        DateTime? @map("fechamento_manual_em")
   createdAt      DateTime         @default(now()) @map("created_at")
   updatedAt      DateTime         @updatedAt @map("updated_at")
   cliente  Cliente  @relation(fields: [clienteId], references: [id])

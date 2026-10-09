@@ -3,7 +3,8 @@ import { z } from 'zod';
 import prisma from '../database/prisma';
 import { AppError } from '../middleware/errorHandler';
 import { AuthRequest } from '../middleware/auth';
-import { StatusLiberacao, StatusVeiculo, StatusSM, StatusRastreamento } from '@prisma/client';
+import { StatusVeiculo, StatusSM, StatusRastreamento } from '@prisma/client';
+import { reavaliarStatusLiberacao } from '../services/liberacao-status';
 
 const criarSchema = z.object({
   liberacaoId: z.number().int().positive(),
@@ -295,39 +296,5 @@ async function recalcularCarregado(liberacaoId: number) {
     data: { carregado },
   });
 
-  await atualizarStatusLiberacao(liberacaoId);
-}
-
-async function atualizarStatusLiberacao(liberacaoId: number) {
-  const liberacao = await prisma.liberacao.findUnique({
-    where: { id: liberacaoId },
-    select: { status: true },
-  });
-  if (!liberacao) return;
-
-  const totalVeiculos = await prisma.veiculo.count({ where: { liberacaoId } });
-  const finalizados = await prisma.veiculo.count({
-    where: { liberacaoId, status: StatusVeiculo.FINALIZADO },
-  });
-
-  if (liberacao.status === StatusLiberacao.CANCELADA) {
-    return;
-  }
-
-  if (totalVeiculos > 0 && finalizados === totalVeiculos) {
-    if (liberacao.status !== StatusLiberacao.CONCLUIDA) {
-      await prisma.liberacao.update({
-        where: { id: liberacaoId },
-        data: { status: StatusLiberacao.CONCLUIDA },
-      });
-    }
-    return;
-  }
-
-  if (liberacao.status === StatusLiberacao.CONCLUIDA) {
-    await prisma.liberacao.update({
-      where: { id: liberacaoId },
-      data: { status: StatusLiberacao.ATIVA },
-    });
-  }
+  await reavaliarStatusLiberacao(liberacaoId);
 }

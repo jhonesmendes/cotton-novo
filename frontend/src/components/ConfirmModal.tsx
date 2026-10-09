@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+
 interface ConfirmModalProps {
   isOpen: boolean;
   title: string;
@@ -8,6 +10,10 @@ interface ConfirmModalProps {
   loading?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
+  // Conteúdo extra abaixo da mensagem (ex: campo de motivo).
+  children?: ReactNode;
+  // Aviso só informativo: mostra apenas o botão de confirmar.
+  hideCancel?: boolean;
 }
 
 const VARIANT_CONFIG = {
@@ -50,6 +56,8 @@ export default function ConfirmModal({
   loading = false,
   onConfirm,
   onCancel,
+  children,
+  hideCancel = false,
 }: ConfirmModalProps) {
   if (!isOpen) return null;
 
@@ -79,19 +87,22 @@ export default function ConfirmModal({
             <div className="flex-1 min-w-0">
               <h3 className="text-base font-bold text-gray-900 leading-tight">{title}</h3>
               <p className="mt-1.5 text-sm text-gray-500 leading-relaxed">{message}</p>
+              {children && <div className="mt-4">{children}</div>}
             </div>
           </div>
 
           {/* Actions */}
           <div className="mt-6 flex gap-3 justify-end">
-            <button
-              type="button"
-              onClick={onCancel}
-              disabled={loading}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-200 disabled:opacity-50 transition-colors"
-            >
-              {cancelLabel}
-            </button>
+            {!hideCancel && (
+              <button
+                type="button"
+                onClick={onCancel}
+                disabled={loading}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-200 disabled:opacity-50 transition-colors"
+              >
+                {cancelLabel}
+              </button>
+            )}
             <button
               type="button"
               onClick={onConfirm}

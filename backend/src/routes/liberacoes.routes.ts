@@ -12,6 +12,7 @@ import {
   criarReferencia,
   excluirReferencia,
   usoReferencia,
+  finalizarManual,
 } from '../controllers/liberacoes.controller';
 
 export const liberacoesRouter = Router();
@@ -29,5 +30,7 @@ liberacoesRouter.get('/:id', buscarPorId);
 // cria/edita a Liberação em si.
 liberacoesRouter.post('/', requireRole('ADMIN', 'GESTOR_FILIAL'), criar);
 liberacoesRouter.put('/:id', requireRole('ADMIN', 'GESTOR_FILIAL'), atualizar);
-liberacoesRouter.patch('/:id/status', atualizarStatus);
+// Troca direta de status passa por cima da regra de conclusão (saldo de fardos) — só ADMIN.
+liberacoesRouter.patch('/:id/status', requireRole('ADMIN'), atualizarStatus);
+liberacoesRouter.post('/:id/finalizar', requireRole('ADMIN'), finalizarManual);
 liberacoesRouter.delete('/:id', deletar);
