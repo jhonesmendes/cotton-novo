@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   ArrowRightOnRectangleIcon, Bars3Icon, BellAlertIcon, ClipboardDocumentListIcon,
@@ -7,6 +7,7 @@ import {
 import clsx from 'clsx';
 import { useAuthStore } from '@/stores/auth.store';
 import { useThemeStore } from '@/stores/theme.store';
+import api from '@/services/api';
 
 const nav = [
   { to: '/dashboard', label: 'Dashboard', icon: HomeIcon },
@@ -75,6 +76,18 @@ export default function Layout() {
   const { theme, toggle } = useThemeStore();
   const currentTitle = pageTitles[location.pathname] || 'Gestão de Cargas';
   const handleLogout = () => { logout(); navigate('/login'); };
+
+  // O perfil guardado no login pode estar desatualizado (ex: admin trocou o
+  // perfil dessa pessoa) — sincroniza com o servidor ao abrir o sistema.
+  useEffect(() => {
+    api.get('/auth/me').then(({ data }) => {
+      const { token, refreshToken, user: atual, setAuth } = useAuthStore.getState();
+      if (!token || !refreshToken || !atual) return;
+      if (atual.perfil !== data.perfil || atual.nome !== data.nome || atual.email !== data.email) {
+        setAuth(token, refreshToken, { ...atual, nome: data.nome, email: data.email, perfil: data.perfil });
+      }
+    }).catch(() => undefined);
+  }, []);
 
   return <div className="min-h-screen bg-ui-background font-sans text-ui-text selection:bg-ui-primary selection:text-white">
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-56 flex-col border-r border-ui-border bg-ui-surface py-5 md:flex">

@@ -84,7 +84,11 @@ export async function refreshToken(req: Request, res: Response) {
     filialId: user.filialId,
   };
 
-  return res.json({ accessToken: signAccess(payload) });
+  // Devolve o usuário atualizado — o frontend sincroniza perfil/nome na renovação.
+  return res.json({
+    accessToken: signAccess(payload),
+    user: { id: user.id, nome: user.nome, email: user.email, perfil: user.perfil },
+  });
 }
 
 const forgotPasswordSchema = z.object({

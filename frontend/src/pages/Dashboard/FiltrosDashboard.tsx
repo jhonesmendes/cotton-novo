@@ -17,7 +17,8 @@ interface Props {
 }
 
 export default function FiltrosDashboard({ value, onChange }: Props) {
-  const { data: clientes } = useQuery({ queryKey: ['clientes'], queryFn: () => api.get('/liberacoes?status=ATIVA&limit=1').then(() => api.get('/dashboard/kpis').then((r) => r.data.porCliente)) });
+  // Chave própria: ['clientes'] é da aba de Clientes, que busca outro formato de dado.
+  const { data: clientes } = useQuery({ queryKey: ['dashboard', 'filtro-clientes'], queryFn: () => api.get('/dashboard/kpis').then((r) => r.data.porCliente) });
   const { data: origens } = useQuery({ queryKey: ['origens-kpi'], queryFn: () => api.get('/dashboard/kpis').then((r) => r.data.porFilial) });
   const { data: terminais } = useQuery({ queryKey: ['terminais'], queryFn: () => api.get('/terminais').then((r) => Array.isArray(r.data) ? r.data : r.data.data || []) });
 

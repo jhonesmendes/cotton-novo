@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
 import { XMarkIcon } from '@heroicons/react/24/outline';
@@ -22,19 +22,28 @@ export default function VeiculoModal({ liberacaoId, veiculoId, onClose, onSaved 
     status: 'AGENDADO', statusRastreamento: 'NAO_RASTREADO', numeroIsca: '', observacao: '',
   });
 
-  const { data: veiculoData } = useQuery({
+  const { data: veiculoData, isFetchedAfterMount } = useQuery({
     queryKey: ['veiculo', veiculoId],
     queryFn: () => api.get(`/veiculos/${veiculoId}`).then((r) => r.data),
     enabled: isEdit,
+    // Abre sempre com o dado atual do servidor e não recarrega durante a edição.
+    refetchOnMount: 'always',
+    refetchInterval: false,
+    refetchOnWindowFocus: false,
   });
 
+  // Preenche o formulário uma única vez — atualizações posteriores do cache
+  // (ex: alteração salva em outra tela) não podem apagar o que está sendo digitado.
+  const preenchido = useRef(false);
   useEffect(() => {
-    if (veiculoData) setForm({
+    if (!veiculoData || !isFetchedAfterMount || preenchido.current) return;
+    preenchido.current = true;
+    setForm({
       ...veiculoData,
       modeloCarretaId: veiculoData.modeloCarretaId,
       nomeDescricao: veiculoData.modeloCarreta?.nomeDescricao ?? '',
     });
-  }, [veiculoData]);
+  }, [veiculoData, isFetchedAfterMount]);
 
   const mutation = useMutation({
     mutationFn: (data: any) =>

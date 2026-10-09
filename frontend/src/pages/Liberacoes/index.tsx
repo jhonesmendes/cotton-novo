@@ -48,7 +48,7 @@ export default function LiberacoesPage() {
 
   // "Origem" no modelo de dados representa a Filial Embarcadora.
   const { data: origens } = useQuery({
-    queryKey: ['origens'],
+    queryKey: ['origens', 'lista-liberacoes'],
     queryFn: () => api.get('/origens?limit=1000').then((r) => r.data),
   });
   const listaOrigens = Array.isArray(origens) ? origens : origens?.data ?? [];

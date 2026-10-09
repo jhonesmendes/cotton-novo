@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -41,11 +41,17 @@ export default function LiberacaoForm() {
     }
   });
 
-  const { data: editData } = useQuery({
+  const { data: editData, isFetchedAfterMount } = useQuery({
     queryKey: ['liberacao', id],
     queryFn: () => api.get(`/liberacoes/${id}`).then((r) => r.data),
     enabled: isEdit,
+    // Abre sempre com o dado atual do servidor e não recarrega durante a edição.
+    refetchOnMount: 'always',
+    refetchInterval: false,
+    refetchOnWindowFocus: false,
   });
+  // O formulário é preenchido uma única vez (ver efeito abaixo).
+  const preenchido = useRef(false);
 
   const { data: referencias } = useQuery({
     queryKey: ['liberacoes-referencias'],
@@ -55,7 +61,8 @@ export default function LiberacaoForm() {
 
   useEffect(() => {
     // Espera as referências carregarem: o <select> de filial descarta valor sem <option> correspondente.
-    if (editData && referencias) {
+    if (editData && isFetchedAfterMount && referencias && !preenchido.current) {
+      preenchido.current = true;
       reset({
         ...editData,
         dataLiberacao: editData.dataLiberacao?.slice(0, 10),
@@ -68,7 +75,7 @@ export default function LiberacaoForm() {
         localColetaNome: editData.localColetaNome ?? editData.localColeta?.nome ?? '',
       });
     }
-  }, [editData, referencias, reset]);
+  }, [editData, isFetchedAfterMount, referencias, reset]);
 
   const mutation = useMutation({
     mutationFn: (data: LiberacaoFormData) => isEdit ? api.put(`/liberacoes/${id}`, data) : api.post('/liberacoes', data),

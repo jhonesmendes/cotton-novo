@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { AppError } from './errorHandler';
 import { PerfilUsuario } from '../types/prisma-types';
 import { executarComContexto } from '../services/auditoria-contexto';
+import prisma from '../database/prisma';
 
 export interface AuthRequest extends Request {
   user?: {
@@ -14,7 +15,7 @@ export interface AuthRequest extends Request {
   };
 }
 
-export function authenticate(req: AuthRequest, _res: Response, next: NextFunction) {
+export async function authenticate(req: AuthRequest, _res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith('Bearer ')) {
     throw new AppError('Token de acesso necessário', 401, 'UNAUTHORIZED');
@@ -27,12 +28,28 @@ export function authenticate(req: AuthRequest, _res: Response, next: NextFunctio
   } catch {
     throw new AppError('Token inválido ou expirado', 401, 'INVALID_TOKEN');
   }
-  req.user = payload;
+
+  // Perfil/ativo vêm do banco, não do token: trocar o perfil ou desativar um
+  // usuário vale na hora, sem esperar o access token vencer.
+  const usuario = await prisma.usuario.findUnique({
+    where: { id: payload.id },
+    select: { id: true, email: true, perfil: true, ativo: true, clienteId: true, filialId: true },
+  });
+  if (!usuario || !usuario.ativo) {
+    throw new AppError('Usuário inativo ou inexistente', 401, 'INVALID_TOKEN');
+  }
+  req.user = {
+    id: usuario.id,
+    email: usuario.email,
+    perfil: usuario.perfil as PerfilUsuario,
+    clienteId: usuario.clienteId ?? undefined,
+    filialId: usuario.filialId ?? undefined,
+  };
   // Todo o restante da requisição roda dentro desse contexto — é dele que a
   // auditoria tira o usuário responsável por cada alteração no banco.
   executarComContexto(
     {
-      usuarioId: payload.id,
+      usuarioId: usuario.id,
       ip: String(req.headers['x-forwarded-for'] ?? req.ip ?? '').slice(0, 200) || undefined,
       rota: `${req.method} ${req.originalUrl}`.slice(0, 300),
     },
