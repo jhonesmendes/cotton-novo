@@ -31,7 +31,7 @@ export function situacaoFechamento(
 export async function reavaliarStatusLiberacao(liberacaoId: number) {
   const liberacao = await prisma.liberacao.findUnique({
     where: { id: liberacaoId },
-    select: { status: true, totalFardos: true, fechamentoManual: true, fardosPendentesFechamento: true },
+    select: { status: true, totalFardos: true, fechamentoManual: true, fardosPendentesFechamento: true, concluidaEm: true },
   });
   if (!liberacao || liberacao.status === StatusLiberacao.CANCELADA) return;
 
@@ -42,7 +42,12 @@ export async function reavaliarStatusLiberacao(liberacaoId: number) {
     if (liberacao.status !== StatusLiberacao.CONCLUIDA || liberacao.fechamentoManual) {
       await prisma.liberacao.update({
         where: { id: liberacaoId },
-        data: { status: StatusLiberacao.CONCLUIDA, ...LIMPAR_FECHAMENTO_MANUAL },
+        data: {
+          status: StatusLiberacao.CONCLUIDA,
+          ...LIMPAR_FECHAMENTO_MANUAL,
+          // Já concluída (manual) e completou o saldo depois: mantém a data original.
+          concluidaEm: liberacao.concluidaEm ?? new Date(),
+        },
       });
     }
     return;
@@ -59,7 +64,7 @@ export async function reavaliarStatusLiberacao(liberacaoId: number) {
   if (liberacao.status === StatusLiberacao.CONCLUIDA) {
     await prisma.liberacao.update({
       where: { id: liberacaoId },
-      data: { status: StatusLiberacao.ATIVA, ...LIMPAR_FECHAMENTO_MANUAL },
+      data: { status: StatusLiberacao.ATIVA, ...LIMPAR_FECHAMENTO_MANUAL, concluidaEm: null },
     });
   }
 }

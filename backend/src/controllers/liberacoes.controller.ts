@@ -21,6 +21,7 @@ const criarSchema = z.object({
   origemNome: z.string().min(2).optional(),
   localColetaNome: z.string().min(2).optional(),
   freteEmpresa: z.number().positive(),
+  freteMotorista: z.number().nonnegative().nullable().optional(),
   totalFardos: z.number().int().positive(),
   tipoFardo: z.nativeEnum(TipoFardo).default(TipoFardo.FARDAO),
   deadline: z.string(),
@@ -630,7 +631,10 @@ export async function atualizarStatus(req: AuthRequest, res: Response) {
 
   const atualizada = await prisma.liberacao.update({
     where: { id: parseInt(id) },
-    data: { status },
+    data: {
+      status,
+      concluidaEm: status === StatusLiberacao.CONCLUIDA ? liberacao.concluidaEm ?? new Date() : null,
+    },
     include: {
       cliente: { select: { id: true, nome: true } },
       origem: { select: { id: true, nome: true } },
@@ -674,9 +678,10 @@ export async function finalizarManual(req: AuthRequest, res: Response) {
           motivoFechamento: motivo || null,
           fechamentoManualPor: usuario?.nome ?? null,
           fechamentoManualEm: new Date(),
+          concluidaEm: new Date(),
         }
       // Sem saldo pendente é a conclusão normal.
-      : { status: StatusLiberacao.CONCLUIDA },
+      : { status: StatusLiberacao.CONCLUIDA, concluidaEm: new Date() },
   });
 
   return res.json(atualizada);

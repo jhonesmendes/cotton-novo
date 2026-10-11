@@ -13,6 +13,7 @@ import UsuariosPage from '@/pages/Usuarios';
 import CadastrosPage from '@/pages/Cadastros';
 import ModelosPage from '@/pages/Cadastros/ModelosTab';
 import AuditoriaPage from '@/pages/Auditoria';
+import RelatoriosPage from '@/pages/Relatorios';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const token = useAuthStore((s) => s.token);
@@ -56,6 +57,7 @@ export default function App() {
           <Route path="liberacoes/:id" element={<LiberacaoDetalhe />} />
           <Route path="liberacoes/:id/editar" element={<RequireLiberacaoWrite><LiberacaoForm /></RequireLiberacaoWrite>} />
           <Route path="alertas" element={<AlertasPage />} />
+          <Route path="relatorios" element={<RelatoriosPage />} />
           <Route path="cadastros" element={<CadastrosPage />} />
           <Route path="cadastros/modelos" element={<ModelosPage />} />
           <Route path="configuracoes" element={<Navigate to="/configuracoes/usuarios" replace />} />

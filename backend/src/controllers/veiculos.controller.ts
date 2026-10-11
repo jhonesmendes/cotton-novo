@@ -17,6 +17,8 @@ const criarSchema = z.object({
   comprimentoM: z.number().positive().optional().nullable(),
   freteMotorista: z.number().positive(),
   qtdFardos: z.number().int().positive(),
+  // Toneladas carregadas na viagem (opcional — preenchido com NF/balança).
+  pesoCarregado: z.number().positive().nullable().optional(),
   motoristaNome: z.string().min(3),
   motoristaTelefone: z.string().min(10),
   // Há cadastros legados com CPF incompleto; não devem impedir a edição do veículo.
@@ -228,6 +230,7 @@ export async function criar(req: AuthRequest, res: Response) {
       placa: placaVeiculo,
       modeloCarretaId: cadastro.id,
       motoristaCpf: data.motoristaCpf ?? null,
+      finalizadoEm: data.status === StatusVeiculo.FINALIZADO ? new Date() : null,
       dataAgendamento: data.dataAgendamento ? new Date(data.dataAgendamento) : null,
       dataCarregamento: data.dataCarregamento ? new Date(data.dataCarregamento) : null,
       dataDescarga: data.dataDescarga ? new Date(data.dataDescarga) : null,
@@ -260,6 +263,10 @@ export async function atualizar(req: AuthRequest, res: Response) {
       ...dadosOperacionais,
       placa: placaVeiculo,
       modeloCarretaId: cadastro.id,
+      // Data em que virou FINALIZADO (relatórios); limpa se sair desse status.
+      finalizadoEm: data.status === undefined || data.status === atual.status
+        ? undefined
+        : data.status === StatusVeiculo.FINALIZADO ? new Date() : null,
       dataAgendamento: data.dataAgendamento ? new Date(data.dataAgendamento) : undefined,
       dataCarregamento: data.dataCarregamento ? new Date(data.dataCarregamento) : undefined,
       dataDescarga: data.dataDescarga ? new Date(data.dataDescarga) : undefined,

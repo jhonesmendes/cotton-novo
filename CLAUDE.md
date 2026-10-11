@@ -106,6 +106,16 @@ SOLICITADO → FALTA_CONTRATAR → FALTA_AGENDAR → AGENDADO
   fechar manualmente (`POST /liberacoes/:id/finalizar`), o que grava `fechamentoManual`,
   `fardosPendentesFechamento`, motivo, quem e quando — aparece em amarelo na lista. Se algum
   veículo sair de `FINALIZADO`, a liberação reabre e o fechamento manual é limpo.
+- **Relatórios** (`/relatorios`, `backend/src/controllers/relatorios.controller.ts`): agrupam por
+  `Liberacao.concluidaEm` e `Veiculo.finalizadoEm` (preenchidos ao mudar de status; o histórico
+  anterior a out/2026 foi estimado na migration `datas_conclusao_relatorios`). Instantes são
+  agrupados no dia de Brasília (UTC-3); datas "só dia" (`dataLiberacao`, `deadline`) pelo próprio
+  dia UTC — não converter fuso nelas.
+- **Fretes e peso**: `Liberacao.freteEmpresa` e `Liberacao.freteMotorista` são **R$/tonelada**;
+  `Veiculo.freteMotorista` é o R$/t combinado naquela viagem (pré-preenchido com o da liberação) e
+  `Veiculo.pesoCarregado` o peso real em toneladas. Margem (regra da operação, literal) =
+  `(freteEmpresa − freteMotorista) ÷ 100`. Nos relatórios: faturamento = t × frete empresa;
+  custo = Σ (t da viagem × frete da viagem); veículos sem peso deixam os valores parciais.
 - Outros enums relevantes do domínio: `TipoFardo` (FARDAO/FARDINHO), `TipoAlerta`,
   `StatusAlerta`, `PerfilUsuario` (ADMIN/OPERADOR/GESTOR_FILIAL/VISUALIZADOR/CLIENTE),
   `StatusLiberacao`, `TipoAcesso`.

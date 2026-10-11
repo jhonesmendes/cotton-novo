@@ -23,3 +23,8 @@ export function formatTelefone(tel?: string | null) {
   if (d.length === 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
   return tel;
 }
+
+export function formatToneladas(valor?: number | null) {
+  if (valor == null) return '—';
+  return `${valor.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} t`;
+}

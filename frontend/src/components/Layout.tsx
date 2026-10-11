@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
-  ArrowRightOnRectangleIcon, Bars3Icon, BellAlertIcon, ClipboardDocumentListIcon,
+  ArrowRightOnRectangleIcon, Bars3Icon, BellAlertIcon, ChartBarIcon, ClipboardDocumentListIcon,
   Cog6ToothIcon, FolderIcon, HomeIcon, MoonIcon, ShieldCheckIcon, SunIcon, XMarkIcon,
 } from '@heroicons/react/24/outline';
 import clsx from 'clsx';
@@ -13,13 +13,14 @@ const nav = [
   { to: '/dashboard', label: 'Dashboard', icon: HomeIcon },
   { to: '/liberacoes', label: 'Liberações', icon: ClipboardDocumentListIcon },
   { to: '/alertas', label: 'Alertas', icon: BellAlertIcon },
+  { to: '/relatorios', label: 'Relatórios', icon: ChartBarIcon },
 ];
 
 const pageTitles: Record<string, string> = {
   '/dashboard': 'Dashboard', '/liberacoes': 'Liberações', '/alertas': 'Alertas',
   '/configuracoes': 'Configurações', '/configuracoes/usuarios': 'Configurações',
   '/cadastros': 'Revisão de Dados', '/cadastros/modelos': 'Revisão de Dados',
-  '/auditoria': 'Auditoria',
+  '/auditoria': 'Auditoria', '/relatorios': 'Relatórios',
 };
 
 type SidebarContentProps = { onNavigate?: () => void; onLogout: () => void; userName?: string; isAdmin?: boolean };

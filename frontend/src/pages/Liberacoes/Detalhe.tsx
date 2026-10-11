@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useEffect, useRef, useState } from 'react';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
-import { formatDate, formatDateTime, formatMoney, formatTelefone } from '@/utils/format';
+import { formatDate, formatDateTime, formatMoney, formatTelefone, formatToneladas } from '@/utils/format';
 import { STATUS_OPTIONS, STATUS_LABELS, STATUS_SEM_MONITORAMENTO, SM_OPTIONS, SM_LABELS, RASTREAMENTO_LABELS } from '@/utils/status';
 import UrgenciaBadge from '@/components/UrgenciaBadge';
 import ConfirmModal from '@/components/ConfirmModal';
@@ -123,6 +123,7 @@ export default function LiberacaoDetalhe() {
   if (!lib) return <div className="p-8 text-center text-red-500">Liberação não encontrada</div>;
 
   const diasParaDeadline = lib.diasParaDeadline;
+  const toneladas = (lib.veiculos ?? []).reduce((s: number, v: any) => s + (v.pesoCarregado ?? 0), 0);
   const urgencia = lib.status === 'CONCLUIDA' || lib.status === 'CANCELADA'
     ? 'OK'
     : diasParaDeadline < 0 ? 'VENCIDO' : diasParaDeadline === 0 ? 'HOJE' :
@@ -179,7 +180,10 @@ export default function LiberacaoDetalhe() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
           { label: 'Total de Fardos', value: lib.totalFardos },
-          { label: 'Carregado', value: lib.carregado },
+          {
+            label: 'Carregado',
+            value: <>{lib.carregado}{toneladas > 0 && <span className="ml-2 text-xs text-gray-500">{formatToneladas(toneladas)}</span>}</>
+          },
           {
             label: 'Saldo Pendente',
             value: <span className={lib.saldo > 0 ? 'text-orange-600 font-bold' : 'text-green-600'}>{lib.saldo}</span>
@@ -188,7 +192,20 @@ export default function LiberacaoDetalhe() {
             label: 'Deadline',
             value: <><span>{formatDate(lib.deadline)}</span><span className="ml-2 text-xs">({diasParaDeadline}d)</span></>
           },
-          { label: 'Frete Empresa', value: ocultarValores ? 'R$ ••••••' : formatMoney(lib.freteEmpresa) },
+          {
+            label: 'Frete (R$/t)',
+            value: ocultarValores ? 'R$ ••••••' : (
+              <span className="block space-y-0.5">
+                <span className="block">Empresa {formatMoney(lib.freteEmpresa)}</span>
+                <span className="block">Motorista {lib.freteMotorista != null ? formatMoney(lib.freteMotorista) : '—'}</span>
+                {lib.freteMotorista != null && (
+                  <span className="block text-xs text-gray-500" title="(frete empresa − frete motorista) ÷ 100">
+                    Margem {((lib.freteEmpresa - lib.freteMotorista) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                )}
+              </span>
+            ),
+          },
           { label: 'Local de Coleta', value: lib.localColetaNome ?? lib.localColeta?.nome },
           { label: 'Tipo de Fardo', value: lib.tipoFardo },
           {
@@ -325,6 +342,7 @@ export default function LiberacaoDetalhe() {
                 {/* Fardos + Frete */}
                 <div className="text-right">
                   <p className="text-sm font-bold text-gray-900">{v.qtdFardos} fardos</p>
+                  <p className="text-xs text-gray-500">{v.pesoCarregado != null ? formatToneladas(v.pesoCarregado) : <span className="text-amber-600">sem peso</span>}</p>
                   <p className="text-xs text-gray-400">{ocultarValores ? 'R$ ••••••' : formatMoney(v.freteMotorista)}</p>
                 </div>
 
@@ -465,6 +483,7 @@ export default function LiberacaoDetalhe() {
         <VeiculoModal
           liberacaoId={lib.id}
           veiculoId={typeof veiculoModal === 'number' ? veiculoModal : undefined}
+          freteMotoristaPadrao={lib.freteMotorista}
           onClose={() => setVeiculoModal(null)}
           onSaved={() => {
             setVeiculoModal(null);

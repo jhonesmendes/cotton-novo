@@ -8,16 +8,18 @@ import { STATUS_OPTIONS, STATUS_LABELS, STATUS_SEM_MONITORAMENTO, RASTREAMENTO_O
 interface Props {
   liberacaoId: number;
   veiculoId?: number;
+  // Frete motorista combinado na liberação (R$/t) — sugestão para a nova viagem.
+  freteMotoristaPadrao?: number | null;
   onClose: () => void;
   onSaved: () => void;
 }
 
-export default function VeiculoModal({ liberacaoId, veiculoId, onClose, onSaved }: Props) {
+export default function VeiculoModal({ liberacaoId, veiculoId, freteMotoristaPadrao, onClose, onSaved }: Props) {
   const isEdit = !!veiculoId;
   const qc = useQueryClient();
   const [form, setForm] = useState<any>({
     liberacaoId, placa: '', modeloCarretaId: '', nomeDescricao: '',
-    freteMotorista: '', qtdFardos: '',
+    freteMotorista: freteMotoristaPadrao ?? '', qtdFardos: '', pesoCarregado: '',
     motoristaNome: '', motoristaTelefone: '', motoristaCpf: '',
     status: 'AGENDADO', statusRastreamento: 'NAO_RASTREADO', numeroIsca: '', observacao: '',
   });
@@ -78,6 +80,7 @@ export default function VeiculoModal({ liberacaoId, veiculoId, onClose, onSaved 
       nomeDescricao: form.nomeDescricao.trim(),
       qtdFardos: Number(form.qtdFardos),
       freteMotorista: Number(form.freteMotorista),
+      pesoCarregado: form.pesoCarregado === '' || form.pesoCarregado == null || Number.isNaN(Number(form.pesoCarregado)) ? null : Number(form.pesoCarregado),
       motoristaNome: form.motoristaNome?.trim(),
       motoristaTelefone: form.motoristaTelefone?.replace(/\D/g, ''),
       // null permite remover um CPF incorreto já gravado.
@@ -138,7 +141,8 @@ export default function VeiculoModal({ liberacaoId, veiculoId, onClose, onSaved 
           </div>
           <Field label="Modelo de Carreta*" value={form.nomeDescricao} onChange={(v: string) => set('nomeDescricao', v)} />
           <Field label="Qtde Fardos*" type="number" value={form.qtdFardos} onChange={(v: string) => set('qtdFardos', parseInt(v))} />
-          <Field label="Frete Motorista (R$)*" type="number" value={form.freteMotorista} onChange={(v: string) => set('freteMotorista', parseFloat(v))} />
+          <Field label="Peso carregado (t)" type="number" value={form.pesoCarregado} onChange={(v: string) => set('pesoCarregado', v)} placeholder="Ex: 36,5 (NF/balança)" />
+          <Field label="Frete Motorista (R$/t)*" type="number" value={form.freteMotorista} onChange={(v: string) => set('freteMotorista', parseFloat(v))} />
           <Field label="Nome do Motorista*" value={form.motoristaNome} onChange={(v: string) => set('motoristaNome', v)} />
           <Field label="Telefone do Motorista*" value={form.motoristaTelefone} onChange={(v: string) => set('motoristaTelefone', v)} placeholder="11999998888" />
           <Field label="CPF Motorista" value={form.motoristaCpf ?? ''} onChange={(v: string) => set('motoristaCpf', v)} onBlur={buscarMotoristaPorCpf} placeholder="Somente números" />

@@ -18,6 +18,8 @@ const liberacaoSchema = z.object({
   origemNome: z.string().min(2, 'Informe a origem'),
   localColetaNome: z.string().min(2, 'Informe o local de coleta'),
   freteEmpresa: z.coerce.number().min(0.01, 'Deve ser maior que 0'),
+  // Opcional (liberações antigas não têm). Vazio = null.
+  freteMotorista: z.preprocess((v) => (v === '' || v == null || Number.isNaN(v) ? null : Number(v)), z.number().min(0, 'Não pode ser negativo').nullable()),
   totalFardos: z.coerce.number().int().min(1, 'Deve ser maior que 0'),
   tipoFardo: z.string().min(1, 'Tipo de fardo é obrigatório'),
   deadline: z.string().min(1, 'Dead line é obrigatória'),
@@ -34,7 +36,7 @@ export default function LiberacaoForm() {
   // Só ADMIN cadastra filial nova digitando; os demais escolhem uma existente.
   const isAdmin = useAuthStore((s) => s.user?.perfil) === 'ADMIN';
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<LiberacaoFormData>({
+  const { register, handleSubmit, reset, watch, formState: { errors } } = useForm<LiberacaoFormData>({
     resolver: zodResolver(liberacaoSchema) as any,
     defaultValues: {
       tipoFardo: 'FARDAO',
@@ -132,7 +134,11 @@ export default function LiberacaoForm() {
             <Field label="Data de Coleta*" type="date" {...register('dataColeta')} error={errors.dataColeta?.message} />
             <Field label="Dead Line*" type="date" {...register('deadline')} error={errors.deadline?.message} />
             <Field label="Total de Fardos*" type="number" {...register('totalFardos')} error={errors.totalFardos?.message} />
-            <Field label="Frete Empresa (R$/fardo)*" type="number" {...register('freteEmpresa')} error={errors.freteEmpresa?.message} />
+            <Field label="Frete Empresa (R$/t)*" type="number" step="0.01" {...register('freteEmpresa')} error={errors.freteEmpresa?.message} />
+            <div>
+              <Field label="Frete Motorista (R$/t)" type="number" step="0.01" {...register('freteMotorista')} error={errors.freteMotorista?.message} />
+              <MargemPrevia empresa={watch('freteEmpresa')} motorista={watch('freteMotorista')} />
+            </div>
             <div>
               <label className="block text-xs text-gray-500 mb-1">Tipo de Fardo</label>
               <select {...register('tipoFardo')}
@@ -185,3 +191,16 @@ const Field = React.forwardRef(({ label, error, type = 'text', suggestions, ...p
 });
 
 Field.displayName = 'Field';
+
+// Margem da operação: (frete empresa − frete motorista) ÷ 100, ambos em R$/t.
+function MargemPrevia({ empresa, motorista }: { empresa: unknown; motorista: unknown }) {
+  const e = Number(empresa);
+  const m = motorista === '' || motorista == null ? NaN : Number(motorista);
+  if (!e || Number.isNaN(m)) return null;
+  return (
+    <p className="text-[11px] text-gray-500 mt-1">
+      Margem: <strong className="text-gray-700">{((e - m) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+      <span className="ml-1">= ({e.toLocaleString('pt-BR')} − {m.toLocaleString('pt-BR')}) ÷ 100</span>
+    </p>
+  );
+}

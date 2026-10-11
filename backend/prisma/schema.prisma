@@ -189,7 +189,10 @@ model Liberacao {
   destinoNome    String? @map("destino_nome")
   origemNome     String? @map("origem_nome")
   localColetaNome String? @map("local_coleta_nome")
+  // R$ por tonelada. Margem = (freteEmpresa - freteMotorista) / 100.
   freteEmpresa   Float @map("frete_empresa")
+  // R$ por tonelada combinado com o motorista — pré-preenche o frete de cada viagem.
+  freteMotorista Float? @map("frete_motorista")
   totalFardos    Int @map("total_fardos")
   tipoFardo      TipoFardo        @default(FARDAO) @map("tipo_fardo")
   deadline       DateTime
@@ -203,6 +206,8 @@ model Liberacao {
   motivoFechamento          String?   @map("motivo_fechamento")
   fechamentoManualPor       String?   @map("fechamento_manual_por")
   fechamentoManualEm        DateTime? @map("fechamento_manual_em")
+  // Quando passou a CONCLUIDA (automática ou manual) — base dos relatórios por período.
+  concluidaEm               DateTime? @map("concluida_em")
   createdAt      DateTime         @default(now()) @map("created_at")
   updatedAt      DateTime         @updatedAt @map("updated_at")
   cliente  Cliente  @relation(fields: [clienteId], references: [id])
@@ -215,6 +220,7 @@ model Liberacao {
   @@index([clienteId])
   @@index([deadline])
   @@index([status])
+  @@index([concluidaEm])
   @@map("liberacoes")
 }
 model Veiculo {
@@ -222,8 +228,11 @@ model Veiculo {
   liberacaoId        Int @map("liberacao_id")
   placa              String
   modeloCarretaId    Int @map("modelo_carreta_id")
+  // R$ por tonelada desta viagem.
   freteMotorista     Float @map("frete_motorista")
   qtdFardos          Int @map("qtd_fardos")
+  // Peso real carregado nesta viagem, em toneladas (NF/balança).
+  pesoCarregado      Float? @map("peso_carregado")
   motoristaNome      String @map("motorista_nome")
   motoristaTelefone  String @map("motorista_telefone")
   motoristaCpf       String? @map("motorista_cpf")
@@ -236,6 +245,8 @@ model Veiculo {
   dataAgendamento    DateTime? @map("data_agendamento")
   dataCarregamento   DateTime? @map("data_carregamento")
   dataDescarga       DateTime? @map("data_descarga")
+  // Quando o status passou a FINALIZADO — base dos relatórios por período.
+  finalizadoEm       DateTime? @map("finalizado_em")
   observacao         String?
   createdAt          DateTime      @default(now()) @map("created_at")
   updatedAt          DateTime      @updatedAt @map("updated_at")
@@ -246,6 +257,7 @@ model Veiculo {
   @@index([liberacaoId])
   @@index([placa])
   @@index([status])
+  @@index([finalizadoEm])
   @@map("veiculos")
 }
 model Usuario {
