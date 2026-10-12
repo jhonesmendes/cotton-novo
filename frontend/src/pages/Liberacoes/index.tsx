@@ -1,11 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
-import { useEffect, useState } from 'react';
-import { salvarFiltrosLista, lerModoVisualizacao, salvarModoVisualizacao, type ModoVisualizacao } from './navegacao';
+import { useEffect } from 'react';
+import { salvarFiltrosLista } from './navegacao';
 import api from '@/services/api';
-import { PlusIcon, Squares2X2Icon, TableCellsIcon } from '@heroicons/react/24/outline';
+import { PlusIcon } from '@heroicons/react/24/outline';
 import { formatDate } from '@/utils/format';
 import PageHeader from '@/components/ui/PageHeader';
+import AlternarVisualizacao, { useModoVisualizacao } from '@/components/ui/AlternarVisualizacao';
 import { useAuthStore } from '@/stores/auth.store';
 
 const fechadaManual = (l: any) => l.status === 'CONCLUIDA' && l.fechamentoManual;
@@ -113,8 +114,7 @@ export default function LiberacoesPage() {
 
   useEffect(() => { salvarFiltrosLista(searchParams.toString()); }, [searchParams]);
 
-  const [modo, setModo] = useState<ModoVisualizacao>(lerModoVisualizacao);
-  const trocarModo = (m: ModoVisualizacao) => { setModo(m); salvarModoVisualizacao(m); };
+  const [modo, trocarModo] = useModoVisualizacao('cotton:liberacoes:modo');
 
   const params = new URLSearchParams({
     page: String(page), limit: '50',
@@ -169,21 +169,7 @@ export default function LiberacoesPage() {
       <div className="ui-card overflow-hidden">
         <div className="ui-card-header flex items-center justify-between gap-3 py-3 text-sm text-ui-text-muted">
           <span>{data?.total ?? 0} liberações encontradas</span>
-          <div className="inline-flex rounded-ui-md border border-ui-border p-0.5" role="group" aria-label="Modo de visualização">
-            {([
-              ['lista', 'Lista', TableCellsIcon],
-              ['cards', 'Cards', Squares2X2Icon],
-            ] as const).map(([valor, rotulo, Icone]) => (
-              <button key={valor} type="button" onClick={() => trocarModo(valor)}
-                aria-pressed={modo === valor} title={`Visualizar em ${rotulo.toLowerCase()}`}
-                className={`inline-flex items-center gap-1.5 rounded-[6px] px-2.5 py-1 text-xs font-medium transition ${
-                  modo === valor ? 'bg-ui-primary text-white' : 'text-ui-text-muted hover:bg-ui-muted'
-                }`}>
-                <Icone className="w-4 h-4" />
-                {rotulo}
-              </button>
-            ))}
-          </div>
+          <AlternarVisualizacao modo={modo} onChange={trocarModo} />
         </div>
         {isLoading ? (
           <div className="p-8 text-center text-gray-400">Carregando...</div>
