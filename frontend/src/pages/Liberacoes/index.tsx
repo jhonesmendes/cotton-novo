@@ -1,12 +1,91 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
-import { useEffect } from 'react';
-import { salvarFiltrosLista } from './navegacao';
+import { useEffect, useState } from 'react';
+import { salvarFiltrosLista, lerModoVisualizacao, salvarModoVisualizacao, type ModoVisualizacao } from './navegacao';
 import api from '@/services/api';
-import { PlusIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, Squares2X2Icon, TableCellsIcon } from '@heroicons/react/24/outline';
 import { formatDate } from '@/utils/format';
 import PageHeader from '@/components/ui/PageHeader';
 import { useAuthStore } from '@/stores/auth.store';
+
+const fechadaManual = (l: any) => l.status === 'CONCLUIDA' && l.fechamentoManual;
+
+function DiasDeadline({ l }: { l: any }) {
+  if (l.status === 'CONCLUIDA' || l.status === 'CANCELADA')
+    return <span className="text-gray-600">{l.diasParaDeadline}d</span>;
+  if (l.diasParaDeadline < 0) return <span className="text-red-600 font-bold">{l.diasParaDeadline}d</span>;
+  if (l.diasParaDeadline <= 3) return <span className="text-orange-600 font-semibold">{l.diasParaDeadline}d</span>;
+  return <span className="text-gray-600">{l.diasParaDeadline}d</span>;
+}
+
+function StatusLiberacao({ l }: { l: any }) {
+  return (
+    <span className={`text-xs px-2 py-0.5 rounded-full ${
+      l.status === 'ATIVA' ? 'bg-green-100 text-green-700' :
+      fechadaManual(l) ? 'bg-amber-100 text-amber-700' :
+      l.status === 'CONCLUIDA' ? 'bg-blue-100 text-blue-700' :
+      'bg-gray-100 text-gray-500'
+    }`}>{l.status}</span>
+  );
+}
+
+function AvisoFechamento({ l }: { l: any }) {
+  if (fechadaManual(l))
+    return (
+      <p className="mt-1 text-[11px] font-medium text-amber-700">
+        {l.fardosPendentesFechamento} fardos pendentes · fechada manualmente
+      </p>
+    );
+  if (l.aguardandoFechamento)
+    return (
+      <p className="mt-1 text-[11px] font-medium text-amber-700">
+        Faltam {l.saldo} fardos · veículos finalizados
+      </p>
+    );
+  return null;
+}
+
+function CardLiberacao({ l }: { l: any }) {
+  return (
+    <Link to={`/liberacoes/${l.id}`}
+      className={`flex flex-col gap-3 rounded-ui-lg border p-4 shadow-sm transition hover:shadow-md ${
+        fechadaManual(l) ? 'border-amber-200 bg-amber-50 hover:bg-amber-100' : 'border-ui-border bg-ui-surface hover:border-ui-primary/40'
+      }`}>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="font-semibold text-ui-primary break-words">{l.instrucao}</p>
+          <p className="text-xs text-ui-text-muted">{l.clienteNome ?? l.cliente?.nome}</p>
+        </div>
+        <StatusLiberacao l={l} />
+      </div>
+
+      <dl className="grid grid-cols-[auto,1fr] gap-x-3 gap-y-1 text-xs">
+        <dt className="text-ui-text-muted">Origem</dt>
+        <dd className="truncate">{l.origemNome ?? l.terminal?.nome}</dd>
+        <dt className="text-ui-text-muted">Coleta</dt>
+        <dd className="truncate">{l.localColetaNome ?? l.localColeta?.nome}</dd>
+        <dt className="text-ui-text-muted">Destino</dt>
+        <dd className="truncate">{l.destinoNome ?? l.destino?.nome}</dd>
+      </dl>
+
+      <div className="mt-auto grid grid-cols-3 gap-2 border-t border-ui-border-subtle pt-3 text-center">
+        <div>
+          <p className="text-[11px] uppercase text-ui-text-muted">Total</p>
+          <p className="text-sm">{l.totalFardos}</p>
+        </div>
+        <div>
+          <p className="text-[11px] uppercase text-ui-text-muted">Saldo</p>
+          <p className="text-sm font-semibold">{l.saldo}</p>
+        </div>
+        <div>
+          <p className="text-[11px] uppercase text-ui-text-muted">{formatDate(l.deadline)}</p>
+          <p className="text-sm"><DiasDeadline l={l} /></p>
+        </div>
+      </div>
+      <AvisoFechamento l={l} />
+    </Link>
+  );
+}
 
 export default function LiberacoesPage() {
   const podeCriar = useAuthStore((s) => s.user?.perfil) !== 'OPERADOR';
@@ -33,6 +112,9 @@ export default function LiberacoesPage() {
     atualizarFiltro('page', String(typeof v === 'function' ? v(page) : v));
 
   useEffect(() => { salvarFiltrosLista(searchParams.toString()); }, [searchParams]);
+
+  const [modo, setModo] = useState<ModoVisualizacao>(lerModoVisualizacao);
+  const trocarModo = (m: ModoVisualizacao) => { setModo(m); salvarModoVisualizacao(m); };
 
   const params = new URLSearchParams({
     page: String(page), limit: '50',
@@ -85,11 +167,30 @@ export default function LiberacoesPage() {
       </div>
 
       <div className="ui-card overflow-hidden">
-        <div className="ui-card-header py-3 text-sm text-ui-text-muted">
-          {data?.total ?? 0} liberações encontradas
+        <div className="ui-card-header flex items-center justify-between gap-3 py-3 text-sm text-ui-text-muted">
+          <span>{data?.total ?? 0} liberações encontradas</span>
+          <div className="inline-flex rounded-ui-md border border-ui-border p-0.5" role="group" aria-label="Modo de visualização">
+            {([
+              ['lista', 'Lista', TableCellsIcon],
+              ['cards', 'Cards', Squares2X2Icon],
+            ] as const).map(([valor, rotulo, Icone]) => (
+              <button key={valor} type="button" onClick={() => trocarModo(valor)}
+                aria-pressed={modo === valor} title={`Visualizar em ${rotulo.toLowerCase()}`}
+                className={`inline-flex items-center gap-1.5 rounded-[6px] px-2.5 py-1 text-xs font-medium transition ${
+                  modo === valor ? 'bg-ui-primary text-white' : 'text-ui-text-muted hover:bg-ui-muted'
+                }`}>
+                <Icone className="w-4 h-4" />
+                {rotulo}
+              </button>
+            ))}
+          </div>
         </div>
         {isLoading ? (
           <div className="p-8 text-center text-gray-400">Carregando...</div>
+        ) : modo === 'cards' ? (
+          <div className="grid gap-4 p-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+            {(data?.data ?? []).map((l: any) => <CardLiberacao key={l.id} l={l} />)}
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -110,7 +211,7 @@ export default function LiberacoesPage() {
               </thead>
               <tbody className="divide-y divide-ui-border-subtle">
                 {(data?.data ?? []).map((l: any) => (
-                  <tr key={l.id} className={`transition-colors ${l.status === 'CONCLUIDA' && l.fechamentoManual ? 'bg-amber-50 hover:bg-amber-100' : 'hover:bg-ui-muted/60'}`}>
+                  <tr key={l.id} className={`transition-colors ${fechadaManual(l) ? 'bg-amber-50 hover:bg-amber-100' : 'hover:bg-ui-muted/60'}`}>
                     <td className="px-4 py-3 font-medium text-ui-primary">
                       <Link to={`/liberacoes/${l.id}`} className="hover:underline">{l.instrucao}</Link>
                     </td>
@@ -121,33 +222,10 @@ export default function LiberacoesPage() {
                     <td className="px-4 py-3 text-right">{l.totalFardos}</td>
                     <td className="px-4 py-3 text-right font-semibold">{l.saldo}</td>
                     <td className="px-4 py-3 text-right text-xs">{formatDate(l.deadline)}</td>
-                    <td className="px-4 py-3 text-right">
-                      {l.status === 'CONCLUIDA' || l.status === 'CANCELADA'
-                        ? <span className="text-gray-600">{l.diasParaDeadline}d</span>
-                        : l.diasParaDeadline < 0
-                          ? <span className="text-red-600 font-bold">{l.diasParaDeadline}d</span>
-                          : l.diasParaDeadline <= 3
-                            ? <span className="text-orange-600 font-semibold">{l.diasParaDeadline}d</span>
-                            : <span className="text-gray-600">{l.diasParaDeadline}d</span>
-                      }
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${
-                        l.status === 'ATIVA' ? 'bg-green-100 text-green-700' :
-                        l.status === 'CONCLUIDA' && l.fechamentoManual ? 'bg-amber-100 text-amber-700' :
-                        l.status === 'CONCLUIDA' ? 'bg-blue-100 text-blue-700' :
-                        'bg-gray-100 text-gray-500'
-                      }`}>{l.status}</span>
-                      {l.status === 'CONCLUIDA' && l.fechamentoManual && (
-                        <p className="mt-1 text-[11px] font-medium text-amber-700 whitespace-nowrap">
-                          {l.fardosPendentesFechamento} fardos pendentes · fechada manualmente
-                        </p>
-                      )}
-                      {l.aguardandoFechamento && (
-                        <p className="mt-1 text-[11px] font-medium text-amber-700 whitespace-nowrap">
-                          Faltam {l.saldo} fardos · veículos finalizados
-                        </p>
-                      )}
+                    <td className="px-4 py-3 text-right"><DiasDeadline l={l} /></td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <StatusLiberacao l={l} />
+                      <AvisoFechamento l={l} />
                     </td>
                     <td className="px-4 py-3 text-center">
                       <Link to={`/liberacoes/${l.id}`} className="text-xs text-blue-600 hover:underline">Ver</Link>

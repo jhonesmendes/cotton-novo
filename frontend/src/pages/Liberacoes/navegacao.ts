@@ -18,3 +18,23 @@ export function urlListaLiberacoes() {
     return '/liberacoes';
   }
 }
+
+// Lista em tabela ou em cards — preferência do navegador, vale entre sessões.
+export type ModoVisualizacao = 'lista' | 'cards';
+const CHAVE_MODO = 'cotton:liberacoes:modo';
+
+export function lerModoVisualizacao(): ModoVisualizacao {
+  try {
+    return localStorage.getItem(CHAVE_MODO) === 'cards' ? 'cards' : 'lista';
+  } catch {
+    return 'lista';
+  }
+}
+
+export function salvarModoVisualizacao(modo: ModoVisualizacao) {
+  try {
+    localStorage.setItem(CHAVE_MODO, modo);
+  } catch {
+    // localStorage indisponível — a escolha vale só enquanto a tela estiver aberta.
+  }
+}
