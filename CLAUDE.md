@@ -116,6 +116,14 @@ SOLICITADO → FALTA_CONTRATAR → FALTA_AGENDAR → AGENDADO
   `Veiculo.pesoCarregado` o peso real em toneladas. Margem (regra da operação, literal) =
   `(freteEmpresa − freteMotorista) ÷ 100`. Nos relatórios: faturamento = t × frete empresa;
   custo = Σ (t da viagem × frete da viagem); veículos sem peso deixam os valores parciais.
+- **Cadastros novos** (`backend/src/services/cadastros-duplicados.ts`): cliente, filial embarcadora,
+  destino, origem e modelo de carreta **novos** só ADMIN cria (403 `CADASTRO_SOMENTE_ADMIN`; os demais
+  perfis veem lista fechada). Local de coleta é livre, mas se houver um parecido (nome normalizado igual
+  ou contido) o backend devolve 409 `LOCAL_COLETA_SIMILAR` e o front pergunta "usar o existente?" →
+  "confirmar criação?" (reenvia com `confirmarLocalColetaSimilar`/`confirmarSimilar`). Motorista
+  parecido (nome, CPF ou telefone) ao salvar veículo → 409 `MOTORISTA_EXISTENTE`; o front pergunta
+  "usar?" → "é atualização de dados?" (`motoristaDecisao: {acao:'atualizar', alvo}`, aplica em todos os
+  veículos dele) → senão grava como novo (`{acao:'novo'}`).
 - Outros enums relevantes do domínio: `TipoFardo` (FARDAO/FARDINHO), `TipoAlerta`,
   `StatusAlerta`, `PerfilUsuario` (ADMIN/OPERADOR/GESTOR_FILIAL/VISUALIZADOR/CLIENTE),
   `StatusLiberacao`, `TipoAcesso`.

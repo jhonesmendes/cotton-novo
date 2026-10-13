@@ -5,6 +5,7 @@ import { AppError } from '../middleware/errorHandler';
 import { AuthRequest } from '../middleware/auth';
 import { StatusLiberacao, TipoFardo, Prisma } from '@prisma/client';
 import { reavaliarStatusLiberacao, situacaoFechamento } from '../services/liberacao-status';
+import { similares } from '../services/cadastros-duplicados';
 
 const criarSchema = z.object({
   instrucao: z.string().min(3),
@@ -26,49 +27,109 @@ const criarSchema = z.object({
   tipoFardo: z.nativeEnum(TipoFardo).default(TipoFardo.FARDAO),
   deadline: z.string(),
   observacao: z.string().optional(),
+  // Usuário já foi avisado do local de coleta parecido e confirmou que é outro.
+  confirmarLocalColetaSimilar: z.boolean().optional(),
 });
 
-// Filial embarcadora (model Origem) só pode ser criada por ADMIN — os demais
-// perfis só escolhem uma já cadastrada, pra não surgir "SORRISO-MT" e
-// "SORRISO - MT" como filiais diferentes.
-async function resolverCadastros(data: any, podeCriarFilial: boolean) {
-  const buscarOuCriar = async (tipo: 'cliente' | 'origem' | 'destino' | 'terminal' | 'localColeta', id: number | undefined, nome: string | undefined) => {
+// Cada tipo de referência: campo texto na Liberação, FK correspondente e o model do cadastro.
+const vinculosReferencia = {
+  clientes: { campo: 'clienteNome', fk: 'clienteId', model: 'cliente' },
+  filiais: { campo: 'filialNome', fk: 'origemId', model: 'origem' },
+  destinos: { campo: 'destinoNome', fk: 'destinoId', model: 'destino' },
+  origens: { campo: 'origemNome', fk: 'terminalId', model: 'terminal' },
+  locaisColeta: { campo: 'localColetaNome', fk: 'localColetaId', model: 'localColeta' },
+} as const;
+type TipoReferencia = keyof typeof vinculosReferencia;
+
+const rotulosReferencia: Record<TipoReferencia, string> = {
+  clientes: 'Cliente',
+  filiais: 'Filial embarcadora',
+  destinos: 'Destino',
+  origens: 'Origem',
+  locaisColeta: 'Local de coleta',
+};
+
+// Campos obrigatórios de cada model ao criar o cadastro só com o nome.
+const dadosNovoCadastro: Record<TipoReferencia, () => Record<string, unknown>> = {
+  clientes: () => ({ cnpj: `PENDENTE-${Date.now()}-${Math.random().toString(36).slice(2, 7)}` }),
+  filiais: () => ({ localizacao: 'Pendente', estado: '--' }),
+  destinos: () => ({ estado: '--' }),
+  origens: () => ({ tipoAcesso: 'EMAIL' }),
+  locaisColeta: () => ({}),
+};
+
+// Todos os valores já conhecidos de um tipo: cadastro, referência avulsa
+// (tela Revisão de Dados) e texto gravado nas liberações.
+async function valoresReferencia(tipo: TipoReferencia): Promise<string[]> {
+  const { campo, model } = vinculosReferencia[tipo];
+  const [entidades, referencias, liberacoes] = await Promise.all([
+    (prisma as any)[model].findMany({ select: { nome: true } }) as Promise<{ nome: string }[]>,
+    prisma.referenciaCadastro.findMany({ where: { tipo }, select: { valor: true } }),
+    (prisma.liberacao.findMany as any)({ distinct: [campo], select: { [campo]: true } }) as Promise<Record<string, string | null>[]>,
+  ]);
+  return [...new Set([
+    ...entidades.map((e) => e.nome),
+    ...referencias.map((r) => r.valor),
+    ...liberacoes.map((l) => l[campo]?.trim() ?? ''),
+  ].filter(Boolean))];
+}
+
+const mesmoValor = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+
+function erroLocalColetaSimilar(valor: string, parecidos: string[]) {
+  return new AppError(
+    `Já existe local de coleta parecido com "${valor}": ${parecidos.join(', ')}`,
+    409,
+    'LOCAL_COLETA_SIMILAR',
+    { valor, similares: parecidos },
+  );
+}
+
+// Cliente, filial, destino e origem novos só podem ser criados por ADMIN — os
+// demais perfis só escolhem um valor que já existe (pra não surgir "SORRISO-MT"
+// e "SORRISO - MT" como cadastros diferentes). Local de coleta é aberto a
+// todos, mas se já houver um parecido o usuário precisa confirmar
+// (`confirmarSimilar`) que quer mesmo criar outro.
+async function resolverCadastros(data: any, opcoes: { podeCriar: boolean; confirmarSimilar?: boolean }) {
+  const resolver = async (tipo: TipoReferencia, id: number | undefined, nome: string | undefined) => {
     if (id) return id;
     const valor = nome?.trim();
     if (!valor) return undefined;
-    if (tipo === 'cliente') {
-      const item = await prisma.cliente.findFirst({ where: { nome: valor } });
-      return item?.id ?? (await prisma.cliente.create({ data: { nome: valor, cnpj: `PENDENTE-${Date.now()}-${Math.random().toString(36).slice(2, 7)}` } })).id;
+    const { campo, model } = vinculosReferencia[tipo];
+    const delegate = (prisma as any)[model];
+
+    const item = await delegate.findFirst({ where: { nome: { equals: valor, mode: 'insensitive' } } });
+    if (item) {
+      data[campo] = item.nome;
+      return item.id as number;
     }
-    if (tipo === 'origem') {
-      const item = await prisma.origem.findFirst({ where: { nome: { equals: valor, mode: 'insensitive' } } });
-      if (item) {
-        data.filialNome = item.nome;
-        return item.id;
+
+    // Valor já conhecido (referência avulsa ou liberação antiga) sem cadastro:
+    // materializar o cadastro não é "criar dado novo", vale pra qualquer perfil.
+    const existentes = await valoresReferencia(tipo);
+    const registrado = existentes.find((v) => mesmoValor(v, valor));
+    if (!registrado) {
+      if (tipo === 'locaisColeta') {
+        const parecidos = similares(valor, existentes);
+        if (parecidos.length && !opcoes.confirmarSimilar) throw erroLocalColetaSimilar(valor, parecidos);
+      } else if (!opcoes.podeCriar) {
+        throw new AppError(
+          `${rotulosReferencia[tipo]} "${valor}" não está cadastrado(a). Selecione um da lista ou peça a um administrador para cadastrá-lo.`,
+          403,
+          'CADASTRO_SOMENTE_ADMIN',
+        );
       }
-      if (!podeCriarFilial) {
-        throw new AppError(`Filial embarcadora "${valor}" não está cadastrada. Selecione uma filial da lista ou peça a um administrador para cadastrá-la.`, 400, 'FILIAL_NAO_CADASTRADA');
-      }
-      return (await prisma.origem.create({ data: { nome: valor, localizacao: 'Pendente', estado: '--' } })).id;
     }
-    if (tipo === 'destino') {
-      const item = await prisma.destino.findFirst({ where: { nome: valor } });
-      return item?.id ?? (await prisma.destino.create({ data: { nome: valor, estado: '--' } })).id;
-    }
-    if (tipo === 'terminal') {
-      const item = await prisma.terminal.findUnique({ where: { nome: valor } });
-      return item?.id ?? (await prisma.terminal.create({ data: { nome: valor, tipoAcesso: 'EMAIL' } })).id;
-    }
-    const item = await prisma.localColeta.findFirst({ where: { nome: valor } });
-    return item?.id ?? (await prisma.localColeta.create({ data: { nome: valor } })).id;
+    data[campo] = registrado ?? valor;
+    return (await delegate.create({ data: { nome: data[campo], ...dadosNovoCadastro[tipo]() } })).id as number;
   };
 
   return {
-    clienteId: await buscarOuCriar('cliente', data.clienteId, data.clienteNome),
-    origemId: await buscarOuCriar('origem', data.origemId, data.filialNome),
-    destinoId: await buscarOuCriar('destino', data.destinoId, data.destinoNome),
-    terminalId: await buscarOuCriar('terminal', data.terminalId, data.origemNome),
-    localColetaId: await buscarOuCriar('localColeta', data.localColetaId, data.localColetaNome),
+    clienteId: await resolver('clientes', data.clienteId, data.clienteNome),
+    origemId: await resolver('filiais', data.origemId, data.filialNome),
+    destinoId: await resolver('destinos', data.destinoId, data.destinoNome),
+    terminalId: await resolver('origens', data.terminalId, data.origemNome),
+    localColetaId: await resolver('locaisColeta', data.localColetaId, data.localColetaNome),
   };
 }
 
@@ -186,26 +247,29 @@ function exigirAdminParaFiliais(req: AuthRequest, tipo: string) {
 }
 
 export async function criarReferencia(req: AuthRequest, res: Response) {
-  const data = z.object({ tipo: z.enum(['clientes', 'filiais', 'destinos', 'origens', 'locaisColeta']), valor: z.string().min(2) }).parse(req.body);
-  exigirAdminParaFiliais(req, data.tipo);
+  const data = z.object({
+    tipo: z.enum(['clientes', 'filiais', 'destinos', 'origens', 'locaisColeta']),
+    valor: z.string().min(2),
+    // Usuário já foi avisado do local de coleta parecido e confirmou que é outro.
+    confirmarSimilar: z.boolean().optional(),
+  }).parse(req.body);
+  if (data.tipo !== 'locaisColeta' && req.user?.perfil !== 'ADMIN') {
+    throw new AppError(`Somente administradores podem cadastrar ${rotulosReferencia[data.tipo].toLowerCase()}`, 403, 'CADASTRO_SOMENTE_ADMIN');
+  }
   const valor = data.valor.trim();
+  const existentes = await valoresReferencia(data.tipo);
+  const igual = existentes.find((v) => mesmoValor(v, valor));
+  if (igual) throw new AppError(`${rotulosReferencia[data.tipo]} "${igual}" já está cadastrado(a)`, 409, 'DUPLICATE');
+  if (data.tipo === 'locaisColeta' && !data.confirmarSimilar) {
+    const parecidos = similares(valor, existentes);
+    if (parecidos.length) throw erroLocalColetaSimilar(valor, parecidos);
+  }
   if (data.tipo === 'filiais') {
-    const existe = await prisma.origem.findFirst({ where: { nome: { equals: valor, mode: 'insensitive' } } });
-    if (existe) throw new AppError(`Filial embarcadora "${existe.nome}" já existe`, 409, 'DUPLICATE');
     await prisma.origem.create({ data: { nome: valor, localizacao: 'Pendente', estado: '--' } });
   }
   const referencia = await prisma.referenciaCadastro.upsert({ where: { tipo_valor: { tipo: data.tipo, valor } }, update: {}, create: { tipo: data.tipo, valor } });
   return res.status(201).json(referencia);
 }
-
-// Cada tipo de referência: campo texto na Liberação, FK correspondente e o model do cadastro.
-const vinculosReferencia = {
-  clientes: { campo: 'clienteNome', fk: 'clienteId', model: 'cliente' },
-  filiais: { campo: 'filialNome', fk: 'origemId', model: 'origem' },
-  destinos: { campo: 'destinoNome', fk: 'destinoId', model: 'destino' },
-  origens: { campo: 'origemNome', fk: 'terminalId', model: 'terminal' },
-  locaisColeta: { campo: 'localColetaNome', fk: 'localColetaId', model: 'localColeta' },
-} as const;
 
 const tiposExcluiveis = ['clientes', 'filiais', 'destinos', 'origens', 'locaisColeta', 'motoristas', 'modelosCarreta'] as const;
 
@@ -329,7 +393,7 @@ export async function excluirReferencia(req: AuthRequest, res: Response) {
   let novoNome: string | undefined;
   if (body.substituto) {
     const dadosSubstituto: any = { [campo]: body.substituto };
-    novoId = (await resolverCadastros(dadosSubstituto, true))[fk];
+    novoId = (await resolverCadastros(dadosSubstituto, { podeCriar: true, confirmarSimilar: true }))[fk];
     novoNome = dadosSubstituto[campo];
     if (entidadeAtual && novoId === entidadeAtual.id) {
       throw new AppError('O substituto deve ser diferente do item excluído', 400);
@@ -474,8 +538,8 @@ export async function buscarPorId(req: AuthRequest, res: Response) {
 }
 
 export async function criar(req: AuthRequest, res: Response) {
-  const recebido = criarSchema.parse(req.body);
-  const cadastros = await resolverCadastros(recebido, req.user?.perfil === 'ADMIN');
+  const { confirmarLocalColetaSimilar, ...recebido } = criarSchema.parse(req.body);
+  const cadastros = await resolverCadastros(recebido, { podeCriar: req.user?.perfil === 'ADMIN', confirmarSimilar: confirmarLocalColetaSimilar });
   if (Object.values(cadastros).some((valor) => !valor)) {
     throw new AppError('Preencha Cliente, Filial, Destino, Origem e Local de Coleta', 400);
   }
@@ -532,8 +596,8 @@ export async function criar(req: AuthRequest, res: Response) {
 
 export async function atualizar(req: AuthRequest, res: Response) {
   const { id } = req.params;
-  const recebido = criarSchema.partial().parse(req.body);
-  const cadastros = await resolverCadastros(recebido, req.user?.perfil === 'ADMIN');
+  const { confirmarLocalColetaSimilar, ...recebido } = criarSchema.partial().parse(req.body);
+  const cadastros = await resolverCadastros(recebido, { podeCriar: req.user?.perfil === 'ADMIN', confirmarSimilar: confirmarLocalColetaSimilar });
   const data: any = { ...recebido, ...cadastros };
 
   // Validar se liberação existe

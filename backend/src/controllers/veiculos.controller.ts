@@ -5,6 +5,13 @@ import { AppError } from '../middleware/errorHandler';
 import { AuthRequest } from '../middleware/auth';
 import { StatusVeiculo, StatusSM, StatusRastreamento } from '@prisma/client';
 import { reavaliarStatusLiberacao } from '../services/liberacao-status';
+import {
+  atualizarMotoristaExistente,
+  motoristasParecidos,
+  normalizar,
+  resolverNomeModelo,
+  somenteDigitos,
+} from '../services/cadastros-duplicados';
 
 const criarSchema = z.object({
   liberacaoId: z.number().int().positive(),
@@ -37,7 +44,34 @@ const criarSchema = z.object({
 
 type DadosVeiculo = z.infer<typeof criarSchema>;
 
-async function vincularCadastroBase(data: DadosVeiculo) {
+// Resposta do usuário ao aviso de motorista já cadastrado (MOTORISTA_EXISTENTE):
+// "atualizar" aplica os dados digitados ao motorista escolhido; "novo" grava
+// como motorista diferente mesmo parecido.
+const decisaoMotoristaSchema = z.discriminatedUnion('acao', [
+  z.object({ acao: z.literal('novo') }),
+  z.object({
+    acao: z.literal('atualizar'),
+    alvo: z.object({ nome: z.string(), telefone: z.string(), cpf: z.string().nullable() }),
+  }),
+]).optional();
+
+async function verificarMotorista(
+  dados: Pick<DadosVeiculo, 'motoristaNome' | 'motoristaTelefone' | 'motoristaCpf'>,
+  decisao: z.infer<typeof decisaoMotoristaSchema>,
+  ignorarVeiculoId?: number,
+) {
+  if (decisao?.acao === 'novo') return;
+  if (decisao?.acao === 'atualizar') {
+    await atualizarMotoristaExistente(decisao.alvo, dados);
+    return;
+  }
+  const candidatos = await motoristasParecidos(dados, ignorarVeiculoId);
+  if (candidatos.length) {
+    throw new AppError('Já existe motorista parecido cadastrado no sistema', 409, 'MOTORISTA_EXISTENTE', { candidatos });
+  }
+}
+
+async function vincularCadastroBase(data: DadosVeiculo, podeCriarModelo: boolean) {
   const placaVeiculo = data.placa.trim().toUpperCase();
   const dadosCadastro = {
     placaVeiculo,
@@ -51,6 +85,11 @@ async function vincularCadastroBase(data: DadosVeiculo) {
   let cadastro = data.modeloCarretaId
     ? await prisma.modeloCarreta.findUnique({ where: { id: data.modeloCarretaId } })
     : await prisma.modeloCarreta.findFirst({ where: { placaVeiculo } });
+
+  // Só valida o modelo quando ele é novo nesse cadastro — manter o que já está gravado é sempre permitido.
+  if (data.nomeDescricao && (!cadastro || normalizar(data.nomeDescricao) !== normalizar(cadastro.nomeDescricao))) {
+    dadosCadastro.nomeDescricao = await resolverNomeModelo(data.nomeDescricao, podeCriarModelo);
+  }
 
   if (cadastro) {
     cadastro = await prisma.modeloCarreta.update({
@@ -69,7 +108,7 @@ async function vincularCadastroBase(data: DadosVeiculo) {
     cadastro = await prisma.modeloCarreta.create({
       data: {
         ...dadosCadastro,
-        nomeDescricao: data.nomeDescricao,
+        nomeDescricao: dadosCadastro.nomeDescricao ?? data.nomeDescricao,
         capacidadeMaximaFardos: data.capacidadeMaximaFardos ?? 0,
         pesoMaximoKg: data.pesoMaximoKg ?? 0,
       },
@@ -222,7 +261,8 @@ export async function criar(req: AuthRequest, res: Response) {
   const liberacao = await prisma.liberacao.findUnique({ where: { id: data.liberacaoId } });
   if (!liberacao) throw new AppError('Liberação não encontrada', 404);
 
-  const { cadastro, placaVeiculo } = await vincularCadastroBase(data);
+  await verificarMotorista(data, decisaoMotoristaSchema.parse(req.body.motoristaDecisao));
+  const { cadastro, placaVeiculo } = await vincularCadastroBase(data, req.user?.perfil === 'ADMIN');
   const { nomeDescricao, capacidadeMaximaFardos, pesoMaximoKg, comprimentoM, ...dadosOperacionais } = data;
   const veiculo = await prisma.veiculo.create({
     data: {
@@ -250,10 +290,17 @@ export async function atualizar(req: AuthRequest, res: Response) {
   const atual = await prisma.veiculo.findUnique({ where: { id: parseInt(id) } });
   if (!atual) throw new AppError('Veículo não encontrado', 404);
   const dadosCompletos = { ...atual, ...data, placa: data.placa ?? atual.placa } as DadosVeiculo;
+  const motoristaMudou =
+    normalizar(dadosCompletos.motoristaNome) !== normalizar(atual.motoristaNome)
+    || somenteDigitos(dadosCompletos.motoristaTelefone) !== somenteDigitos(atual.motoristaTelefone)
+    || somenteDigitos(dadosCompletos.motoristaCpf) !== somenteDigitos(atual.motoristaCpf);
+  if (motoristaMudou) {
+    await verificarMotorista(dadosCompletos, decisaoMotoristaSchema.parse(req.body.motoristaDecisao), atual.id);
+  }
   const { cadastro, placaVeiculo } = await vincularCadastroBase({
     ...dadosCompletos,
     modeloCarretaId: data.modeloCarretaId ?? atual.modeloCarretaId,
-  });
+  }, req.user?.perfil === 'ADMIN');
   await propagarCadastroBase(cadastro);
   const { nomeDescricao, capacidadeMaximaFardos, pesoMaximoKg, comprimentoM, ...dadosOperacionais } = data;
 

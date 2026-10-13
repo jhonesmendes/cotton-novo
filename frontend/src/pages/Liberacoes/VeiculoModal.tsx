@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from 'react';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
 import { XMarkIcon } from '@heroicons/react/24/outline';
+import { useAuthStore } from '@/stores/auth.store';
+import EscolhaModal from '@/components/EscolhaModal';
 import { STATUS_OPTIONS, STATUS_LABELS, STATUS_SEM_MONITORAMENTO, RASTREAMENTO_OPTIONS, RASTREAMENTO_LABELS } from '@/utils/status';
 
 interface Props {
@@ -14,9 +16,21 @@ interface Props {
   onSaved: () => void;
 }
 
+type MotoristaCadastrado = { nome: string; telefone: string; cpf: string | null };
+
 export default function VeiculoModal({ liberacaoId, veiculoId, freteMotoristaPadrao, onClose, onSaved }: Props) {
   const isEdit = !!veiculoId;
   const qc = useQueryClient();
+  // Só ADMIN cria modelo de carreta novo; os demais escolhem um existente.
+  const isAdmin = useAuthStore((s) => s.user?.perfil) === 'ADMIN';
+  // Backend achou motorista parecido (MOTORISTA_EXISTENTE): 1º pergunta se quer
+  // usar o cadastrado; se não, se é atualização dos dados dele; se não de novo, grava como novo.
+  const [motoristaExistente, setMotoristaExistente] = useState<{ candidatos: MotoristaCadastrado[]; etapa: 'usar' | 'atualizar' } | null>(null);
+  const { data: referencias } = useQuery({
+    queryKey: ['liberacoes-referencias'],
+    queryFn: () => api.get('/liberacoes/referencias/lista').then((r) => r.data),
+  });
+  const modelos: string[] = referencias?.modelosCarreta ?? [];
   const [form, setForm] = useState<any>({
     liberacaoId, placa: '', modeloCarretaId: '', nomeDescricao: '',
     freteMotorista: freteMotoristaPadrao ?? '', qtdFardos: '', pesoCarregado: '',
@@ -54,10 +68,15 @@ export default function VeiculoModal({ liberacaoId, veiculoId, freteMotoristaPad
       toast.success(isEdit ? 'Veículo atualizado' : 'Veículo adicionado');
       // sem isso, reabrir o modal mostra o valor antigo em cache até expirar sozinho
       qc.invalidateQueries({ queryKey: ['veiculo'] });
+      qc.invalidateQueries({ queryKey: ['liberacoes-referencias'] });
       onSaved();
     },
     onError: (e: any) => {
       const error = e?.response?.data?.error;
+      if (error?.code === 'MOTORISTA_EXISTENTE') {
+        setMotoristaExistente({ candidatos: error.details.candidatos, etapa: 'usar' });
+        return;
+      }
       const primeiroDetalhe = error?.details?.[0];
       toast.error(primeiroDetalhe?.message || error?.message || 'Erro ao salvar');
     },
@@ -72,8 +91,23 @@ export default function VeiculoModal({ liberacaoId, veiculoId, freteMotoristaPad
       toast.error('Informe o modelo da carreta');
       return;
     }
+    mutation.mutate(montarPayload(form));
+  }
 
-    const payload = {
+  function usarMotorista(m: MotoristaCadastrado) {
+    const novoForm = { ...form, motoristaNome: m.nome, motoristaTelefone: m.telefone, motoristaCpf: m.cpf ?? '' };
+    setForm(novoForm);
+    setMotoristaExistente(null);
+    mutation.mutate(montarPayload(novoForm));
+  }
+
+  function salvarComDecisao(motoristaDecisao: { acao: 'novo' } | { acao: 'atualizar'; alvo: MotoristaCadastrado }) {
+    setMotoristaExistente(null);
+    mutation.mutate({ ...montarPayload(form), motoristaDecisao });
+  }
+
+  function montarPayload(form: any) {
+    return {
       ...(isEdit ? {} : { liberacaoId }),
       placa: form.placa?.trim().toUpperCase(),
       modeloCarretaId: Number.isInteger(form.modeloCarretaId) ? form.modeloCarretaId : undefined,
@@ -90,8 +124,6 @@ export default function VeiculoModal({ liberacaoId, veiculoId, freteMotoristaPad
       numeroIsca: form.numeroIsca?.trim() || null,
       observacao: form.observacao?.trim() || undefined,
     };
-
-    mutation.mutate(payload);
   }
 
   async function buscarDadosPorPlaca() {
@@ -139,7 +171,19 @@ export default function VeiculoModal({ liberacaoId, veiculoId, freteMotoristaPad
               onBlur={buscarDadosPorPlaca}
               className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm" />
           </div>
-          <Field label="Modelo de Carreta*" value={form.nomeDescricao} onChange={(v: string) => set('nomeDescricao', v)} />
+          {isAdmin ? (
+            <Field label="Modelo de Carreta*" value={form.nomeDescricao} onChange={(v: string) => set('nomeDescricao', v)} suggestions={modelos} />
+          ) : (
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Modelo de Carreta*</label>
+              <select value={form.nomeDescricao ?? ''} onChange={(e) => set('nomeDescricao', e.target.value)}
+                className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm">
+                <option value="">Selecione o modelo</option>
+                {/* Mantém o valor atual mesmo se ainda não estiver na lista (ex: preenchido pela placa). */}
+                {[...new Set([...(form.nomeDescricao ? [form.nomeDescricao] : []), ...modelos])].map((m) => <option key={m} value={m}>{m}</option>)}
+              </select>
+            </div>
+          )}
           <Field label="Qtde Fardos*" type="number" value={form.qtdFardos} onChange={(v: string) => set('qtdFardos', parseInt(v))} />
           <Field label="Peso carregado (t)" type="number" value={form.pesoCarregado} onChange={(v: string) => set('pesoCarregado', v)} placeholder="Ex: 36,5 (NF/balança)" />
           <Field label="Frete Motorista (R$/t)*" type="number" value={form.freteMotorista} onChange={(v: string) => set('freteMotorista', parseFloat(v))} />
@@ -185,16 +229,58 @@ export default function VeiculoModal({ liberacaoId, veiculoId, freteMotoristaPad
           </button>
         </div>
       </div>
+
+      <EscolhaModal
+        isOpen={!!motoristaExistente}
+        title={motoristaExistente?.etapa === 'atualizar' ? 'É uma atualização de dados?' : 'Motorista já existe no sistema'}
+        loading={mutation.isPending}
+        onClose={() => setMotoristaExistente(null)}
+        acoes={motoristaExistente?.etapa === 'atualizar'
+          ? [{ label: 'Não, cadastrar como novo motorista', variante: 'secundaria', onClick: () => salvarComDecisao({ acao: 'novo' }) }]
+          : [{ label: 'Não', variante: 'secundaria', onClick: () => setMotoristaExistente((m) => m && { ...m, etapa: 'atualizar' }) }]}
+      >
+        {motoristaExistente?.etapa === 'atualizar' ? (
+          <p>
+            Os dados digitados (<strong>{form.motoristaNome}</strong> · {form.motoristaTelefone}{form.motoristaCpf ? ` · CPF ${form.motoristaCpf}` : ''})
+            são uma atualização do cadastro do motorista abaixo? Se sim, todos os veículos dele passam a usar os dados novos.
+          </p>
+        ) : (
+          <p>Já existe motorista parecido com <strong>{form.motoristaNome}</strong> cadastrado no sistema. Deseja usar este cadastro?</p>
+        )}
+        <div className="mt-3 divide-y rounded-lg border">
+          {motoristaExistente?.candidatos.map((m) => (
+            <div key={`${m.nome}|${m.telefone}|${m.cpf}`} className="flex items-center justify-between gap-3 px-3 py-2">
+              <div className="min-w-0">
+                <p className="font-medium text-gray-800 truncate">{m.nome}</p>
+                <p className="text-xs text-gray-500">Tel. {m.telefone}{m.cpf ? ` · CPF ${m.cpf}` : ' · sem CPF'}</p>
+              </div>
+              {motoristaExistente.etapa === 'atualizar' ? (
+                <button type="button" onClick={() => salvarComDecisao({ acao: 'atualizar', alvo: m })} disabled={mutation.isPending}
+                  className="shrink-0 rounded-lg bg-ui-primary px-3 py-1 text-xs font-semibold text-white hover:bg-ui-primary-hover disabled:opacity-50">
+                  Sim, atualizar este
+                </button>
+              ) : (
+                <button type="button" onClick={() => usarMotorista(m)} disabled={mutation.isPending}
+                  className="shrink-0 rounded-lg bg-ui-primary px-3 py-1 text-xs font-semibold text-white hover:bg-ui-primary-hover disabled:opacity-50">
+                  Sim, usar este
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      </EscolhaModal>
     </div>
   );
 }
 
-function Field({ label, value, onChange, onBlur, type = 'text', placeholder }: any) {
+function Field({ label, value, onChange, onBlur, type = 'text', placeholder, suggestions }: any) {
+  const listId = suggestions ? `sugestoes-${label}` : undefined;
   return (
     <div>
       <label className="block text-xs text-gray-500 mb-1">{label}</label>
-      <input type={type} value={value ?? ''} onChange={(e) => onChange(e.target.value)} onBlur={onBlur} placeholder={placeholder}
+      <input type={type} value={value ?? ''} onChange={(e) => onChange(e.target.value)} onBlur={onBlur} placeholder={placeholder} list={listId}
         className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm" />
+      {suggestions && <datalist id={listId}>{suggestions.map((item: string) => <option key={item} value={item} />)}</datalist>}
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import prisma from '../database/prisma';
 import { AppError } from '../middleware/errorHandler';
 import { AuthRequest } from '../middleware/auth';
+import { normalizar, resolverNomeModelo } from '../services/cadastros-duplicados';
 
 const schema = z.object({
   nomeDescricao: z.string().min(3),
@@ -55,12 +56,20 @@ export async function buscarPorId(req: AuthRequest, res: Response) {
 
 export async function criar(req: AuthRequest, res: Response) {
   const data = schema.parse(req.body);
+  data.nomeDescricao = await resolverNomeModelo(data.nomeDescricao, req.user?.perfil === 'ADMIN');
   const modelo = await prisma.modeloCarreta.create({ data });
   return res.status(201).json(modelo);
 }
 
 export async function atualizar(req: AuthRequest, res: Response) {
   const data = schema.partial().parse(req.body);
+  if (data.nomeDescricao) {
+    const atual = await prisma.modeloCarreta.findUnique({ where: { id: parseInt(req.params.id) }, select: { nomeDescricao: true } });
+    if (!atual) throw new AppError('Modelo não encontrado', 404);
+    if (normalizar(data.nomeDescricao) !== normalizar(atual.nomeDescricao)) {
+      data.nomeDescricao = await resolverNomeModelo(data.nomeDescricao, req.user?.perfil === 'ADMIN');
+    }
+  }
   const modelo = await prisma.modeloCarreta.update({
     where: { id: parseInt(req.params.id) },
     data,

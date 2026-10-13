@@ -6,6 +6,8 @@ export class AppError extends Error {
     public message: string,
     public statusCode: number = 400,
     public code?: string,
+    // Dados extras para o frontend decidir o que fazer (ex: cadastros parecidos).
+    public details?: unknown,
   ) {
     super(message);
     this.name = 'AppError';
@@ -23,6 +25,7 @@ export function errorHandler(
       error: {
         code: err.code || 'ERROR',
         message: err.message,
+        ...(err.details !== undefined && { details: err.details }),
       },
     });
   }

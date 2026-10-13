@@ -8,6 +8,10 @@ import toast from 'react-hot-toast';
 import { Link } from 'react-router-dom';
 import { ArrowLeftIcon, PencilSquareIcon, PlusIcon, TrashIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import PageHeader from '@/components/ui/PageHeader';
+import { useAuthStore } from '@/stores/auth.store';
+
+// Catálogo padrão de modelos — só ADMIN pode usar um que ainda não exista no sistema.
+const MODELOS_PADRAO = ['LS GRANELEIRO', 'LS SIDER', 'BITREM', 'VANDERLEIA', 'VANDERLEIA SIDER', '4º EIXOS', '4º EIXOS SIDER', 'RODOTREM', 'RODOTREM SIDER', 'TRUCK', 'TRUCK SIDER', 'BITRUCK', 'BITRUCK SIDER'];
 
 const modeloSchema = z.object({
   nomeDescricao: z.string().min(1, 'Modelo é obrigatório'),
@@ -38,6 +42,10 @@ export default function ModelosPage() {
   });
 
   const modelos = Array.isArray(response) ? response : response?.data || [];
+  const isAdmin = useAuthStore((s) => s.user?.perfil) === 'ADMIN';
+  const modelosExistentes: string[] = [...new Set<string>(modelos.map((m: any) => m.nomeDescricao).filter(Boolean))];
+  // Na edição mantém o modelo atual na lista, mesmo que esteja fora do catálogo.
+  const opcoesModelo = [...new Set([...(isAdmin ? MODELOS_PADRAO : []), ...modelosExistentes, ...(editando?.nomeDescricao ? [editando.nomeDescricao] : [])])].sort();
 
   const salvar = useMutation({
     mutationFn: (data: ModeloFormData) => editando ? api.put(`/modelos/${editando.id}`, data) : api.post('/modelos', data),
@@ -154,19 +162,7 @@ export default function ModelosPage() {
                   <select {...register('nomeDescricao')}
                     className={`w-full border ${errors.nomeDescricao ? 'border-red-500' : 'border-gray-200'} rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500`}>
                     <option value="">Selecione um modelo...</option>
-                    <option value="LS GRANELEIRO">LS GRANELEIRO</option>
-                    <option value="LS SIDER">LS SIDER</option>
-                    <option value="BITREM">BITREM</option>
-                    <option value="VANDERLEIA">VANDERLEIA</option>
-                    <option value="VANDERLEIA SIDER">VANDERLEIA SIDER</option>
-                    <option value="4º EIXOS">4º EIXOS</option>
-                    <option value="4º EIXOS SIDER">4º EIXOS SIDER</option>
-                    <option value="RODOTREM">RODOTREM</option>
-                    <option value="RODOTREM SIDER">RODOTREM SIDER</option>
-                    <option value="TRUCK">TRUCK</option>
-                    <option value="TRUCK SIDER">TRUCK SIDER</option>
-                    <option value="BITRUCK">BITRUCK</option>
-                    <option value="BITRUCK SIDER">BITRUCK SIDER</option>
+                    {opcoesModelo.map((m) => <option key={m} value={m}>{m}</option>)}
                   </select>
                   {errors.nomeDescricao && <p className="text-[10px] text-red-500 mt-1">{errors.nomeDescricao.message}</p>}
                 </div>

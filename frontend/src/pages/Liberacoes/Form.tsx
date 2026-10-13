@@ -1,12 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/stores/auth.store';
+import EscolhaModal from '@/components/EscolhaModal';
 
 const liberacaoSchema = z.object({
   instrucao: z.string().min(1, 'Instrução é obrigatória'),
@@ -33,10 +34,14 @@ export default function LiberacaoForm() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const isEdit = !!id;
-  // Só ADMIN cadastra filial nova digitando; os demais escolhem uma existente.
+  // Só ADMIN cadastra cliente/filial/destino/origem novos digitando; os demais
+  // escolhem um existente. Local de coleta é livre, com aviso de parecido.
   const isAdmin = useAuthStore((s) => s.user?.perfil) === 'ADMIN';
+  // Backend achou local de coleta parecido com o digitado (LOCAL_COLETA_SIMILAR).
+  const [localSimilar, setLocalSimilar] = useState<{ valor: string; similares: string[]; etapa: 'usar' | 'confirmar' } | null>(null);
+  const ultimoEnvio = useRef<any>(null);
 
-  const { register, handleSubmit, reset, watch, formState: { errors } } = useForm<LiberacaoFormData>({
+  const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<LiberacaoFormData>({
     resolver: zodResolver(liberacaoSchema) as any,
     defaultValues: {
       tipoFardo: 'FARDAO',
@@ -80,19 +85,38 @@ export default function LiberacaoForm() {
   }, [editData, isFetchedAfterMount, referencias, reset]);
 
   const mutation = useMutation({
-    mutationFn: (data: LiberacaoFormData) => isEdit ? api.put(`/liberacoes/${id}`, data) : api.post('/liberacoes', data),
+    mutationFn: (data: any) => isEdit ? api.put(`/liberacoes/${id}`, data) : api.post('/liberacoes', data),
     onSuccess: (res) => {
       toast.success(isEdit ? 'Liberação atualizada' : 'Liberação criada');
       qc.invalidateQueries({ queryKey: ['liberacoes'] });
       qc.invalidateQueries({ queryKey: ['liberacao', String(res.data.id)] });
       navigate(`/liberacoes/${res.data.id}`);
     },
-    onError: (e: any) => toast.error(e?.response?.data?.error?.message || 'Erro ao salvar'),
+    onError: (e: any) => {
+      const erro = e?.response?.data?.error;
+      if (erro?.code === 'LOCAL_COLETA_SIMILAR') {
+        setLocalSimilar({ ...erro.details, etapa: 'usar' });
+        return;
+      }
+      toast.error(erro?.message || 'Erro ao salvar');
+    },
   });
 
   const onSubmit = (data: any) => {
+    ultimoEnvio.current = data;
     mutation.mutate(data);
   };
+
+  function usarLocalExistente(nome: string) {
+    setValue('localColetaNome', nome);
+    setLocalSimilar(null);
+    onSubmit({ ...ultimoEnvio.current, localColetaNome: nome });
+  }
+
+  function criarLocalMesmoAssim() {
+    setLocalSimilar(null);
+    mutation.mutate({ ...ultimoEnvio.current, confirmarLocalColetaSimilar: true });
+  }
 
 
   return (
@@ -107,21 +131,10 @@ export default function LiberacaoForm() {
           <h2 className="text-sm font-semibold text-gray-700 mb-4 pb-2 border-b">Informações Básicas</h2>
           <div className="grid grid-cols-2 gap-4">
             <Field label="Instrução*" {...register('instrucao')} error={errors.instrucao?.message} placeholder="S07453-MÃE-JAN-01" />
-            <Field label="Cliente*" {...register('clienteNome')} error={errors.clienteNome?.message} placeholder="Digite o cliente" suggestions={referencias?.clientes} />
-            {isAdmin ? (
-              <Field label="Filial Embarcadora*" {...register('filialNome')} error={errors.filialNome?.message} placeholder="Digite a filial" suggestions={referencias?.filiais} />
-            ) : (
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">Filial Embarcadora*</label>
-                <select {...register('filialNome')} className={`w-full border ${errors.filialNome ? 'border-red-500' : 'border-gray-200'} rounded px-2 py-1.5 text-sm`}>
-                  <option value="">Selecione a filial</option>
-                  {(referencias?.filiais ?? []).map((item: string) => <option key={item} value={item}>{item}</option>)}
-                </select>
-                {errors.filialNome && <p className="text-[10px] text-red-500 mt-0.5">{errors.filialNome.message}</p>}
-              </div>
-            )}
-            <Field label="Destino*" {...register('destinoNome')} error={errors.destinoNome?.message} placeholder="Digite o destino" suggestions={referencias?.destinos} />
-            <Field label="Origem*" {...register('origemNome')} error={errors.origemNome?.message} placeholder="Digite a origem" suggestions={referencias?.origens} />
+            <CampoReferencia label="Cliente*" {...register('clienteNome')} error={errors.clienteNome?.message} placeholder="Digite o cliente" opcoes={referencias?.clientes} livre={isAdmin} />
+            <CampoReferencia label="Filial Embarcadora*" {...register('filialNome')} error={errors.filialNome?.message} placeholder="Digite a filial" opcoes={referencias?.filiais} livre={isAdmin} />
+            <CampoReferencia label="Destino*" {...register('destinoNome')} error={errors.destinoNome?.message} placeholder="Digite o destino" opcoes={referencias?.destinos} livre={isAdmin} />
+            <CampoReferencia label="Origem*" {...register('origemNome')} error={errors.origemNome?.message} placeholder="Digite a origem" opcoes={referencias?.origens} livre={isAdmin} />
             <Field label="Local de Coleta*" {...register('localColetaNome')} error={errors.localColetaNome?.message} placeholder="Digite o local de coleta" suggestions={referencias?.locaisColeta} />
           </div>
         </section>
@@ -166,6 +179,41 @@ export default function LiberacaoForm() {
           </button>
         </div>
       </form>
+
+      <EscolhaModal
+        isOpen={!!localSimilar}
+        title={localSimilar?.etapa === 'confirmar' ? 'Criar novo local de coleta?' : 'Local de coleta já existe'}
+        loading={mutation.isPending}
+        onClose={() => setLocalSimilar(null)}
+        acoes={localSimilar?.etapa === 'confirmar'
+          ? [
+            { label: 'Voltar', variante: 'secundaria', onClick: () => setLocalSimilar((l) => l && { ...l, etapa: 'usar' }) },
+            { label: 'Sim, criar novo', onClick: criarLocalMesmoAssim },
+          ]
+          : [{ label: 'Não, é outro local', variante: 'secundaria', onClick: () => setLocalSimilar((l) => l && { ...l, etapa: 'confirmar' }) }]}
+      >
+        {localSimilar?.etapa === 'confirmar' ? (
+          <p>
+            Será criado um novo local de coleta <strong>{localSimilar.valor}</strong>, semelhante a{' '}
+            <strong>{localSimilar.similares.join(', ')}</strong>, que já existe no sistema. Confirma o cadastro?
+          </p>
+        ) : (
+          <>
+            <p>Já existe local de coleta parecido com <strong>{localSimilar?.valor}</strong>. Deseja usar o cadastro existente?</p>
+            <div className="mt-3 divide-y rounded-lg border">
+              {localSimilar?.similares.map((item) => (
+                <div key={item} className="flex items-center justify-between gap-3 px-3 py-2">
+                  <span className="font-medium text-gray-800">{item}</span>
+                  <button type="button" onClick={() => usarLocalExistente(item)} disabled={mutation.isPending}
+                    className="rounded-lg bg-ui-primary px-3 py-1 text-xs font-semibold text-white hover:bg-ui-primary-hover disabled:opacity-50">
+                    Sim, usar este
+                  </button>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </EscolhaModal>
     </div>
   );
 }
@@ -191,6 +239,24 @@ const Field = React.forwardRef(({ label, error, type = 'text', suggestions, ...p
 });
 
 Field.displayName = 'Field';
+
+// Campo de cadastro: digitação livre (com sugestões) para quem pode criar
+// dado novo; lista fechada para os demais.
+const CampoReferencia = React.forwardRef(({ label, error, opcoes, livre, placeholder, ...props }: any, ref) => {
+  if (livre) return <Field ref={ref} label={label} error={error} placeholder={placeholder} suggestions={opcoes} {...props} />;
+  return (
+    <div>
+      <label className="block text-xs text-gray-500 mb-1">{label}</label>
+      <select ref={ref} {...props} className={`w-full border ${error ? 'border-red-500' : 'border-gray-200'} rounded px-2 py-1.5 text-sm`}>
+        <option value="">Selecione...</option>
+        {(opcoes ?? []).map((item: string) => <option key={item} value={item}>{item}</option>)}
+      </select>
+      {error && <p className="text-[10px] text-red-500 mt-0.5">{error}</p>}
+    </div>
+  );
+});
+
+CampoReferencia.displayName = 'CampoReferencia';
 
 // Margem da operação: (frete empresa − frete motorista) ÷ 100, ambos em R$/t.
 function MargemPrevia({ empresa, motorista }: { empresa: unknown; motorista: unknown }) {
