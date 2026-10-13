@@ -314,9 +314,10 @@ export async function atualizar(req: AuthRequest, res: Response) {
       finalizadoEm: data.status === undefined || data.status === atual.status
         ? undefined
         : data.status === StatusVeiculo.FINALIZADO ? new Date() : null,
-      dataAgendamento: data.dataAgendamento ? new Date(data.dataAgendamento) : undefined,
-      dataCarregamento: data.dataCarregamento ? new Date(data.dataCarregamento) : undefined,
-      dataDescarga: data.dataDescarga ? new Date(data.dataDescarga) : undefined,
+      // null limpa a data; ausente mantém a atual.
+      dataAgendamento: data.dataAgendamento ? new Date(data.dataAgendamento) : data.dataAgendamento === null ? null : undefined,
+      dataCarregamento: data.dataCarregamento ? new Date(data.dataCarregamento) : data.dataCarregamento === null ? null : undefined,
+      dataDescarga: data.dataDescarga ? new Date(data.dataDescarga) : data.dataDescarga === null ? null : undefined,
     },
     include: { modeloCarreta: true },
   });

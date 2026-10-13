@@ -109,6 +109,22 @@ export default function LiberacaoDetalhe() {
     },
   });
 
+  const [salvandoAgendamentoId, setSalvandoAgendamentoId] = useState<number | null>(null);
+
+  const atualizarAgendamentoVeiculo = useMutation({
+    mutationFn: ({ veiculoId, dataAgendamento }: { veiculoId: number; dataAgendamento: string | null }) =>
+      api.put(`/veiculos/${veiculoId}`, { dataAgendamento }),
+    onSuccess: () => {
+      toast.success('Agendamento do veículo atualizado');
+      qc.invalidateQueries({ queryKey: ['liberacao', id] });
+      setSalvandoAgendamentoId(null);
+    },
+    onError: () => {
+      toast.error('Erro ao atualizar agendamento do veículo');
+      setSalvandoAgendamentoId(null);
+    },
+  });
+
   const deletarLiberacao = useMutation({
     mutationFn: () => api.delete(`/liberacoes/${id}`),
     onSuccess: () => {
@@ -339,6 +355,17 @@ export default function LiberacaoDetalhe() {
                   </select>
                 </div>
 
+                {/* Agendamento (data + hora) */}
+                <AgendamentoVeiculo
+                  key={`${v.id}-${v.dataAgendamento ?? ''}`}
+                  dataAgendamento={v.dataAgendamento}
+                  salvando={salvandoAgendamentoId === v.id}
+                  onSalvar={(dataAgendamento) => {
+                    setSalvandoAgendamentoId(v.id);
+                    atualizarAgendamentoVeiculo.mutate({ veiculoId: v.id, dataAgendamento });
+                  }}
+                />
+
                 {/* Fardos + Frete */}
                 <div className="text-right">
                   <p className="text-sm font-bold text-gray-900">{v.qtdFardos} fardos</p>
@@ -542,6 +569,49 @@ export default function LiberacaoDetalhe() {
         onConfirm={() => deletarLiberacao.mutate()}
         onCancel={() => setConfirmDelete(null)}
       />
+    </div>
+  );
+}
+
+const doisDigitos = (n: number) => String(n).padStart(2, '0');
+
+// Data e hora do agendamento, no fuso do navegador (Brasília na operação).
+// Salva quando os dois campos estão preenchidos; limpar os dois remove o agendamento.
+function AgendamentoVeiculo({ dataAgendamento, salvando, onSalvar }: {
+  dataAgendamento?: string | null;
+  salvando: boolean;
+  onSalvar: (dataAgendamento: string | null) => void;
+}) {
+  const atual = dataAgendamento ? new Date(dataAgendamento) : null;
+  const dataInicial = atual ? `${atual.getFullYear()}-${doisDigitos(atual.getMonth() + 1)}-${doisDigitos(atual.getDate())}` : '';
+  const horaInicial = atual ? `${doisDigitos(atual.getHours())}:${doisDigitos(atual.getMinutes())}` : '';
+  const [data, setData] = useState(dataInicial);
+  const [hora, setHora] = useState(horaInicial);
+
+  function salvar(novaData: string, novaHora: string) {
+    if (novaData === dataInicial && novaHora === horaInicial) return;
+    if (!novaData && !novaHora) return onSalvar(null);
+    if (!novaData || !novaHora) return;
+    onSalvar(new Date(`${novaData}T${novaHora}`).toISOString());
+  }
+
+  const incompleto = (!!data) !== (!!hora);
+  // Clicar em qualquer parte do campo abre o mini calendário / seletor de hora.
+  const abrirSeletor = (e: React.MouseEvent<HTMLInputElement>) => {
+    try { e.currentTarget.showPicker?.(); } catch { /* navegador sem suporte: segue com o ícone padrão */ }
+  };
+  return (
+    <div className="min-w-[236px]">
+      <label className="block text-[10px] text-gray-500 mb-1">Agendamento</label>
+      <div className="flex gap-1">
+        <input type="date" value={data} disabled={salvando}
+          onChange={(e) => setData(e.target.value)} onBlur={() => salvar(data, hora)} onClick={abrirSeletor}
+          className={`w-[136px] cursor-pointer border ${incompleto && !data ? 'border-amber-400' : 'border-gray-200'} rounded px-1.5 py-1 text-xs bg-white`} />
+        <input type="time" value={hora} disabled={salvando}
+          onChange={(e) => setHora(e.target.value)} onBlur={() => salvar(data, hora)} onClick={abrirSeletor}
+          className={`w-[96px] cursor-pointer border ${incompleto && !hora ? 'border-amber-400' : 'border-gray-200'} rounded px-1.5 py-1 text-xs bg-white`} />
+      </div>
+      {incompleto && <p className="mt-1 text-[10px] text-amber-600">Informe data e hora</p>}
     </div>
   );
 }
