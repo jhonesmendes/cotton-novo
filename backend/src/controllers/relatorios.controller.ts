@@ -68,8 +68,8 @@ interface Concluida {
 const arred = (v: number, casas = 2) => Math.round(v * 10 ** casas) / 10 ** casas;
 
 // Fretes em R$/t: faturamento = toneladas × frete empresa; custo = Σ (peso da
-// viagem × frete motorista da viagem). Margem (regra da operação) =
-// (frete empresa − frete motorista da liberação) ÷ 100.
+// viagem × frete motorista da viagem). Margem (regra da operação), em % =
+// (frete empresa − frete motorista da liberação) ÷ frete empresa × 100.
 export function financeiro(l: Pick<Concluida, 'freteEmpresa' | 'freteMotorista' | 'veiculos'>) {
   const comPeso = l.veiculos.filter((v) => v.pesoCarregado != null);
   const toneladas = comPeso.reduce((s, v) => s + v.pesoCarregado!, 0);
@@ -80,7 +80,7 @@ export function financeiro(l: Pick<Concluida, 'freteEmpresa' | 'freteMotorista' 
     faturamento,
     custoMotorista,
     resultado: faturamento - custoMotorista,
-    margem: l.freteMotorista == null ? null : (l.freteEmpresa - l.freteMotorista) / 100,
+    margem: l.freteMotorista == null || !l.freteEmpresa ? null : ((l.freteEmpresa - l.freteMotorista) / l.freteEmpresa) * 100,
     veiculosSemPeso: l.veiculos.length - comPeso.length,
   };
 }

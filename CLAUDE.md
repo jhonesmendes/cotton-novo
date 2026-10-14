@@ -113,8 +113,8 @@ SOLICITADO → FALTA_CONTRATAR → FALTA_AGENDAR → AGENDADO
   dia UTC — não converter fuso nelas.
 - **Fretes e peso**: `Liberacao.freteEmpresa` e `Liberacao.freteMotorista` são **R$/tonelada**;
   `Veiculo.freteMotorista` é o R$/t combinado naquela viagem (pré-preenchido com o da liberação) e
-  `Veiculo.pesoCarregado` o peso real em toneladas. Margem (regra da operação, literal) =
-  `(freteEmpresa − freteMotorista) ÷ 100`. Nos relatórios: faturamento = t × frete empresa;
+  `Veiculo.pesoCarregado` o peso real em toneladas. Margem (regra da operação, em %) =
+  `(freteEmpresa − freteMotorista) ÷ freteEmpresa × 100`. Nos relatórios: faturamento = t × frete empresa;
   custo = Σ (t da viagem × frete da viagem); veículos sem peso deixam os valores parciais.
 - **Cadastros novos** (`backend/src/services/cadastros-duplicados.ts`): cliente, filial embarcadora,
   destino, origem e modelo de carreta **novos** só ADMIN cria (403 `CADASTRO_SOMENTE_ADMIN`; os demais

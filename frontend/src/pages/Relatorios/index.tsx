@@ -19,7 +19,7 @@ interface OpcoesFiltro {
 }
 
 const CAMPOS_FILTRO = ['agrupamento', 'dataInicio', 'dataFim', 'clienteId', 'origemId', 'destinoId', 'terminalId', 'localColetaId', 'tipoFardo', 'fechamento', 'fardosMin', 'fardosMax', 'toneladasMin', 'toneladasMax'] as const;
-const margemFmt = (v: number | null | undefined) => (v == null ? '—' : v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+const margemFmt = (v: number | null | undefined) => (v == null ? '—' : `${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`);
 // Totais do relatório sem centavos (arredondados).
 const moeda = (v: number) => formatMoney(Math.round(v)).replace(/,00$/, '');
 
@@ -99,7 +99,7 @@ function exportarCsv(lista: LiberacaoConcluida[], periodo: { inicio: string; fim
     ['Toneladas', (l) => String(l.toneladas).replace('.', ',')],
     ['Frete empresa (R$/t)', (l) => String(l.freteEmpresa).replace('.', ',')],
     ['Frete motorista (R$/t)', (l) => (l.freteMotorista == null ? '' : String(l.freteMotorista).replace('.', ','))],
-    ['Margem', (l) => (l.margem == null ? '' : String(l.margem).replace('.', ','))],
+    ['Margem (%)', (l) => (l.margem == null ? '' : String(l.margem).replace('.', ','))],
     ['Faturamento (R$)', (l) => String(l.faturamento).replace('.', ',')],
     ['Custo motoristas (R$)', (l) => String(l.custoMotorista).replace('.', ',')],
     ['Resultado (R$)', (l) => String(l.resultado).replace('.', ',')],
@@ -319,7 +319,7 @@ export default function RelatoriosPage() {
             <Indicador titulo="Resultado" valor={moeda(atual.resultado)} detalhe="faturamento − custo motoristas">
               <Variacao atual={atual.resultado} anterior={anterior.resultado} />
             </Indicador>
-            <Indicador titulo="Margem média" valor={margemFmt(atual.margemMedia)} detalhe="(frete empresa − motorista) ÷ 100">
+            <Indicador titulo="Margem média" valor={margemFmt(atual.margemMedia)} detalhe="(frete empresa − motorista) ÷ frete empresa">
               <Variacao atual={atual.margemMedia} anterior={anterior.margemMedia} />
             </Indicador>
           </div>
@@ -527,7 +527,7 @@ export default function RelatoriosPage() {
                       <td className="px-3 py-2 text-right whitespace-nowrap" title={l.veiculosSemPeso ? `${l.veiculosSemPeso} veículo(s) sem peso` : undefined}>
                         {formatToneladas(l.toneladas)}{l.veiculosSemPeso > 0 && <span className="text-amber-600"> *</span>}
                       </td>
-                      <td className="px-3 py-2 text-right" title={l.freteMotorista != null ? `(${l.freteEmpresa} − ${l.freteMotorista}) ÷ 100` : 'sem frete motorista na liberação'}>{margemFmt(l.margem)}</td>
+                      <td className="px-3 py-2 text-right" title={l.freteMotorista != null ? `(${l.freteEmpresa} − ${l.freteMotorista}) ÷ ${l.freteEmpresa}` : 'sem frete motorista na liberação'}>{margemFmt(l.margem)}</td>
                       <td className="px-3 py-2 text-right whitespace-nowrap">{moeda(l.resultado)}</td>
                       <td className="px-3 py-2 text-xs">
                         {l.fechamentoManual ? (

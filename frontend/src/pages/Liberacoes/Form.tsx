@@ -258,15 +258,15 @@ const CampoReferencia = React.forwardRef(({ label, error, opcoes, livre, placeho
 
 CampoReferencia.displayName = 'CampoReferencia';
 
-// Margem da operação: (frete empresa − frete motorista) ÷ 100, ambos em R$/t.
+// Margem da operação, em %: (frete empresa − frete motorista) ÷ frete empresa, ambos em R$/t.
 function MargemPrevia({ empresa, motorista }: { empresa: unknown; motorista: unknown }) {
   const e = Number(empresa);
   const m = motorista === '' || motorista == null ? NaN : Number(motorista);
   if (!e || Number.isNaN(m)) return null;
   return (
     <p className="text-[11px] text-gray-500 mt-1">
-      Margem: <strong className="text-gray-700">{((e - m) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
-      <span className="ml-1">= ({e.toLocaleString('pt-BR')} − {m.toLocaleString('pt-BR')}) ÷ 100</span>
+      Margem: <strong className="text-gray-700">{(((e - m) / e) * 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%</strong>
+      <span className="ml-1">= ({e.toLocaleString('pt-BR')} − {m.toLocaleString('pt-BR')}) ÷ {e.toLocaleString('pt-BR')}</span>
     </p>
   );
 }

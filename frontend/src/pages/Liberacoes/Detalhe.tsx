@@ -214,9 +214,9 @@ export default function LiberacaoDetalhe() {
               <span className="block space-y-0.5">
                 <span className="block">Empresa {formatMoney(lib.freteEmpresa)}</span>
                 <span className="block">Motorista {lib.freteMotorista != null ? formatMoney(lib.freteMotorista) : '—'}</span>
-                {lib.freteMotorista != null && (
-                  <span className="block text-xs text-gray-500" title="(frete empresa − frete motorista) ÷ 100">
-                    Margem {((lib.freteEmpresa - lib.freteMotorista) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {lib.freteMotorista != null && lib.freteEmpresa > 0 && (
+                  <span className="block text-xs text-gray-500" title="(frete empresa − frete motorista) ÷ frete empresa">
+                    Margem {(((lib.freteEmpresa - lib.freteMotorista) / lib.freteEmpresa) * 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%
                   </span>
                 )}
               </span>
