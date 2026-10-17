@@ -117,6 +117,16 @@ model LocalColeta {
   liberacoes  Liberacao[]
   @@map("locais_coleta")
 }
+// Local de entrega da carga — cadastro livre, igual ao local de coleta.
+model LocalEntrega {
+  id          Int      @id @default(autoincrement())
+  nome        String   @unique
+  cidade      String?
+  estado      String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  liberacoes  Liberacao[]
+  @@map("locais_entrega")
+}
 model Terminal {
   id                     Int        @id @default(autoincrement())
   nome                   String     @unique
@@ -183,13 +193,16 @@ model Liberacao {
   destinoId      Int @map("destino_id")
   terminalId     Int @map("terminal_id")
   localColetaId  Int @map("local_coleta_id")
+  // Opcional: liberações anteriores ao campo não têm local de entrega.
+  localEntregaId Int? @map("local_entrega_id")
   // Campos diretos: a Liberação é a fonte de cadastro operacional.
   clienteNome    String? @map("cliente_nome")
   filialNome     String? @map("filial_nome")
   destinoNome    String? @map("destino_nome")
   origemNome     String? @map("origem_nome")
   localColetaNome String? @map("local_coleta_nome")
-  // R$ por tonelada. Margem = (freteEmpresa - freteMotorista) / 100.
+  localEntregaNome String? @map("local_entrega_nome")
+  // R$ por tonelada. Margem (%) = (freteEmpresa - freteMotorista) / freteEmpresa × 100.
   freteEmpresa   Float @map("frete_empresa")
   // R$ por tonelada combinado com o motorista — pré-preenche o frete de cada viagem.
   freteMotorista Float? @map("frete_motorista")
@@ -215,6 +228,7 @@ model Liberacao {
   destino  Destino  @relation(fields: [destinoId], references: [id])
   terminal Terminal @relation(fields: [terminalId], references: [id])
   localColeta LocalColeta @relation(fields: [localColetaId], references: [id])
+  localEntrega LocalEntrega? @relation(fields: [localEntregaId], references: [id])
   veiculos    Veiculo[]
   alertasLog  AlertaLog[]
   @@index([clienteId])

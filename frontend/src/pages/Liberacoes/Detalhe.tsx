@@ -223,6 +223,7 @@ export default function LiberacaoDetalhe() {
             ),
           },
           { label: 'Local de Coleta', value: lib.localColetaNome ?? lib.localColeta?.nome },
+          { label: 'Local de Entrega', value: lib.localEntregaNome ?? lib.localEntrega?.nome ?? '—' },
           { label: 'Tipo de Fardo', value: lib.tipoFardo },
           {
             label: 'Status',

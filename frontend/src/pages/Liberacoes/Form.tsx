@@ -18,6 +18,8 @@ const liberacaoSchema = z.object({
   destinoNome: z.string().min(2, 'Informe o destino'),
   origemNome: z.string().min(2, 'Informe a origem'),
   localColetaNome: z.string().min(2, 'Informe o local de coleta'),
+  // Opcional (liberações antigas não têm). Vazio = sem local de entrega.
+  localEntregaNome: z.string().trim().optional().nullable(),
   freteEmpresa: z.coerce.number().min(0.01, 'Deve ser maior que 0'),
   // Opcional (liberações antigas não têm). Vazio = null.
   freteMotorista: z.preprocess((v) => (v === '' || v == null || Number.isNaN(v) ? null : Number(v)), z.number().min(0, 'Não pode ser negativo').nullable()),
@@ -29,16 +31,24 @@ const liberacaoSchema = z.object({
 
 type LiberacaoFormData = z.infer<typeof liberacaoSchema>;
 
+// Locais livres (qualquer perfil cria), com aviso quando já existe um parecido.
+const LOCAIS = {
+  coleta: { rotulo: 'local de coleta', campo: 'localColetaNome', codigo: 'LOCAL_COLETA_SIMILAR', confirmar: 'confirmarLocalColetaSimilar' },
+  entrega: { rotulo: 'local de entrega', campo: 'localEntregaNome', codigo: 'LOCAL_ENTREGA_SIMILAR', confirmar: 'confirmarLocalEntregaSimilar' },
+} as const;
+type TipoLocal = keyof typeof LOCAIS;
+
 export default function LiberacaoForm() {
   const { id } = useParams<{ id?: string }>();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const isEdit = !!id;
   // Só ADMIN cadastra cliente/filial/destino/origem novos digitando; os demais
-  // escolhem um existente. Local de coleta é livre, com aviso de parecido.
+  // escolhem um existente. Locais de coleta e de entrega são livres, com aviso de parecido.
   const isAdmin = useAuthStore((s) => s.user?.perfil) === 'ADMIN';
-  // Backend achou local de coleta parecido com o digitado (LOCAL_COLETA_SIMILAR).
-  const [localSimilar, setLocalSimilar] = useState<{ valor: string; similares: string[]; etapa: 'usar' | 'confirmar' } | null>(null);
+  // Backend achou local de coleta/entrega parecido com o digitado (LOCAL_COLETA_SIMILAR / LOCAL_ENTREGA_SIMILAR).
+  const [localSimilar, setLocalSimilar] = useState<{ tipo: TipoLocal; valor: string; similares: string[]; etapa: 'usar' | 'confirmar' } | null>(null);
+  const rotuloLocal = localSimilar ? LOCAIS[localSimilar.tipo].rotulo : '';
   const ultimoEnvio = useRef<any>(null);
 
   const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<LiberacaoFormData>({
@@ -80,6 +90,7 @@ export default function LiberacaoForm() {
         origemNome: editData.origemNome ?? editData.terminal?.nome ?? '',
         destinoNome: editData.destinoNome ?? editData.destino?.nome ?? '',
         localColetaNome: editData.localColetaNome ?? editData.localColeta?.nome ?? '',
+        localEntregaNome: editData.localEntregaNome ?? editData.localEntrega?.nome ?? '',
       });
     }
   }, [editData, isFetchedAfterMount, referencias, reset]);
@@ -94,8 +105,9 @@ export default function LiberacaoForm() {
     },
     onError: (e: any) => {
       const erro = e?.response?.data?.error;
-      if (erro?.code === 'LOCAL_COLETA_SIMILAR') {
-        setLocalSimilar({ ...erro.details, etapa: 'usar' });
+      const tipo = (Object.keys(LOCAIS) as TipoLocal[]).find((t) => LOCAIS[t].codigo === erro?.code);
+      if (tipo) {
+        setLocalSimilar({ ...erro.details, tipo, etapa: 'usar' });
         return;
       }
       toast.error(erro?.message || 'Erro ao salvar');
@@ -108,14 +120,19 @@ export default function LiberacaoForm() {
   };
 
   function usarLocalExistente(nome: string) {
-    setValue('localColetaNome', nome);
+    if (!localSimilar) return;
+    const { campo } = LOCAIS[localSimilar.tipo];
+    setValue(campo, nome);
     setLocalSimilar(null);
-    onSubmit({ ...ultimoEnvio.current, localColetaNome: nome });
+    onSubmit({ ...ultimoEnvio.current, [campo]: nome });
   }
 
   function criarLocalMesmoAssim() {
+    if (!localSimilar) return;
+    const { confirmar } = LOCAIS[localSimilar.tipo];
     setLocalSimilar(null);
-    mutation.mutate({ ...ultimoEnvio.current, confirmarLocalColetaSimilar: true });
+    // Guarda a confirmação: se o outro local também for parecido, o reenvio não pergunta este de novo.
+    onSubmit({ ...ultimoEnvio.current, [confirmar]: true });
   }
 
 
@@ -136,6 +153,9 @@ export default function LiberacaoForm() {
             <CampoReferencia label="Destino*" {...register('destinoNome')} error={errors.destinoNome?.message} placeholder="Digite o destino" opcoes={referencias?.destinos} livre={isAdmin} />
             <CampoReferencia label="Origem*" {...register('origemNome')} error={errors.origemNome?.message} placeholder="Digite a origem" opcoes={referencias?.origens} livre={isAdmin} />
             <Field label="Local de Coleta*" {...register('localColetaNome')} error={errors.localColetaNome?.message} placeholder="Digite o local de coleta" suggestions={referencias?.locaisColeta} />
+            <div className="col-start-2">
+              <Field label="Local de Entrega" {...register('localEntregaNome')} error={errors.localEntregaNome?.message} placeholder="Digite o local de entrega" suggestions={referencias?.locaisEntrega} />
+            </div>
           </div>
         </section>
 
@@ -182,7 +202,7 @@ export default function LiberacaoForm() {
 
       <EscolhaModal
         isOpen={!!localSimilar}
-        title={localSimilar?.etapa === 'confirmar' ? 'Criar novo local de coleta?' : 'Local de coleta já existe'}
+        title={localSimilar?.etapa === 'confirmar' ? `Criar novo ${rotuloLocal}?` : `${rotuloLocal.charAt(0).toUpperCase()}${rotuloLocal.slice(1)} já existe`}
         loading={mutation.isPending}
         onClose={() => setLocalSimilar(null)}
         acoes={localSimilar?.etapa === 'confirmar'
@@ -194,12 +214,12 @@ export default function LiberacaoForm() {
       >
         {localSimilar?.etapa === 'confirmar' ? (
           <p>
-            Será criado um novo local de coleta <strong>{localSimilar.valor}</strong>, semelhante a{' '}
+            Será criado um novo {rotuloLocal} <strong>{localSimilar.valor}</strong>, semelhante a{' '}
             <strong>{localSimilar.similares.join(', ')}</strong>, que já existe no sistema. Confirma o cadastro?
           </p>
         ) : (
           <>
-            <p>Já existe local de coleta parecido com <strong>{localSimilar?.valor}</strong>. Deseja usar o cadastro existente?</p>
+            <p>Já existe {rotuloLocal} parecido com <strong>{localSimilar?.valor}</strong>. Deseja usar o cadastro existente?</p>
             <div className="mt-3 divide-y rounded-lg border">
               {localSimilar?.similares.map((item) => (
                 <div key={item} className="flex items-center justify-between gap-3 px-3 py-2">

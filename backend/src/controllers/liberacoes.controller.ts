@@ -21,6 +21,9 @@ const criarSchema = z.object({
   destinoNome: z.string().min(2).optional(),
   origemNome: z.string().min(2).optional(),
   localColetaNome: z.string().min(2).optional(),
+  localEntregaId: z.number().int().positive().optional(),
+  // Opcional; vazio = limpar o local de entrega.
+  localEntregaNome: z.string().trim().nullable().optional(),
   freteEmpresa: z.number().positive(),
   freteMotorista: z.number().nonnegative().nullable().optional(),
   totalFardos: z.number().int().positive(),
@@ -29,6 +32,7 @@ const criarSchema = z.object({
   observacao: z.string().optional(),
   // Usuário já foi avisado do local de coleta parecido e confirmou que é outro.
   confirmarLocalColetaSimilar: z.boolean().optional(),
+  confirmarLocalEntregaSimilar: z.boolean().optional(),
 });
 
 // Cada tipo de referência: campo texto na Liberação, FK correspondente e o model do cadastro.
@@ -38,6 +42,7 @@ const vinculosReferencia = {
   destinos: { campo: 'destinoNome', fk: 'destinoId', model: 'destino' },
   origens: { campo: 'origemNome', fk: 'terminalId', model: 'terminal' },
   locaisColeta: { campo: 'localColetaNome', fk: 'localColetaId', model: 'localColeta' },
+  locaisEntrega: { campo: 'localEntregaNome', fk: 'localEntregaId', model: 'localEntrega' },
 } as const;
 type TipoReferencia = keyof typeof vinculosReferencia;
 
@@ -47,6 +52,7 @@ const rotulosReferencia: Record<TipoReferencia, string> = {
   destinos: 'Destino',
   origens: 'Origem',
   locaisColeta: 'Local de coleta',
+  locaisEntrega: 'Local de entrega',
 };
 
 // Campos obrigatórios de cada model ao criar o cadastro só com o nome.
@@ -56,6 +62,7 @@ const dadosNovoCadastro: Record<TipoReferencia, () => Record<string, unknown>> =
   destinos: () => ({ estado: '--' }),
   origens: () => ({ tipoAcesso: 'EMAIL' }),
   locaisColeta: () => ({}),
+  locaisEntrega: () => ({}),
 };
 
 // Todos os valores já conhecidos de um tipo: cadastro, referência avulsa
@@ -76,21 +83,27 @@ async function valoresReferencia(tipo: TipoReferencia): Promise<string[]> {
 
 const mesmoValor = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
 
-function erroLocalColetaSimilar(valor: string, parecidos: string[]) {
+// Locais de coleta e de entrega são livres pra qualquer perfil, mas avisam
+// quando já existe um parecido.
+const tiposLocalLivre = ['locaisColeta', 'locaisEntrega'] as const;
+type TipoLocalLivre = (typeof tiposLocalLivre)[number];
+const ehLocalLivre = (tipo: string): tipo is TipoLocalLivre => (tiposLocalLivre as readonly string[]).includes(tipo);
+
+function erroLocalSimilar(tipo: TipoLocalLivre, valor: string, parecidos: string[]) {
   return new AppError(
-    `Já existe local de coleta parecido com "${valor}": ${parecidos.join(', ')}`,
+    `Já existe ${rotulosReferencia[tipo].toLowerCase()} parecido com "${valor}": ${parecidos.join(', ')}`,
     409,
-    'LOCAL_COLETA_SIMILAR',
+    tipo === 'locaisColeta' ? 'LOCAL_COLETA_SIMILAR' : 'LOCAL_ENTREGA_SIMILAR',
     { valor, similares: parecidos },
   );
 }
 
 // Cliente, filial, destino e origem novos só podem ser criados por ADMIN — os
 // demais perfis só escolhem um valor que já existe (pra não surgir "SORRISO-MT"
-// e "SORRISO - MT" como cadastros diferentes). Local de coleta é aberto a
-// todos, mas se já houver um parecido o usuário precisa confirmar
-// (`confirmarSimilar`) que quer mesmo criar outro.
-async function resolverCadastros(data: any, opcoes: { podeCriar: boolean; confirmarSimilar?: boolean }) {
+// e "SORRISO - MT" como cadastros diferentes). Locais de coleta e de entrega são
+// abertos a todos, mas se já houver um parecido o usuário precisa confirmar
+// (`confirmarSimilar` / `confirmarEntregaSimilar`) que quer mesmo criar outro.
+async function resolverCadastros(data: any, opcoes: { podeCriar: boolean; confirmarSimilar?: boolean; confirmarEntregaSimilar?: boolean }) {
   const resolver = async (tipo: TipoReferencia, id: number | undefined, nome: string | undefined) => {
     if (id) return id;
     const valor = nome?.trim();
@@ -109,9 +122,10 @@ async function resolverCadastros(data: any, opcoes: { podeCriar: boolean; confir
     const existentes = await valoresReferencia(tipo);
     const registrado = existentes.find((v) => mesmoValor(v, valor));
     if (!registrado) {
-      if (tipo === 'locaisColeta') {
+      if (ehLocalLivre(tipo)) {
+        const confirmado = tipo === 'locaisColeta' ? opcoes.confirmarSimilar : opcoes.confirmarEntregaSimilar;
         const parecidos = similares(valor, existentes);
-        if (parecidos.length && !opcoes.confirmarSimilar) throw erroLocalColetaSimilar(valor, parecidos);
+        if (parecidos.length && !confirmado) throw erroLocalSimilar(tipo, valor, parecidos);
       } else if (!opcoes.podeCriar) {
         throw new AppError(
           `${rotulosReferencia[tipo]} "${valor}" não está cadastrado(a). Selecione um da lista ou peça a um administrador para cadastrá-lo.`,
@@ -130,8 +144,13 @@ async function resolverCadastros(data: any, opcoes: { podeCriar: boolean; confir
     destinoId: await resolver('destinos', data.destinoId, data.destinoNome),
     terminalId: await resolver('origens', data.terminalId, data.origemNome),
     localColetaId: await resolver('locaisColeta', data.localColetaId, data.localColetaNome),
+    // Opcional: sem o campo = não mexe; vazio/null = limpa o local de entrega.
+    localEntregaId: data.localEntregaNome !== undefined && !data.localEntregaNome && !data.localEntregaId
+      ? ((data.localEntregaNome = null), null)
+      : await resolver('locaisEntrega', data.localEntregaId, data.localEntregaNome),
   };
 }
+
 
 export async function listar(req: AuthRequest, res: Response) {
   const {
@@ -191,6 +210,7 @@ export async function listar(req: AuthRequest, res: Response) {
         destino: { select: { id: true, nome: true } },
         terminal: { select: { id: true, nome: true } },
         localColeta: { select: { id: true, nome: true } },
+        localEntrega: { select: { id: true, nome: true } },
         veiculos: {
           select: {
             id: true, placa: true, status: true, qtdFardos: true,
@@ -224,7 +244,7 @@ export async function listar(req: AuthRequest, res: Response) {
 
 export async function referencias(_req: AuthRequest, res: Response) {
   const [liberacoes, cadastradas, veiculos, filiais, modelos] = await Promise.all([prisma.liberacao.findMany({
-    select: { clienteNome: true, filialNome: true, destinoNome: true, origemNome: true, localColetaNome: true },
+    select: { clienteNome: true, filialNome: true, destinoNome: true, origemNome: true, localColetaNome: true, localEntregaNome: true },
   }), prisma.referenciaCadastro.findMany({ select: { tipo: true, valor: true } }), prisma.veiculo.findMany({ include: { modeloCarreta: { select: { nomeDescricao: true } } } }),
   prisma.origem.findMany({ select: { nome: true } }), prisma.modeloCarreta.findMany({ select: { nomeDescricao: true } })]);
   // Filiais cadastradas (model Origem) também entram na lista, mesmo sem liberação — são as mesmas do filtro da tela de Liberações.
@@ -233,7 +253,7 @@ export async function referencias(_req: AuthRequest, res: Response) {
     [...new Set([...liberacoes.map((item) => item[campo]?.trim()), ...cadastradas.filter((item) => item.tipo === tipo).map((item) => item.valor)].filter(Boolean))].sort();
 
   return res.json({
-    clientes: valores('clienteNome', 'clientes'), filiais: valores('filialNome', 'filiais'), destinos: valores('destinoNome', 'destinos'), origens: valores('origemNome', 'origens'), locaisColeta: valores('localColetaNome', 'locaisColeta'),
+    clientes: valores('clienteNome', 'clientes'), filiais: valores('filialNome', 'filiais'), destinos: valores('destinoNome', 'destinos'), origens: valores('origemNome', 'origens'), locaisColeta: valores('localColetaNome', 'locaisColeta'), locaisEntrega: valores('localEntregaNome', 'locaisEntrega'),
     // Todos os modelos cadastrados (não só os usados em veículos), para os sem uso poderem ser excluídos.
     modelosCarreta: [...new Set(modelos.map((item) => item.nomeDescricao?.trim()).filter(Boolean))].sort(),
     motoristas: [...new Set(veiculos.map((item) => item.motoristaCpf ? `${item.motoristaNome} · CPF ${item.motoristaCpf}` : item.motoristaNome).filter(Boolean))].sort(),
@@ -248,21 +268,21 @@ function exigirAdminParaFiliais(req: AuthRequest, tipo: string) {
 
 export async function criarReferencia(req: AuthRequest, res: Response) {
   const data = z.object({
-    tipo: z.enum(['clientes', 'filiais', 'destinos', 'origens', 'locaisColeta']),
+    tipo: z.enum(['clientes', 'filiais', 'destinos', 'origens', 'locaisColeta', 'locaisEntrega']),
     valor: z.string().min(2),
-    // Usuário já foi avisado do local de coleta parecido e confirmou que é outro.
+    // Usuário já foi avisado do local de coleta/entrega parecido e confirmou que é outro.
     confirmarSimilar: z.boolean().optional(),
   }).parse(req.body);
-  if (data.tipo !== 'locaisColeta' && req.user?.perfil !== 'ADMIN') {
+  if (!ehLocalLivre(data.tipo) && req.user?.perfil !== 'ADMIN') {
     throw new AppError(`Somente administradores podem cadastrar ${rotulosReferencia[data.tipo].toLowerCase()}`, 403, 'CADASTRO_SOMENTE_ADMIN');
   }
   const valor = data.valor.trim();
   const existentes = await valoresReferencia(data.tipo);
   const igual = existentes.find((v) => mesmoValor(v, valor));
   if (igual) throw new AppError(`${rotulosReferencia[data.tipo]} "${igual}" já está cadastrado(a)`, 409, 'DUPLICATE');
-  if (data.tipo === 'locaisColeta' && !data.confirmarSimilar) {
+  if (ehLocalLivre(data.tipo) && !data.confirmarSimilar) {
     const parecidos = similares(valor, existentes);
-    if (parecidos.length) throw erroLocalColetaSimilar(valor, parecidos);
+    if (parecidos.length) throw erroLocalSimilar(data.tipo, valor, parecidos);
   }
   if (data.tipo === 'filiais') {
     await prisma.origem.create({ data: { nome: valor, localizacao: 'Pendente', estado: '--' } });
@@ -271,7 +291,7 @@ export async function criarReferencia(req: AuthRequest, res: Response) {
   return res.status(201).json(referencia);
 }
 
-const tiposExcluiveis = ['clientes', 'filiais', 'destinos', 'origens', 'locaisColeta', 'motoristas', 'modelosCarreta'] as const;
+const tiposExcluiveis = ['clientes', 'filiais', 'destinos', 'origens', 'locaisColeta', 'locaisEntrega', 'motoristas', 'modelosCarreta'] as const;
 
 // Motorista não tem tabela própria: vem dos veículos, listado como "NOME · CPF 123" (ou só "NOME").
 function filtroMotorista(valor: string): Prisma.VeiculoWhereInput {
@@ -393,7 +413,7 @@ export async function excluirReferencia(req: AuthRequest, res: Response) {
   let novoNome: string | undefined;
   if (body.substituto) {
     const dadosSubstituto: any = { [campo]: body.substituto };
-    novoId = (await resolverCadastros(dadosSubstituto, { podeCriar: true, confirmarSimilar: true }))[fk];
+    novoId = (await resolverCadastros(dadosSubstituto, { podeCriar: true, confirmarSimilar: true, confirmarEntregaSimilar: true }))[fk] ?? undefined;
     novoNome = dadosSubstituto[campo];
     if (entidadeAtual && novoId === entidadeAtual.id) {
       throw new AppError('O substituto deve ser diferente do item excluído', 400);
@@ -424,7 +444,7 @@ export async function excluirReferencia(req: AuthRequest, res: Response) {
 }
 
 export async function atualizarReferencia(req: AuthRequest, res: Response) {
-  const body = z.object({ tipo: z.enum(['clientes', 'filiais', 'destinos', 'origens', 'locaisColeta', 'modelosCarreta', 'motoristas']), atual: z.string().min(1), novo: z.string().min(2) }).parse(req.body);
+  const body = z.object({ tipo: z.enum(['clientes', 'filiais', 'destinos', 'origens', 'locaisColeta', 'locaisEntrega', 'modelosCarreta', 'motoristas']), atual: z.string().min(1), novo: z.string().min(2) }).parse(req.body);
   exigirAdminParaFiliais(req, body.tipo);
   if (body.tipo === 'modelosCarreta') {
     const resultado = await prisma.modeloCarreta.updateMany({ where: { nomeDescricao: body.atual }, data: { nomeDescricao: body.novo.trim() } });
@@ -482,6 +502,7 @@ export async function buscarPorId(req: AuthRequest, res: Response) {
       destino: true,
       terminal: true,
       localColeta: true,
+      localEntrega: true,
       veiculos: {
         include: {
           modeloCarreta: true,
@@ -538,9 +559,10 @@ export async function buscarPorId(req: AuthRequest, res: Response) {
 }
 
 export async function criar(req: AuthRequest, res: Response) {
-  const { confirmarLocalColetaSimilar, ...recebido } = criarSchema.parse(req.body);
-  const cadastros = await resolverCadastros(recebido, { podeCriar: req.user?.perfil === 'ADMIN', confirmarSimilar: confirmarLocalColetaSimilar });
-  if (Object.values(cadastros).some((valor) => !valor)) {
+  const { confirmarLocalColetaSimilar, confirmarLocalEntregaSimilar, ...recebido } = criarSchema.parse(req.body);
+  const cadastros = await resolverCadastros(recebido, { podeCriar: req.user?.perfil === 'ADMIN', confirmarSimilar: confirmarLocalColetaSimilar, confirmarEntregaSimilar: confirmarLocalEntregaSimilar });
+  const { localEntregaId: _opcional, ...obrigatorios } = cadastros;
+  if (Object.values(obrigatorios).some((valor) => !valor)) {
     throw new AppError('Preencha Cliente, Filial, Destino, Origem e Local de Coleta', 400);
   }
   const data: any = { ...recebido, ...cadastros };
@@ -569,7 +591,7 @@ export async function criar(req: AuthRequest, res: Response) {
   const localColeta = await prisma.localColeta.findUnique({ where: { id: data.localColetaId } });
   if (!localColeta) throw new AppError(`Local de Coleta com ID ${data.localColetaId} não encontrado`, 404, 'LOCAL_COLETA_NOT_FOUND');
 
-  const { clienteNome, filialNome, destinoNome, origemNome, localColetaNome, ...dadosLiberacao } = data;
+  const { clienteNome, filialNome, destinoNome, origemNome, localColetaNome, localEntregaNome, ...dadosLiberacao } = data;
   const liberacao = await prisma.liberacao.create({
     data: {
       ...dadosLiberacao,
@@ -578,6 +600,7 @@ export async function criar(req: AuthRequest, res: Response) {
       destinoNome: data.destinoNome,
       origemNome: data.origemNome,
       localColetaNome: data.localColetaNome,
+      localEntregaNome: data.localEntregaNome,
       dataLiberacao: new Date(data.dataLiberacao),
       dataColeta: new Date(data.dataColeta),
       deadline: new Date(data.deadline),
@@ -596,8 +619,8 @@ export async function criar(req: AuthRequest, res: Response) {
 
 export async function atualizar(req: AuthRequest, res: Response) {
   const { id } = req.params;
-  const { confirmarLocalColetaSimilar, ...recebido } = criarSchema.partial().parse(req.body);
-  const cadastros = await resolverCadastros(recebido, { podeCriar: req.user?.perfil === 'ADMIN', confirmarSimilar: confirmarLocalColetaSimilar });
+  const { confirmarLocalColetaSimilar, confirmarLocalEntregaSimilar, ...recebido } = criarSchema.partial().parse(req.body);
+  const cadastros = await resolverCadastros(recebido, { podeCriar: req.user?.perfil === 'ADMIN', confirmarSimilar: confirmarLocalColetaSimilar, confirmarEntregaSimilar: confirmarLocalEntregaSimilar });
   const data: any = { ...recebido, ...cadastros };
 
   // Validar se liberação existe
@@ -640,7 +663,7 @@ export async function atualizar(req: AuthRequest, res: Response) {
     where: { id: parseInt(id) },
     data: {
       ...(() => {
-        const { clienteNome, filialNome, destinoNome, origemNome, localColetaNome, ...dadosLiberacao } = data;
+        const { clienteNome, filialNome, destinoNome, origemNome, localColetaNome, localEntregaNome, ...dadosLiberacao } = data;
         return dadosLiberacao;
       })(),
       clienteNome: data.clienteNome,
@@ -648,6 +671,7 @@ export async function atualizar(req: AuthRequest, res: Response) {
       destinoNome: data.destinoNome,
       origemNome: data.origemNome,
       localColetaNome: data.localColetaNome,
+      localEntregaNome: data.localEntregaNome,
       dataLiberacao: data.dataLiberacao ? new Date(data.dataLiberacao) : undefined,
       dataColeta: data.dataColeta ? new Date(data.dataColeta) : undefined,
       deadline: data.deadline ? new Date(data.deadline) : undefined,
@@ -658,6 +682,7 @@ export async function atualizar(req: AuthRequest, res: Response) {
       destino: { select: { id: true, nome: true } },
       terminal: { select: { id: true, nome: true } },
       localColeta: { select: { id: true, nome: true } },
+      localEntrega: { select: { id: true, nome: true } },
     },
   });
 
@@ -705,6 +730,7 @@ export async function atualizarStatus(req: AuthRequest, res: Response) {
       destino: { select: { id: true, nome: true } },
       terminal: { select: { id: true, nome: true } },
       localColeta: { select: { id: true, nome: true } },
+      localEntrega: { select: { id: true, nome: true } },
     },
   });
 

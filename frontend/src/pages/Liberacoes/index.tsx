@@ -65,6 +65,8 @@ function CardLiberacao({ l }: { l: any }) {
         <dd className="truncate">{l.origemNome ?? l.terminal?.nome}</dd>
         <dt className="text-ui-text-muted">Coleta</dt>
         <dd className="truncate">{l.localColetaNome ?? l.localColeta?.nome}</dd>
+        <dt className="text-ui-text-muted">Entrega</dt>
+        <dd className="truncate">{l.localEntregaNome ?? l.localEntrega?.nome ?? '—'}</dd>
         <dt className="text-ui-text-muted">Destino</dt>
         <dd className="truncate">{l.destinoNome ?? l.destino?.nome}</dd>
       </dl>
@@ -187,6 +189,7 @@ export default function LiberacoesPage() {
                   <th className="px-4 py-3 text-left">Origem</th>
                   <th className="px-4 py-3 text-left">Local de Coleta</th>
                   <th className="px-4 py-3 text-left">Destino</th>
+                  <th className="px-4 py-3 text-left">Local de Entrega</th>
                   <th className="px-4 py-3 text-right">Total</th>
                   <th className="px-4 py-3 text-right">Saldo</th>
                   <th className="px-4 py-3 text-right">Deadline</th>
@@ -205,6 +208,7 @@ export default function LiberacoesPage() {
                     <td className="px-4 py-3 text-xs text-gray-500">{l.origemNome ?? l.terminal?.nome}</td>
                     <td className="px-4 py-3 text-xs text-gray-500">{l.localColetaNome ?? l.localColeta?.nome}</td>
                     <td className="px-4 py-3 text-xs text-gray-500">{l.destinoNome ?? l.destino?.nome}</td>
+                    <td className="px-4 py-3 text-xs text-gray-500">{l.localEntregaNome ?? l.localEntrega?.nome ?? '—'}</td>
                     <td className="px-4 py-3 text-right">{l.totalFardos}</td>
                     <td className="px-4 py-3 text-right font-semibold">{l.saldo}</td>
                     <td className="px-4 py-3 text-right text-xs">{formatDate(l.deadline)}</td>
