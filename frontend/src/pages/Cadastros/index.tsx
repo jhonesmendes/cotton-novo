@@ -1,12 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ClipboardDocumentCheckIcon, PencilSquareIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { ArrowDownTrayIcon, ClipboardDocumentCheckIcon, PencilSquareIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
 import PageHeader from '@/components/ui/PageHeader';
 import { useAuthStore } from '@/stores/auth.store';
 import EscolhaModal from '@/components/EscolhaModal';
+import { exportarXlsx } from '@/utils/exportarXlsx';
 
 // criaSomenteAdmin: só ADMIN cadastra item novo (os demais ainda podem corrigir o nome, salvo `somenteAdmin`).
 const grupos = [
@@ -25,6 +26,18 @@ const emUso = (u?: Uso) => !!u && u.liberacoes.length + u.veiculos.length + u.us
 const rotuloStatus = (s: string) => s.replace(/_/g, ' ').toLowerCase();
 
 const erroApi = (e: any, padrao: string) => e?.response?.data?.error?.message || padrao;
+
+// Baixa a lista de um quadro em .xlsx. Motorista vem como "NOME · CPF 123": separa em duas colunas.
+function exportarGrupo(key: string, label: string, itens: string[]) {
+  if (!itens.length) { toast.error('Nada para exportar'); return; }
+  const arquivo = `${key}_${new Date().toISOString().slice(0, 10)}`;
+  if (key === 'motoristas') {
+    const linhas = itens.map(item => { const m = item.match(/^(.*) · CPF (\S+)$/); return m ? [m[1], m[2]] : [item, '']; });
+    exportarXlsx(arquivo, label, ['Nome', 'CPF'], linhas);
+    return;
+  }
+  exportarXlsx(arquivo, label, [label], itens.map(item => [item]));
+}
 
 export default function CadastrosPage() {
   const qc = useQueryClient();
@@ -49,7 +62,7 @@ export default function CadastrosPage() {
   const confirmarExclusao = () => { if (exclusao) excluir.mutate({ tipo: exclusao.tipo, valor: exclusao.valor, ...(substituto && { substituto }) }); };
 
   return <div className="ui-page space-y-6"><div className="flex gap-4"><div className="p-3 rounded-ui-lg bg-indigo-100 text-ui-primary"><ClipboardDocumentCheckIcon className="h-6 w-6" /></div><PageHeader title="Revisão de Dados" description="Referências disponíveis para preenchimento nas liberações." /></div>
-    {isLoading ? <div className="p-10 text-center text-gray-400">Carregando...</div> : <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{grupos.map((grupo: any) => { const { key, label } = grupo; const itens: string[] = refs?.[key] ?? []; const manageTo: string | undefined = grupo.manageTo; const hint: string = grupo.hint ?? 'Dados usados nas liberações'; const editavel = !grupo.somenteAdmin || isAdmin; const adicionavel = editavel && !manageTo && !['modelosCarreta', 'motoristas'].includes(key) && (!grupo.criaSomenteAdmin || isAdmin); const excluivel = isAdmin; return <section key={key} className="overflow-hidden rounded-xl border bg-white"><header className="flex items-center justify-between border-b bg-gray-50 px-5 py-4"><div><h2 className="font-semibold">{label}</h2><p className="text-xs text-gray-500">{hint}</p></div><div className="flex gap-2 items-center">{manageTo && <Link to={manageTo} className="rounded-lg bg-ui-primary p-2 text-white hover:bg-ui-primary-hover" title={`Gerenciar ${label}`}><PlusIcon className="h-4 w-4" /></Link>}{adicionavel && <button onClick={() => abrir(key, label)} className="rounded-lg bg-ui-primary p-2 text-white hover:bg-ui-primary-hover" title={`Adicionar ${label}`}><PlusIcon className="h-4 w-4" /></button>}<span className="rounded-full bg-indigo-100 px-2.5 py-1 text-xs font-bold text-indigo-700">{itens.length}</span></div></header><div className="max-h-52 overflow-y-auto divide-y">{itens.map((item: string) => <div key={item} className="flex items-center justify-between px-5 py-3 text-sm"><span>{item}</span><div className="flex gap-1">{editavel && <button onClick={() => abrir(key, label, item)} className="text-ui-primary hover:bg-indigo-50 rounded p-1" title="Editar"><PencilSquareIcon className="h-4 w-4" /></button>}{excluivel && <button onClick={() => abrirExclusao(key, label, item, itens)} className="text-red-600 hover:bg-red-50 rounded p-1" title="Excluir"><TrashIcon className="h-4 w-4" /></button>}</div></div>)}</div></section>; })}</div>}
+    {isLoading ? <div className="p-10 text-center text-gray-400">Carregando...</div> : <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{grupos.map((grupo: any) => { const { key, label } = grupo; const itens: string[] = refs?.[key] ?? []; const manageTo: string | undefined = grupo.manageTo; const hint: string = grupo.hint ?? 'Dados usados nas liberações'; const editavel = !grupo.somenteAdmin || isAdmin; const adicionavel = editavel && !manageTo && !['modelosCarreta', 'motoristas'].includes(key) && (!grupo.criaSomenteAdmin || isAdmin); const excluivel = isAdmin; return <section key={key} className="overflow-hidden rounded-xl border bg-white"><header className="flex items-center justify-between border-b bg-gray-50 px-5 py-4"><div><h2 className="font-semibold">{label}</h2><p className="text-xs text-gray-500">{hint}</p></div><div className="flex gap-2 items-center"><button onClick={() => exportarGrupo(key, label, itens)} className="rounded-lg border border-gray-200 bg-white p-2 text-gray-600 hover:bg-gray-100" title={`Exportar ${label} (.xlsx)`}><ArrowDownTrayIcon className="h-4 w-4" /></button>{manageTo && <Link to={manageTo} className="rounded-lg bg-ui-primary p-2 text-white hover:bg-ui-primary-hover" title={`Gerenciar ${label}`}><PlusIcon className="h-4 w-4" /></Link>}{adicionavel && <button onClick={() => abrir(key, label)} className="rounded-lg bg-ui-primary p-2 text-white hover:bg-ui-primary-hover" title={`Adicionar ${label}`}><PlusIcon className="h-4 w-4" /></button>}<span className="rounded-full bg-indigo-100 px-2.5 py-1 text-xs font-bold text-indigo-700">{itens.length}</span></div></header><div className="max-h-52 overflow-y-auto divide-y">{itens.map((item: string) => <div key={item} className="flex items-center justify-between px-5 py-3 text-sm"><span>{item}</span><div className="flex gap-1">{editavel && <button onClick={() => abrir(key, label, item)} className="text-ui-primary hover:bg-indigo-50 rounded p-1" title="Editar"><PencilSquareIcon className="h-4 w-4" /></button>}{excluivel && <button onClick={() => abrirExclusao(key, label, item, itens)} className="text-red-600 hover:bg-red-50 rounded p-1" title="Excluir"><TrashIcon className="h-4 w-4" /></button>}</div></div>)}</div></section>; })}</div>}
     {modal && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-sm p-4" onMouseDown={() => setModal(null)}><div className="w-full max-w-md rounded-2xl bg-white shadow-2xl" onMouseDown={e => e.stopPropagation()}><div className="border-b px-6 py-4"><h2 className="text-lg font-bold">{modal.atual ? `Editar ${modal.label}` : `Adicionar ${modal.label}`}</h2><p className="mt-1 text-sm text-gray-500">{modal.tipo === 'motoristas' ? 'Aplicado a todos os veículos desse motorista. Para informar o CPF, use: NOME · CPF 12345678900' : modal.atual ? 'A alteração será aplicada às liberações vinculadas.' : 'O valor ficará disponível como sugestão.'}</p></div><div className="px-6 py-5"><label className="mb-1 block text-xs font-medium text-gray-600">Nome</label><input autoFocus value={valor} onChange={e => setValor(e.target.value)} onKeyDown={e => e.key === 'Enter' && confirmar()} className="w-full rounded-lg border px-3 py-2 outline-none focus:border-ui-primary focus:ring-2 focus:ring-indigo-100" /></div><div className="flex justify-end gap-3 px-6 pb-5"><button onClick={() => setModal(null)} className="rounded-lg border px-4 py-2 text-sm">Cancelar</button><button onClick={confirmar} disabled={salvar.isPending} className="rounded-lg bg-ui-primary px-4 py-2 text-sm font-semibold text-white hover:bg-ui-primary-hover">Salvar</button></div></div></div>}
     <EscolhaModal isOpen={!!similar} title={similar?.etapa === 'confirmar' ? `Criar novo ${rotuloLocal}?` : `${rotuloLocal.charAt(0).toUpperCase()}${rotuloLocal.slice(1)} já existe`} loading={salvar.isPending} onClose={() => setSimilar(null)}
       acoes={similar?.etapa === 'confirmar' ? [{ label: 'Voltar', variante: 'secundaria', onClick: () => setSimilar(s => s && { ...s, etapa: 'usar' }) }, { label: 'Sim, criar novo', onClick: criarMesmoAssim }] : [{ label: 'Não, é outro local', variante: 'secundaria', onClick: () => setSimilar(s => s && { ...s, etapa: 'confirmar' }) }]}>
