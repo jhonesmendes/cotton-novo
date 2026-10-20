@@ -13,6 +13,7 @@ import {
   excluirReferencia,
   usoReferencia,
   finalizarManual,
+  exportarViagens,
 } from '../controllers/liberacoes.controller';
 
 export const liberacoesRouter = Router();
@@ -25,6 +26,7 @@ liberacoesRouter.patch('/referencias', atualizarReferencia);
 liberacoesRouter.post('/referencias', criarReferencia);
 liberacoesRouter.get('/referencias/uso', usoReferencia);
 liberacoesRouter.delete('/referencias', requireRole('ADMIN'), excluirReferencia);
+liberacoesRouter.get('/viagens/exportar', exportarViagens);
 liberacoesRouter.get('/:id', buscarPorId);
 // Operador edita cargas (veículos, status) nas outras rotas, mas não
 // cria/edita a Liberação em si.

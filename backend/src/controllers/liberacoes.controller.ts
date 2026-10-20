@@ -776,3 +776,54 @@ export async function finalizarManual(req: AuthRequest, res: Response) {
 
   return res.json(atualizada);
 }
+
+// Datas "só dia" (dataLiberacao, dataColeta, deadline) ficam à meia-noite UTC:
+// usa o próprio dia UTC. Instantes (agendamento, carregamento...) vão no horário de Brasília.
+const dia = (d: Date | null) => (d ? d.toISOString().slice(0, 10).split('-').reverse().join('/') : '');
+const instante = (d: Date | null) => (d
+  ? d.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }).replace(',', '')
+  : '');
+const rotuloEnum = (v: string | null) => (v ? v.replace(/_/g, ' ') : '');
+
+// Todas as viagens (veículos) lançadas, uma por linha, com os dados da liberação —
+// exportado em .xlsx na tela Revisão de Dados.
+export async function exportarViagens(_req: AuthRequest, res: Response) {
+  const veiculos = await prisma.veiculo.findMany({
+    include: {
+      modeloCarreta: { select: { nomeDescricao: true } },
+      transportadora: { select: { nome: true } },
+      liberacao: {
+        include: {
+          cliente: { select: { nome: true } },
+          origem: { select: { nome: true } },
+          destino: { select: { nome: true } },
+          terminal: { select: { nome: true } },
+          localColeta: { select: { nome: true } },
+          localEntrega: { select: { nome: true } },
+        },
+      },
+    },
+    orderBy: [{ liberacao: { dataLiberacao: 'desc' } }, { liberacaoId: 'asc' }, { createdAt: 'asc' }],
+  });
+
+  const cabecalho = [
+    'Instrução', 'Status da liberação', 'Cliente', 'Filial embarcadora', 'Origem', 'Local de coleta', 'Destino', 'Local de entrega',
+    'Data da liberação', 'Data de coleta', 'Deadline', 'Tipo de fardo', 'Total de fardos (liberação)', 'Frete empresa (R$/t)', 'Frete motorista liberação (R$/t)',
+    'Placa', 'Tipo do veículo', 'Motorista', 'CPF', 'Telefone', 'Email', 'Transportadora',
+    'Status do veículo', 'SM', 'Rastreamento', 'Isca', 'Qtd. fardos', 'Peso carregado (t)', 'Frete motorista viagem (R$/t)',
+    'Agendamento', 'Carregamento', 'Descarga', 'Finalizado em', 'Observação do veículo', 'Lançado em',
+  ];
+  const linhas = veiculos.map((v) => {
+    const l = v.liberacao;
+    return [
+      l.instrucao, rotuloEnum(l.status), l.clienteNome ?? l.cliente?.nome, l.filialNome ?? l.origem?.nome, l.origemNome ?? l.terminal?.nome,
+      l.localColetaNome ?? l.localColeta?.nome, l.destinoNome ?? l.destino?.nome, l.localEntregaNome ?? l.localEntrega?.nome ?? '',
+      dia(l.dataLiberacao), dia(l.dataColeta), dia(l.deadline), rotuloEnum(l.tipoFardo), l.totalFardos, l.freteEmpresa, l.freteMotorista,
+      v.placa, v.modeloCarreta?.nomeDescricao ?? '', v.motoristaNome, v.motoristaCpf ?? '', v.motoristaTelefone, v.motoristaEmail ?? '', v.transportadora?.nome ?? '',
+      rotuloEnum(v.status), rotuloEnum(v.statusSm), rotuloEnum(v.statusRastreamento), v.numeroIsca ?? '', v.qtdFardos, v.pesoCarregado, v.freteMotorista,
+      instante(v.dataAgendamento), instante(v.dataCarregamento), instante(v.dataDescarga), instante(v.finalizadoEm), v.observacao ?? '', instante(v.createdAt),
+    ];
+  });
+
+  return res.json({ cabecalho, linhas });
+}
