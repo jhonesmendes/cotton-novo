@@ -1,4 +1,5 @@
 import { ReactNode, useState } from 'react';
+import Dica from '@/components/Dica';
 import { Bar, BarChart, Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { CheckCircleIcon, ExclamationTriangleIcon, ExclamationCircleIcon, ClockIcon } from '@heroicons/react/24/solid';
 
@@ -61,11 +62,11 @@ export function Kpi({ titulo, valor, sufixo, rotuloValor, secundario, historico,
       <p className="text-xs font-medium uppercase tracking-wide text-ui-text-muted">{titulo}</p>
       <p className={`mt-1 font-display text-3xl font-bold ${destaque === 'critico' && valor > 0 ? 'text-red-600' : 'text-ui-text'}`}>
         {num(valor)}{sufixo}
-        {rotuloValor && <span className="ml-2 font-sans text-sm font-medium text-ui-text-muted">{rotuloValor}</span>}
+        {rotuloValor && <span className="ml-2 font-sans text-sm font-medium text-ui-text-muted"><Dica termo="A_CARREGAR" valor={num(valor)}>{rotuloValor}</Dica></span>}
       </p>
       {secundario && (
         <p className="font-display text-lg font-semibold text-ui-text">
-          {num(secundario.valor)}<span className="ml-2 font-sans text-xs font-medium text-ui-text-muted">{secundario.rotulo}</span>
+          {num(secundario.valor)}<span className="ml-2 font-sans text-xs font-medium text-ui-text-muted"><Dica termo="A_PROGRAMAR" valor={num(secundario.valor)}>{secundario.rotulo}</Dica></span>
         </p>
       )}
       <div className="mt-1 min-h-[16px] text-xs text-ui-text-muted">

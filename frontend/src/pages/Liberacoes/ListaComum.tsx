@@ -1,5 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { formatPeso } from '@/utils/format';
+import Dica from '@/components/Dica';
+import { TermoCarga } from '@/utils/glossario';
 import { SITUACAO_LABELS, STATUS_LABELS, STATUS_LIBERACAO_CLASSES, SituacaoLiberacao, VeiculoStatus, isCarregado } from '@/utils/status';
 
 // Peças comuns da lista de liberações (tabela, cards e as variações por estilo).
@@ -97,26 +99,30 @@ export function PlacasChips({ l, max = 4 }: { l: any; max?: number }) {
 export function FaixaTotais({ t }: { t?: any }) {
   if (!t) return null;
   const n = (v: number) => v.toLocaleString('pt-BR');
-  const itens = [
+  // Passar o mouse num número mostra o que ele significa (utils/glossario.ts).
+  const itens: { termo?: TermoCarga; rotulo: string; valor: string; destaque?: boolean; alerta?: boolean; asterisco?: boolean }[] = [
     { rotulo: 'Liberações', valor: n(t.liberacoes) },
-    { rotulo: 'Total', valor: `${n(t.totalFardos)} fardos` },
-    { rotulo: 'Programado', valor: n(t.programado) },
-    { rotulo: 'Carregado', valor: n(t.carregado) },
-    { rotulo: 'A programar', valor: n(t.saldoProgramar), destaque: t.saldoProgramar > 0 },
-    { rotulo: 'A carregar', valor: n(t.saldoCarregar) },
-    { rotulo: 'Peso', valor: formatPeso(t.pesoTotal), dica: t.semPeso ? `${t.semPeso} liberação(ões) sem peso informado` : undefined },
-    { rotulo: 'Vencidas', valor: n(t.vencidas), alerta: t.vencidas > 0 },
+    { termo: 'TOTAL', rotulo: 'Total', valor: `${n(t.totalFardos)} fardos` },
+    { termo: 'PROGRAMADO', rotulo: 'Programado', valor: n(t.programado) },
+    { termo: 'CARREGADO', rotulo: 'Carregado', valor: n(t.carregado) },
+    { termo: 'A_PROGRAMAR', rotulo: 'A programar', valor: n(t.saldoProgramar), destaque: t.saldoProgramar > 0 },
+    { termo: 'A_CARREGAR', rotulo: 'A carregar', valor: n(t.saldoCarregar) },
+    { termo: 'PESO', rotulo: 'Peso', valor: formatPeso(t.pesoTotal), asterisco: t.semPeso > 0 },
+    { termo: 'VENCIDAS', rotulo: 'Vencidas', valor: n(t.vencidas), alerta: t.vencidas > 0 },
   ];
   return (
     <div className="flex flex-wrap gap-x-5 gap-y-2 border-b border-ui-border-subtle bg-ui-muted/40 px-5 py-3 text-xs">
-      {itens.map((i) => (
-        <div key={i.rotulo} title={i.dica}>
-          <span className="text-ui-text-muted">{i.rotulo} </span>
-          <span className={`font-semibold ${i.alerta ? 'text-red-600' : i.destaque ? 'text-orange-600' : 'text-ui-text'}`}>{i.valor}</span>
-          {i.dica && <span className="text-ui-text-muted"> *</span>}
-        </div>
-      ))}
+      {itens.map((i) => {
+        const conteudo = (
+          <>
+            <span className="text-ui-text-muted">{i.rotulo} </span>
+            <span className={`font-semibold ${i.alerta ? 'text-red-600' : i.destaque ? 'text-orange-600' : 'text-ui-text'}`}>{i.valor}</span>
+            {i.asterisco && <span className="text-ui-text-muted"> *</span>}
+          </>
+        );
+        const valorDica = i.asterisco ? `${i.valor} · ${t.semPeso} sem peso` : i.valor;
+        return <div key={i.rotulo}>{i.termo ? <Dica termo={i.termo} valor={valorDica}>{conteudo}</Dica> : conteudo}</div>;
+      })}
     </div>
   );
 }
-

@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import Dica from '@/components/Dica';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useEffect } from 'react';
 import { salvarFiltrosLista } from './navegacao';
@@ -45,12 +46,12 @@ function CardLiberacao({ l, onBuscar }: { l: any; onBuscar: Buscar }) {
           <p className="text-[11px] uppercase text-ui-text-muted">Total</p>
           <p className="text-sm">{l.totalFardos}</p>
         </div>
-        <div title="Fardos ainda sem caminhão">
-          <p className="text-[11px] uppercase text-ui-text-muted">A progr.</p>
+        <div>
+          <p className="text-[11px] uppercase text-ui-text-muted"><Dica termo="A_PROGRAMAR" valor={l.saldo}>A progr.</Dica></p>
           <p className="text-sm font-semibold">{l.saldo}</p>
         </div>
-        <div title="Fardos ainda não carregados (antes de MANIFESTADO)">
-          <p className="text-[11px] uppercase text-ui-text-muted">A carregar</p>
+        <div>
+          <p className="text-[11px] uppercase text-ui-text-muted"><Dica termo="A_CARREGAR" valor={l.saldoCarregar}>A carregar</Dica></p>
           <p className="text-sm">{l.saldoCarregar}</p>
         </div>
         <div>
@@ -186,8 +187,8 @@ export default function LiberacoesPage() {
                   <th className="px-4 py-3 text-left">Destino</th>
                   <th className="px-4 py-3 text-left">Entrega</th>
                   <th className="px-4 py-3 text-right">Total</th>
-                  <th className="px-4 py-3 text-right" title="Fardos ainda sem caminhão">A programar</th>
-                  <th className="px-4 py-3 text-right" title="Fardos ainda não carregados (antes de MANIFESTADO)">A carregar</th>
+                  <th className="px-4 py-3 text-right"><Dica termo="A_PROGRAMAR">A programar</Dica></th>
+                  <th className="px-4 py-3 text-right"><Dica termo="A_CARREGAR">A carregar</Dica></th>
                   <th className="px-4 py-3 text-right">Deadline</th>
                   <th className="px-4 py-3 text-right">Dias</th>
                   <th className="px-4 py-3 text-left">Status</th>

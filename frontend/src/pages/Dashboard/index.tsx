@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import Dica from '@/components/Dica';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowPathIcon, XMarkIcon } from '@heroicons/react/24/outline';
@@ -276,8 +277,8 @@ function TabelaCargas({ cargas }: { cargas: any[] }) {
             <th className="px-3 py-2 text-left">Cliente</th>
             <th className="px-3 py-2 text-left">Filial</th>
             <th className="px-3 py-2 text-right">Total</th>
-            <th className="px-3 py-2 text-right">A programar</th>
-            <th className="px-3 py-2 text-right">A carregar</th>
+            <th className="px-3 py-2 text-right"><Dica termo="A_PROGRAMAR">A programar</Dica></th>
+            <th className="px-3 py-2 text-right"><Dica termo="A_CARREGAR">A carregar</Dica></th>
             <th className="px-3 py-2 text-right">Deadline</th>
             <th className="px-3 py-2 text-left">Situação</th>
           </tr>

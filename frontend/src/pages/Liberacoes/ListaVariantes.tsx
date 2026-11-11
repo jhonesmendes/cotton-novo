@@ -1,4 +1,5 @@
 import { Fragment, useState } from 'react';
+import Dica from '@/components/Dica';
 import { Link, useNavigate } from 'react-router-dom';
 import { ChevronDownIcon, ChevronRightIcon, MapPinIcon, TruckIcon } from '@heroicons/react/24/outline';
 import BarraProgresso from '@/components/BarraProgresso';
@@ -48,9 +49,9 @@ export function GradeControle({ itens, onBuscar }: { itens: any[]; onBuscar: Bus
             <th className="px-3 py-2">Cliente</th>
             <th className="px-3 py-2">Rota</th>
             <th className="px-3 py-2">Coleta</th>
-            <th className="w-[200px] px-3 py-2">Carregado</th>
-            <th className="px-3 py-2 text-right">A programar</th>
-            <th className="px-3 py-2 text-right">A carregar</th>
+            <th className="w-[200px] px-3 py-2"><Dica termo="CARREGADO">Carregado</Dica></th>
+            <th className="px-3 py-2 text-right"><Dica termo="A_PROGRAMAR">A programar</Dica></th>
+            <th className="px-3 py-2 text-right"><Dica termo="A_CARREGAR">A carregar</Dica></th>
             <th className="px-3 py-2 text-right">Deadline</th>
             <th className="px-3 py-2">Situação</th>
           </tr>
@@ -199,7 +200,7 @@ export function TabelaExecutiva({ itens, onBuscar }: { itens: any[]; onBuscar: B
                 <th className="py-2 pr-4 font-semibold">Cliente</th>
                 <th className="py-2 pr-4 font-semibold">Rota</th>
                 <th className="w-[28%] py-2 pr-4 font-semibold">Progresso</th>
-                <th className="py-2 pr-4 text-right font-semibold">A carregar</th>
+                <th className="py-2 pr-4 text-right font-semibold"><Dica termo="A_CARREGAR">A carregar</Dica></th>
                 <th className="py-2 text-right font-semibold">Deadline</th>
               </tr>
             </thead>

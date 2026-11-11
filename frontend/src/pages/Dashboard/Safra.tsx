@@ -1,4 +1,5 @@
 import { ReactNode, useState } from 'react';
+import Dica from '@/components/Dica';
 import { Link } from 'react-router-dom';
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import {
@@ -110,11 +111,11 @@ export function KpiSafra({ titulo, valor, sufixo, rotuloValor, secundario, tom, 
       </div>
       <p className="mt-1 font-display text-4xl font-bold text-gray-900">
         {num(valor)}<span className="text-2xl text-gray-500">{sufixo}</span>
-        {rotuloValor && <span className="ml-2 font-sans text-sm font-medium text-gray-500">{rotuloValor}</span>}
+        {rotuloValor && <span className="ml-2 font-sans text-sm font-medium text-gray-500"><Dica termo="A_CARREGAR" valor={num(valor)}>{rotuloValor}</Dica></span>}
       </p>
       {secundario && (
         <p className="font-display text-xl font-semibold text-gray-800">
-          {num(secundario.valor)}<span className="ml-2 font-sans text-xs font-medium text-gray-500">{secundario.rotulo}</span>
+          {num(secundario.valor)}<span className="ml-2 font-sans text-xs font-medium text-gray-500"><Dica termo="A_PROGRAMAR" valor={num(secundario.valor)}>{secundario.rotulo}</Dica></span>
         </p>
       )}
       <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-500">
