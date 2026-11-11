@@ -8,6 +8,16 @@ import { formatMoney, formatPeso, kgParaToneladas, toneladasParaKg } from '@/uti
 // e fecha o popover quando dá certo; tudo entra na auditoria como antes.
 type Salvar = (campos: Record<string, unknown>) => Promise<unknown>;
 
+// Bolinha de situação: verde = ok, amarelo = falta informar, vermelho = risco.
+// Sempre acompanha o texto escrito — a cor não carrega a informação sozinha.
+type Sinal = 'ok' | 'pendente' | 'risco';
+const COR_SINAL: Record<Sinal, string> = { ok: 'var(--status-good)', pendente: 'var(--status-warning)', risco: 'var(--status-critical)' };
+function Bolinha({ sinal }: { sinal: Sinal }) {
+  return <span aria-hidden className="mr-1.5 inline-block h-2.5 w-2.5 shrink-0 rounded-full align-middle" style={{ background: COR_SINAL[sinal] }} />;
+}
+const sinalRastreamento = (s: string): Sinal => (s === 'PENDENTE' ? 'pendente' : s === 'NAO_RASTREADO' ? 'risco' : 'ok');
+const sinalIsca = (v: any): Sinal => (v.possuiIsca === false ? 'risco' : v.possuiIsca === true && v.numeroIsca ? 'ok' : 'pendente');
+
 // ─── Rastreamento + isca ────────────────────────────────────────────────────
 export function RastreamentoIscaRapido({ v, salvar, desabilitado }: { v: any; salvar: Salvar; desabilitado?: boolean }) {
   const pendente = v.statusRastreamento === 'PENDENTE';
@@ -16,12 +26,14 @@ export function RastreamentoIscaRapido({ v, salvar, desabilitado }: { v: any; sa
       gatilho={
         <>
           <p className="text-[10px] text-gray-500">Rastreamento</p>
-          <p className={`text-xs font-semibold ${pendente ? 'text-amber-600' : 'text-gray-800'}`}>
+          <p className={`flex items-center text-xs font-semibold ${pendente ? 'text-amber-600' : 'text-gray-800'}`}>
+            <Bolinha sinal={sinalRastreamento(v.statusRastreamento)} />
             {RASTREAMENTO_LABELS[v.statusRastreamento as StatusRastreamento] ?? v.statusRastreamento}
           </p>
-          <p className="text-xs mt-0.5">
+          <p className="mt-0.5 flex items-center text-xs">
+            <Bolinha sinal={sinalIsca(v)} />
             {v.possuiIsca === true
-              ? <span className="text-green-700">🟢 <span className="font-mono">{v.numeroIsca || 'sem número'}</span></span>
+              ? <span className="text-gray-800">Isca <span className="font-mono">{v.numeroIsca || 'sem número'}</span></span>
               : v.possuiIsca === false
               ? <span className="text-gray-500">Não possui isca</span>
               : <span className="text-amber-600">Isca pendente</span>}
