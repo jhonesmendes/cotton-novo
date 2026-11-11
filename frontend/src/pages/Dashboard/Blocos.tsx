@@ -38,10 +38,15 @@ function CaixaTooltip({ children }: { children: ReactNode }) {
 }
 
 // ─── KPI ────────────────────────────────────────────────────────────────────
-export function Kpi({ titulo, valor, sufixo, historico, comparacao, meta, onClick, destaque }: {
+// Segundo número no mesmo card (ex.: Fardos pendentes = falta carregar + falta programar).
+export type KpiSecundario = { valor: number; rotulo: string };
+
+export function Kpi({ titulo, valor, sufixo, rotuloValor, secundario, historico, comparacao, meta, onClick, destaque }: {
   titulo: string;
   valor: number;
   sufixo?: string;
+  rotuloValor?: string;
+  secundario?: KpiSecundario;
   historico: number[];
   // Diferença vs. 7 dias atrás (null = ainda sem histórico suficiente).
   comparacao: { delta: number; melhorQuandoSobe: boolean } | null;
@@ -56,7 +61,13 @@ export function Kpi({ titulo, valor, sufixo, historico, comparacao, meta, onClic
       <p className="text-xs font-medium uppercase tracking-wide text-ui-text-muted">{titulo}</p>
       <p className={`mt-1 font-display text-3xl font-bold ${destaque === 'critico' && valor > 0 ? 'text-red-600' : 'text-ui-text'}`}>
         {num(valor)}{sufixo}
+        {rotuloValor && <span className="ml-2 font-sans text-sm font-medium text-ui-text-muted">{rotuloValor}</span>}
       </p>
+      {secundario && (
+        <p className="font-display text-lg font-semibold text-ui-text">
+          {num(secundario.valor)}<span className="ml-2 font-sans text-xs font-medium text-ui-text-muted">{secundario.rotulo}</span>
+        </p>
+      )}
       <div className="mt-1 min-h-[16px] text-xs text-ui-text-muted">
         {comparacao ? (
           <span className={comparacao.delta === 0 ? '' : (comparacao.delta > 0) === comparacao.melhorQuandoSobe ? 'text-green-700' : 'text-red-600'}>

@@ -280,7 +280,10 @@ export async function getPainel(req: AuthRequest, res: Response) {
     cargasAtivas: cargas.length,
     emRisco: cargas.filter((c) => c.situacao === 'VENCIDO' || c.situacao === 'CRITICO').length,
     vencidas: cargas.filter((c) => c.situacao === 'VENCIDO').length,
+    // Falta carregar (regra nova: carregado = a partir de MANIFESTADO).
     fardosPendentes: cargas.reduce((s, c) => s + c.saldoCarregar, 0),
+    // Falta programar: fardos ainda sem caminhão.
+    fardosAProgramar: cargas.reduce((s, c) => s + c.saldoProgramar, 0),
     taxaCumprimento: total > 0 ? Math.round((carregado / total) * 1000) / 10 : 0,
     meta: await lerParametro('meta_cumprimento'),
   };

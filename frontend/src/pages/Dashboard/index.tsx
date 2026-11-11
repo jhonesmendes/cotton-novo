@@ -173,7 +173,8 @@ export default function DashboardPage() {
               detalhe={comparar('cargasAtivas', true) ? 'vs. semana passada' : `${num(data.kpis.fardosPendentes)} fardos a carregar`} onClick={abrirLiberacoes} />
             <KpiSafra titulo="Em risco (≤ 3 dias)" tom="risco" valor={data.kpis.emRisco} historico={serie('emRisco')} comparacao={comparar('emRisco', false)}
               detalhe={<><strong className="text-[#e0574e]">{data.kpis.vencidas} vencidas</strong> · {vencendo} vencendo</>} onClick={abrirLiberacoes} />
-            <KpiSafra titulo="Fardos pendentes" tom="ambar" valor={data.kpis.fardosPendentes} historico={serie('fardosPendentes')} comparacao={comparar('fardosPendentes', false)}
+            <KpiSafra titulo="Fardos pendentes" tom="ambar" valor={data.kpis.fardosPendentes} rotuloValor="falta carregar"
+              secundario={{ valor: data.kpis.fardosAProgramar ?? 0, rotulo: 'falta programar (sem caminhão)' }} historico={serie('fardosPendentes')} comparacao={comparar('fardosPendentes', false)}
               detalhe={`${num(embarcados)} já embarcados`} onClick={abrirLiberacoes} />
             <KpiSafra titulo="Taxa de cumprimento" tom="limao" valor={data.kpis.taxaCumprimento} sufixo="%" historico={serie('taxaCumprimento')} comparacao={comparar('taxaCumprimento', true)}
               detalhe={`${noPrazoPct}% das cargas no prazo`} meta={data.kpis.meta} onClick={abrirLiberacoes} />
@@ -209,7 +210,8 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <Kpi titulo="Cargas ativas" valor={data.kpis.cargasAtivas} historico={serie('cargasAtivas')} comparacao={comparar('cargasAtivas', true)} onClick={abrirLiberacoes} />
             <Kpi titulo="Em risco" valor={data.kpis.emRisco} historico={serie('emRisco')} comparacao={comparar('emRisco', false)} onClick={abrirLiberacoes} destaque="critico" />
-            <Kpi titulo="Fardos pendentes" valor={data.kpis.fardosPendentes} historico={serie('fardosPendentes')} comparacao={comparar('fardosPendentes', false)} onClick={abrirLiberacoes} />
+            <Kpi titulo="Fardos pendentes" valor={data.kpis.fardosPendentes} rotuloValor="falta carregar"
+              secundario={{ valor: data.kpis.fardosAProgramar ?? 0, rotulo: 'falta programar (sem caminhão)' }} historico={serie('fardosPendentes')} comparacao={comparar('fardosPendentes', false)} onClick={abrirLiberacoes} />
             <Kpi titulo="Taxa de cumprimento" valor={data.kpis.taxaCumprimento} sufixo="%" historico={serie('taxaCumprimento')} comparacao={comparar('taxaCumprimento', true)} meta={data.kpis.meta} onClick={abrirLiberacoes} />
           </div>
 

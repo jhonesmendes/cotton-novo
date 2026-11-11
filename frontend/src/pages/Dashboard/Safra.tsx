@@ -81,10 +81,12 @@ const TONS: Record<Tom, { cor: string; fundo: string; borda: string; Icone: type
   limao: { cor: LIMAO, fundo: 'rgb(198 242 78 / .05)', borda: 'rgb(255 255 255 / .07)', Icone: CheckBadgeIcon },
 };
 
-export function KpiSafra({ titulo, valor, sufixo, tom, detalhe, historico, comparacao, meta, onClick }: {
+export function KpiSafra({ titulo, valor, sufixo, rotuloValor, secundario, tom, detalhe, historico, comparacao, meta, onClick }: {
   titulo: string;
   valor: number;
   sufixo?: string;
+  rotuloValor?: string;
+  secundario?: { valor: number; rotulo: string };
   tom: Tom;
   detalhe?: ReactNode;
   historico: number[];
@@ -106,7 +108,15 @@ export function KpiSafra({ titulo, valor, sufixo, tom, detalhe, historico, compa
           <t.Icone className="h-5 w-5" />
         </span>
       </div>
-      <p className="mt-1 font-display text-4xl font-bold text-gray-900">{num(valor)}<span className="text-2xl text-gray-500">{sufixo}</span></p>
+      <p className="mt-1 font-display text-4xl font-bold text-gray-900">
+        {num(valor)}<span className="text-2xl text-gray-500">{sufixo}</span>
+        {rotuloValor && <span className="ml-2 font-sans text-sm font-medium text-gray-500">{rotuloValor}</span>}
+      </p>
+      {secundario && (
+        <p className="font-display text-xl font-semibold text-gray-800">
+          {num(secundario.valor)}<span className="ml-2 font-sans text-xs font-medium text-gray-500">{secundario.rotulo}</span>
+        </p>
+      )}
       <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-500">
         {comparacao && (
           <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 font-semibold"
