@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAuthStore } from '@/stores/auth.store';
+import { telaInicial } from '@/utils/perfis';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
 
@@ -28,7 +29,7 @@ export default function LoginPage() {
     try {
       const res = await api.post('/auth/login', data);
       setAuth(res.data.accessToken, res.data.refreshToken, res.data.user);
-      navigate('/dashboard');
+      navigate(telaInicial(res.data.user?.perfil));
     } catch (err: any) {
       toast.error(err?.response?.data?.error?.message || 'Email ou senha inválidos');
     } finally {

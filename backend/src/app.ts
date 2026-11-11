@@ -19,6 +19,8 @@ import locaisColetaRouter from './routes/locais-coleta.routes';
 import { auditoriaRouter } from './routes/auditoria.routes';
 import { relatoriosRouter } from './routes/relatorios.routes';
 import { parametrosRouter } from './routes/parametros.routes';
+import { grRouter } from './routes/gr.routes';
+import { acessosClienteRouter, posicaoClienteRouter, publicoRouter } from './routes/acessos-cliente.routes';
 
 // A instância de desenvolvimento pode priorizar o .env local sem alterar a
 // configuração herdada por processos de produção.
@@ -50,6 +52,10 @@ app.use('/api/locais-coleta', locaisColetaRouter);
 app.use('/api/auditoria', auditoriaRouter);
 app.use('/api/relatorios', relatoriosRouter);
 app.use('/api/parametros', parametrosRouter);
+app.use('/api/gr', grRouter);
+app.use('/api/acessos-cliente', acessosClienteRouter);
+app.use('/api/posicao-cliente', posicaoClienteRouter);
+app.use('/api/publico', publicoRouter);
 
 app.get('/health', (_, res) => {
   res.json({ status: 'ok', source: 'cotton-backend', timestamp: new Date().toISOString() });

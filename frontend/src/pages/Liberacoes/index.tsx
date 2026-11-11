@@ -186,6 +186,8 @@ export default function LiberacoesPage() {
   // Sem o parâmetro = padrão ATIVA; "status=" vazio = todos os status.
   const status = searchParams.get('status') ?? 'ATIVA';
   const origemId = searchParams.get('origemId') ?? '';
+  // Vem do Dashboard (clique no card de KPI com cliente filtrado).
+  const clienteId = searchParams.get('clienteId') ?? '';
   const page = Number(searchParams.get('page')) || 1;
 
   const atualizarFiltro = (campo: string, valor: string) =>
@@ -210,10 +212,11 @@ export default function LiberacoesPage() {
     ...(status && { status }),
     ...(busca && { busca }),
     ...(origemId && { origemId }),
+    ...(clienteId && { clienteId }),
   });
 
   const { data, isLoading } = useQuery({
-    queryKey: ['liberacoes', { busca, status, origemId, page }],
+    queryKey: ['liberacoes', { busca, status, origemId, clienteId, page }],
     queryFn: () => api.get(`/liberacoes?${params}`).then((r) => r.data),
   });
 
@@ -254,6 +257,12 @@ export default function LiberacoesPage() {
           <option value="SUSPENSA">Suspensas</option>
           <option value="CANCELADA">Canceladas</option>
         </select>
+        {clienteId && (
+          <button type="button" onClick={() => atualizarFiltro('clienteId', '')}
+            className="flex items-center gap-1 self-center rounded-full bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700">
+            Cliente: {data?.data?.[0]?.clienteNome ?? data?.data?.[0]?.cliente?.nome ?? `#${clienteId}`} ✕
+          </button>
+        )}
       </div>
 
       <div className="ui-card overflow-hidden">

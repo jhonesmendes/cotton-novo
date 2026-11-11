@@ -1,7 +1,9 @@
 import { Response } from 'express';
-import prisma from '../database/prisma';
+import { z } from 'zod';
+import prisma, { prismaBase } from '../database/prisma';
+import { lerParametro } from '../services/parametros';
 import { AuthRequest } from '../middleware/auth';
-import { StatusLiberacao, StatusVeiculo } from '@prisma/client';
+import { Prisma, StatusLiberacao, StatusVeiculo } from '@prisma/client';
 import { STATUS_MONITORAMENTO } from '../services/liberacao-status';
 
 
@@ -186,5 +188,189 @@ export async function getKPIs(req: AuthRequest, res: Response) {
       carregado: g._sum.carregado ?? 0,
       saldo: (g._sum.totalFardos ?? 0) - (g._sum.carregado ?? 0),
     })),
+  });
+}
+
+// ─── Painel interativo (Dashboard novo) ─────────────────────────────────────
+// Um endpoint só devolve todos os blocos já filtrados, para o painel inteiro
+// mudar de uma vez a cada clique. Filtros se somam: cliente, filial, dia do
+// deadline, situação do prazo e período (de/até, pelo deadline).
+
+type SituacaoPrazo = 'VENCIDO' | 'CRITICO' | 'ATENCAO' | 'NO_PRAZO';
+
+const DIA_MS = 86400000;
+// Datas "só dia" (deadline) ficam à meia-noite UTC: compara pelo próprio dia UTC.
+const diaUtc = (d: Date) => d.toISOString().slice(0, 10);
+const hojeLocal = () => {
+  const agora = new Date(Date.now() - 3 * 60 * 60 * 1000); // Brasília
+  return agora.toISOString().slice(0, 10);
+};
+const diasEntre = (de: string, ate: string) => Math.round((Date.parse(`${ate}T00:00:00Z`) - Date.parse(`${de}T00:00:00Z`)) / DIA_MS);
+
+// Deadline é de carregamento: com tudo carregado, está no prazo.
+function situacaoPrazo(dias: number, saldoCarregar: number): SituacaoPrazo {
+  if (saldoCarregar <= 0) return 'NO_PRAZO';
+  if (dias < 0) return 'VENCIDO';
+  if (dias <= 1) return 'CRITICO';
+  if (dias <= 3) return 'ATENCAO';
+  return 'NO_PRAZO';
+}
+
+const filtrosPainelSchema = z.object({
+  clienteId: z.coerce.number().int().positive().optional(),
+  origemId: z.coerce.number().int().positive().optional(),
+  dia: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  situacao: z.enum(['VENCIDO', 'CRITICO', 'ATENCAO', 'NO_PRAZO']).optional(),
+  de: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  ate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+});
+
+export async function getPainel(req: AuthRequest, res: Response) {
+  const f = filtrosPainelSchema.parse(req.query);
+  const hoje = hojeLocal();
+
+  const deadline: Prisma.DateTimeFilter = {};
+  if (f.de) deadline.gte = new Date(`${f.de}T00:00:00Z`);
+  if (f.ate) deadline.lte = new Date(`${f.ate}T00:00:00Z`);
+  if (f.dia) Object.assign(deadline, { gte: new Date(`${f.dia}T00:00:00Z`), lte: new Date(`${f.dia}T00:00:00Z`) });
+
+  // Suspensas ficam fora (só ATIVA). Inativos já estão fora do cache `carregado`.
+  const liberacoes = await prisma.liberacao.findMany({
+    where: {
+      status: StatusLiberacao.ATIVA,
+      ...(f.clienteId && { clienteId: f.clienteId }),
+      ...(f.origemId && { origemId: f.origemId }),
+      ...(Object.keys(deadline).length && { deadline }),
+    },
+    select: {
+      id: true, instrucao: true, totalFardos: true, carregado: true, deadline: true,
+      clienteId: true, clienteNome: true, cliente: { select: { nome: true } },
+      origemId: true, filialNome: true, origem: { select: { nome: true } },
+      veiculos: { where: { ativo: true }, select: { qtdFardos: true } },
+    },
+    orderBy: { deadline: 'asc' },
+  });
+
+  const cargasTodas = liberacoes.map((l) => {
+    const dias = diasEntre(hoje, diaUtc(l.deadline));
+    const saldoCarregar = Math.max(0, l.totalFardos - l.carregado);
+    const programado = l.veiculos.reduce((s, v) => s + v.qtdFardos, 0);
+    return {
+      id: l.id,
+      instrucao: l.instrucao,
+      clienteId: l.clienteId,
+      cliente: l.clienteNome ?? l.cliente?.nome ?? '—',
+      origemId: l.origemId,
+      filial: l.filialNome ?? l.origem?.nome ?? '—',
+      totalFardos: l.totalFardos,
+      carregado: l.carregado,
+      saldoProgramar: Math.max(0, l.totalFardos - programado),
+      saldoCarregar,
+      deadline: diaUtc(l.deadline),
+      dias,
+      situacao: situacaoPrazo(dias, saldoCarregar),
+    };
+  });
+  const cargas = f.situacao ? cargasTodas.filter((c) => c.situacao === f.situacao) : cargasTodas;
+
+  // KPIs
+  const total = cargas.reduce((s, c) => s + c.totalFardos, 0);
+  const carregado = cargas.reduce((s, c) => s + Math.min(c.carregado, c.totalFardos), 0);
+  const kpis = {
+    cargasAtivas: cargas.length,
+    emRisco: cargas.filter((c) => c.situacao === 'VENCIDO' || c.situacao === 'CRITICO').length,
+    vencidas: cargas.filter((c) => c.situacao === 'VENCIDO').length,
+    fardosPendentes: cargas.reduce((s, c) => s + c.saldoCarregar, 0),
+    taxaCumprimento: total > 0 ? Math.round((carregado / total) * 1000) / 10 : 0,
+    meta: await lerParametro('meta_cumprimento'),
+  };
+
+  // Retrato diário: grava o do dia só com o painel sem filtro (número "oficial").
+  const semFiltro = !f.clienteId && !f.origemId && !f.dia && !f.situacao && !f.de && !f.ate;
+  if (semFiltro) {
+    const dia = new Date(`${hoje}T00:00:00Z`);
+    const valores = { cargasAtivas: kpis.cargasAtivas, emRisco: kpis.emRisco, fardosPendentes: kpis.fardosPendentes, taxaCumprimento: kpis.taxaCumprimento };
+    await prismaBase.kpiDiario.upsert({ where: { dia }, update: valores, create: { dia, ...valores } });
+  }
+  const historico = (await prismaBase.kpiDiario.findMany({ orderBy: { dia: 'desc' }, take: 30 })).reverse()
+    .map((k) => ({ dia: diaUtc(k.dia), cargasAtivas: k.cargasAtivas, emRisco: k.emRisco, fardosPendentes: k.fardosPendentes, taxaCumprimento: k.taxaCumprimento }));
+
+  // Agrupamentos (somam o que está no filtro).
+  const agrupar = (chave: (c: (typeof cargas)[number]) => { id: number; nome: string }) => {
+    const mapa = new Map<number, { id: number; nome: string; cargas: number; fardos: number; total: number }>();
+    for (const c of cargas) {
+      const k = chave(c);
+      const item = mapa.get(k.id) ?? { ...k, cargas: 0, fardos: 0, total: 0 };
+      item.cargas += 1;
+      item.fardos += c.saldoCarregar;
+      item.total += c.totalFardos;
+      mapa.set(k.id, item);
+    }
+    return [...mapa.values()];
+  };
+  const pendenciasPorCliente = agrupar((c) => ({ id: c.clienteId, nome: c.cliente })).sort((a, b) => b.fardos - a.fardos);
+  const volumePorFilial = agrupar((c) => ({ id: c.origemId, nome: c.filial })).sort((a, b) => b.total - a.total);
+
+  // Linha do tempo: vencidas num balde só + próximos 21 dias, por situação.
+  const linhaDoTempo: { dia: string; rotulo: string; VENCIDO: number; CRITICO: number; ATENCAO: number; NO_PRAZO: number; cargasVENCIDO: number; cargasCRITICO: number; cargasATENCAO: number; cargasNO_PRAZO: number }[] = [];
+  const balde = (dia: string, rotulo: string) => ({ dia, rotulo, VENCIDO: 0, CRITICO: 0, ATENCAO: 0, NO_PRAZO: 0, cargasVENCIDO: 0, cargasCRITICO: 0, cargasATENCAO: 0, cargasNO_PRAZO: 0 });
+  linhaDoTempo.push(balde('vencidas', 'Vencidas'));
+  for (let i = 0; i <= 21; i++) {
+    const d = new Date(Date.parse(`${hoje}T00:00:00Z`) + i * DIA_MS).toISOString().slice(0, 10);
+    linhaDoTempo.push(balde(d, `${d.slice(8, 10)}/${d.slice(5, 7)}`));
+  }
+  const porDia = new Map(linhaDoTempo.map((b) => [b.dia, b]));
+  for (const c of cargas) {
+    // Data passada mas tudo carregado: não é atraso, fica fora da linha do tempo.
+    if (c.dias < 0 && c.situacao !== 'VENCIDO') continue;
+    const b = c.dias < 0 ? porDia.get('vencidas') : porDia.get(c.deadline);
+    if (!b) continue; // além de 3 semanas
+    b[c.situacao] += c.saldoCarregar;
+    b[`cargas${c.situacao}` as const] += 1;
+  }
+
+  // Atividade ao vivo: últimas alterações (status, SM, agendamento, inativação)
+  // nas liberações do filtro, tiradas do histórico.
+  const ids = cargas.map((c) => c.id);
+  const atividade = ids.length ? await prisma.auditoriaLog.findMany({
+    where: {
+      liberacaoId: { in: ids },
+      OR: [
+        { tabelaAfetada: 'Veiculo', acao: 'INSERT' },
+        { tabelaAfetada: 'Veiculo', camposAlterados: { contains: 'status' } },
+        { tabelaAfetada: 'Veiculo', camposAlterados: { contains: 'dataAgendamento' } },
+        { tabelaAfetada: 'Veiculo', camposAlterados: { contains: 'ativo' } },
+        { tabelaAfetada: 'Liberacao', camposAlterados: { contains: 'status' } },
+      ],
+    },
+    orderBy: { createdAt: 'desc' },
+    take: 25,
+    select: { id: true, tabelaAfetada: true, registroId: true, acao: true, camposAlterados: true, dadosAntigos: true, dadosNovos: true, descricao: true, liberacaoId: true, createdAt: true, usuario: { select: { nome: true } } },
+  }) : [];
+  const instrucaoPorId = new Map(cargas.map((c) => [c.id, c.instrucao]));
+  const parse = (t: string | null) => { try { return t ? JSON.parse(t) : {}; } catch { return {}; } };
+
+  return res.json({
+    hoje,
+    kpis,
+    historico,
+    pendenciasPorCliente,
+    volumePorFilial,
+    linhaDoTempo,
+    atividade: atividade.map((a) => ({
+      id: a.id,
+      tabela: a.tabelaAfetada,
+      veiculoId: a.tabelaAfetada === 'Veiculo' ? a.registroId : null,
+      acao: a.acao,
+      campos: a.camposAlterados?.split(',') ?? [],
+      antes: parse(a.dadosAntigos),
+      depois: parse(a.dadosNovos),
+      descricao: a.descricao,
+      liberacaoId: a.liberacaoId,
+      instrucao: a.liberacaoId ? instrucaoPorId.get(a.liberacaoId) ?? null : null,
+      usuario: a.usuario?.nome,
+      em: a.createdAt,
+    })),
+    cargas,
   });
 }

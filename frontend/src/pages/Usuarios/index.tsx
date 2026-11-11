@@ -13,7 +13,7 @@ interface Usuario {
   nome: string;
   email: string;
   telefone?: string;
-  perfil: 'ADMIN' | 'OPERADOR' | 'GESTOR_FILIAL' | 'VISUALIZADOR' | 'CLIENTE';
+  perfil: 'ADMIN' | 'OPERADOR' | 'GESTOR_FILIAL' | 'VISUALIZADOR' | 'CLIENTE' | 'GR' | 'VISITANTE';
   ativo: boolean;
   cliente?: { id: number; nome: string };
   filial?: { id: number; nome: string };
@@ -27,7 +27,11 @@ const PERFIS = [
   { value: 'ADMIN', label: 'Administrador', color: 'bg-red-100 text-red-800' },
   { value: 'OPERADOR', label: 'Operador', color: 'bg-blue-100 text-blue-800' },
   { value: 'GESTOR_FILIAL', label: 'Gestor de Filial', color: 'bg-purple-100 text-purple-800' },
+  { value: 'GR', label: 'GR (Gerenciadora de Risco)', color: 'bg-teal-100 text-teal-800' },
 ];
+
+// Visitante só nasce pelo convite (Configurações › Acesso do cliente) — aparece na lista, não no cadastro.
+const PERFIS_EXIBICAO = [...PERFIS, { value: 'VISITANTE', label: 'Visitante (cliente)', color: 'bg-amber-100 text-amber-800' }];
 
 // Espelha exatamente o que cada rota do backend libera por perfil
 // (requireRole em cada *.routes.ts) — não é só texto informativo.
@@ -35,6 +39,7 @@ const PERMISSOES_POR_PERFIL: Record<string, string[]> = {
   ADMIN: ['Dashboard', 'Liberações', 'Veículos', 'Alertas', 'Cadastros (completo)', 'Usuários'],
   OPERADOR: ['Dashboard', 'Liberações (sem criar/editar)', 'Veículos', 'Alertas', 'Cadastros (completo)'],
   GESTOR_FILIAL: ['Dashboard', 'Liberações', 'Veículos', 'Alertas', 'Cadastros (completo)'],
+  GR: ['Só a tela GR: SM, rastreamento e isca', 'Com filial: só as placas dela', 'Sem frete nem margem'],
 };
 
 const usuarioSchema = z.object({
@@ -43,6 +48,7 @@ const usuarioSchema = z.object({
   senha: z.string().optional().or(z.literal('')),
   telefone: z.string().optional(),
   perfil: z.string().min(1, 'Perfil é obrigatório'),
+  filialId: z.string().optional(),
 }).refine(() => {
   // If not editing (no id), senha is required
   // But wait, the schema doesn't know about the ID here easily unless we pass it or use a separate schema.
@@ -70,6 +76,10 @@ export default function UsuariosPage() {
   });
 
   const usuarios = Array.isArray(response) ? response : response?.data || [];
+
+  // Filiais embarcadoras (mesmas do filtro de Liberações).
+  const { data: origens } = useQuery({ queryKey: ['origens', 'usuarios'], queryFn: () => api.get('/origens?limit=1000').then((r) => r.data) });
+  const filiais: { id: number; nome: string }[] = Array.isArray(origens) ? origens : origens?.data ?? [];
 
   const listarFiltrados = usuarios.filter((u: Usuario) =>
     u.nome.toLowerCase().includes(busca.toLowerCase()) ||
@@ -109,18 +119,18 @@ export default function UsuariosPage() {
   const fecharModal = () => {
     setModalAberto(false);
     setUsuarioEditando(null);
-    reset({ nome: '', email: '', senha: '', telefone: '', perfil: 'OPERADOR' });
+    reset({ nome: '', email: '', senha: '', telefone: '', perfil: 'OPERADOR', filialId: '' });
   };
 
   const abrirNovoUsuario = () => {
     setUsuarioEditando(null);
-    reset({ nome: '', email: '', senha: '', telefone: '', perfil: 'OPERADOR' });
+    reset({ nome: '', email: '', senha: '', telefone: '', perfil: 'OPERADOR', filialId: '' });
     setModalAberto(true);
   };
 
   const abrirEditar = (usuario: Usuario) => {
     setUsuarioEditando(usuario);
-    reset({ nome: usuario.nome, email: usuario.email, senha: '', telefone: usuario.telefone || '', perfil: usuario.perfil });
+    reset({ nome: usuario.nome, email: usuario.email, senha: '', telefone: usuario.telefone || '', perfil: usuario.perfil, filialId: usuario.filial ? String(usuario.filial.id) : '' });
     setModalAberto(true);
   };
 
@@ -130,7 +140,7 @@ export default function UsuariosPage() {
       return;
     }
 
-    const payload = { ...data };
+    const payload: any = { ...data, filialId: data.filialId ? Number(data.filialId) : null };
     if (!payload.senha) delete payload.senha;
 
     if (usuarioEditando) {
@@ -140,8 +150,8 @@ export default function UsuariosPage() {
     }
   };
 
-  const perfilLabel = (perfil: string) => PERFIS.find(p => p.value === perfil)?.label || perfil;
-  const perfilColor = (perfil: string) => PERFIS.find(p => p.value === perfil)?.color || '';
+  const perfilLabel = (perfil: string) => PERFIS_EXIBICAO.find(p => p.value === perfil)?.label || perfil;
+  const perfilColor = (perfil: string) => PERFIS_EXIBICAO.find(p => p.value === perfil)?.color || '';
 
   return (
     <div className="ui-page space-y-6">
@@ -180,6 +190,7 @@ export default function UsuariosPage() {
                   <th className="px-4 py-3 text-left">Nome</th>
                   <th className="px-4 py-3 text-left">Email</th>
                   <th className="px-4 py-3 text-left">Perfil</th>
+                  <th className="px-4 py-3 text-left">Filial / Cliente</th>
                   <th className="px-4 py-3 text-left">Telefone</th>
                   <th className="px-4 py-3 text-left">Último Acesso</th>
                   <th className="px-4 py-3 text-center">Status</th>
@@ -196,6 +207,7 @@ export default function UsuariosPage() {
                         {perfilLabel(u.perfil)}
                       </span>
                     </td>
+                    <td className="px-4 py-3 text-gray-600 text-xs">{u.filial?.nome ?? u.cliente?.nome ?? '—'}</td>
                     <td className="px-4 py-3 text-gray-600">{u.telefone || '—'}</td>
                     <td className="px-4 py-3 text-gray-600">
                       {u.lastLogin ? new Date(u.lastLogin).toLocaleDateString('pt-BR') : '—'}
@@ -293,11 +305,19 @@ export default function UsuariosPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Perfil</label>
                 <select {...register('perfil')}
                   className={`w-full border ${errors.perfil ? 'border-red-500' : 'border-gray-200'} rounded px-3 py-2 text-sm`}>
-                  {PERFIS.map(p => (
+                  {[...PERFIS, ...(usuarioEditando && !PERFIS.some((p) => p.value === usuarioEditando.perfil) ? [{ value: usuarioEditando.perfil, label: perfilLabel(usuarioEditando.perfil) }] : [])].map(p => (
                     <option key={p.value} value={p.value}>{p.label}</option>
                   ))}
                 </select>
                 {errors.perfil && <p className="text-xs text-red-500 mt-1">{errors.perfil.message}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Filial</label>
+                <select {...register('filialId')} className="w-full border border-gray-200 rounded px-3 py-2 text-sm">
+                  <option value="">Nenhuma (vê todas)</option>
+                  {filiais.map((f) => <option key={f.id} value={f.id}>{f.nome}</option>)}
+                </select>
+                <p className="text-[11px] text-gray-500 mt-1">Perfil GR com filial só vê as placas dela.</p>
               </div>
               <div className="flex gap-3 pt-4">
                 <button type="button" onClick={fecharModal}

@@ -38,3 +38,9 @@ export function formatPeso(toneladas?: number | null) {
   if (toneladas == null) return '—';
   return `${toneladas.toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 })} t`;
 }
+
+export function formatCpf(cpf?: string | null) {
+  if (!cpf) return '—';
+  const d = cpf.replace(/\D/g, '');
+  return d.length === 11 ? `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}` : cpf;
+}

@@ -11,6 +11,14 @@ export const PARAMETROS = {
     min: 0,
     max: 20,
   },
+  meta_cumprimento: {
+    rotulo: 'Meta da taxa de cumprimento',
+    descricao: 'Linha de referência no card "Taxa de cumprimento" do Dashboard (fardos carregados ÷ total das liberações ativas).',
+    unidade: '%',
+    padrao: 85,
+    min: 0,
+    max: 100,
+  },
 } as const;
 
 export type ChaveParametro = keyof typeof PARAMETROS;

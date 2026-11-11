@@ -137,6 +137,22 @@ AGUARDANDO_GR → TRANSITO_CARREGAMENTO → LOCAL → MANIFESTADO
   entrega, placa e motorista; `GET /liberacoes` devolve `totais` de todo o filtro (não só a
   página). Clicar num valor da tabela/card põe o texto na busca; placas viram chips coloridos
   pela etapa e abrem o detalhe em `#veiculo-<id>`.
+- **Perfis de tela única** (`middleware/auth.ts`, `ROTAS_PERFIL_RESTRITO`): `GR` só alcança
+  `/api/gr` (tela `/gr`: SM, rastreamento e isca; com `filialId` vê só as placas da filial; nunca
+  recebe frete) e `VISITANTE` só `/api/posicao-cliente` (tela `/minha-posicao`). A trava é no
+  backend — rota nova fica fechada para esses perfis sem precisar fazer nada.
+- **Acesso do cliente** (`controllers/acessos-cliente.controller.ts`, tela Configurações › Acesso
+  do cliente, só ADMIN): link temporário sem login (24 h, `/posicao/:token`) ou convite por e-mail
+  que cria um usuário `VISITANTE` preso ao cliente (link de cadastro de 7 h, `/convite/:token`).
+  Tokens só com hash no banco (`acessos_cliente`); rotas públicas em `/api/publico`. A tela de
+  posição conta veículos por etapa e nunca mostra frete motorista, margem nem motorista.
+- **Dashboard** (`GET /dashboard/painel`, `pages/Dashboard`): um endpoint devolve todos os blocos
+  já filtrados (cliente, filial, dia do deadline, situação do prazo, período de/até); filtros na
+  URL. Cores dos gráficos em variáveis CSS (`--series-*`, `--status-*` em `styles/globals.css`),
+  paleta validada para daltonismo. O retrato diário dos KPIs (`kpis_diarios`) é gravado quando
+  alguém abre o painel **sem filtro** (não há cron) — por isso usa `prismaBase`, para não encher a
+  auditoria; a comparação "vs. semana passada" aparece com 8+ dias de retrato. Meta da taxa de
+  cumprimento = parâmetro `meta_cumprimento`.
 - **Parâmetros do sistema**: tabela `configuracoes_sistema` (chave → valor); chaves
   aceitas e limites em `backend/src/services/parametros.ts`; `GET/PUT /api/parametros`.
 - **Relatórios** (`/relatorios`, `backend/src/controllers/relatorios.controller.ts`): agrupam por
@@ -161,7 +177,7 @@ AGUARDANDO_GR → TRANSITO_CARREGAMENTO → LOCAL → MANIFESTADO
   veículos dele) → senão grava como novo (`{acao:'novo'}`).
 - Outros enums relevantes do domínio: `TipoFardo` (FARDAO/FARDINHO), `TipoAlerta`,
   `StatusAlerta`, `PerfilUsuario` (ADMIN/OPERADOR/GESTOR_FILIAL/VISUALIZADOR/CLIENTE),
-  `StatusLiberacao`, `TipoAcesso`.
+  `StatusLiberacao`, `TipoAcesso`. `PerfilUsuario` ganhou `GR` e `VISITANTE` (nov/2026).
 
 ## Variáveis de ambiente
 

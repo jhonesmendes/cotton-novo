@@ -15,6 +15,11 @@ export interface AuthRequest extends Request {
   };
 }
 
+const ROTAS_PERFIL_RESTRITO: Partial<Record<string, string[]>> = {
+  GR: ['/api/gr', '/api/auth'],
+  VISITANTE: ['/api/posicao-cliente', '/api/auth'],
+};
+
 export async function authenticate(req: AuthRequest, _res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith('Bearer ')) {
@@ -37,6 +42,12 @@ export async function authenticate(req: AuthRequest, _res: Response, next: NextF
   });
   if (!usuario || !usuario.ativo) {
     throw new AppError('Usuário inativo ou inexistente', 401, 'INVALID_TOKEN');
+  }
+  // Perfis de tela única só alcançam as rotas deles (o resto da API é negado aqui,
+  // para nenhuma rota nova ficar aberta por esquecimento).
+  const permitidas = ROTAS_PERFIL_RESTRITO[usuario.perfil];
+  if (permitidas && !permitidas.some((prefixo) => req.originalUrl.startsWith(prefixo))) {
+    throw new AppError('Acesso negado para este perfil', 403, 'FORBIDDEN');
   }
   req.user = {
     id: usuario.id,

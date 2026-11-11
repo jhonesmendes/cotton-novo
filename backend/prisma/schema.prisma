@@ -69,6 +69,17 @@ enum PerfilUsuario {
   GESTOR_FILIAL
   VISUALIZADOR
   CLIENTE
+  // Gerenciadora de risco: só a tela GR.
+  GR
+  // Cliente convidado (login próprio): só a tela de posição do cliente dele.
+  VISITANTE
+}
+
+enum TipoAcessoCliente {
+  // Link sem login, válido por 24 h.
+  LINK
+  // Convite por e-mail para criar login de Visitante (link de cadastro válido por 7 h).
+  CONVITE
 }
 enum AcaoAuditoria {
   INSERT
@@ -87,6 +98,7 @@ model Cliente {
   liberacoes   Liberacao[]
   usuarios     Usuario[]
   alertasConfig AlertaConfig[]
+  acessos      AcessoCliente[]
   @@map("clientes")
 }
 model Origem {
@@ -310,6 +322,41 @@ model ConfiguracaoSistema {
   updatedAt DateTime @updatedAt @map("updated_at")
   @@map("configuracoes_sistema")
 }
+// Acessos do cliente à tela de posição: link temporário ou convite de Visitante.
+// O token cru só existe no link; aqui fica o hash SHA-256.
+model AcessoCliente {
+  id          Int               @id @default(autoincrement())
+  tipo        TipoAcessoCliente
+  clienteId   Int               @map("cliente_id")
+  tokenHash   String            @unique @map("token_hash")
+  email       String?
+  expiraEm    DateTime          @map("expira_em")
+  geradoPorId Int               @map("gerado_por_id")
+  usadoEm     DateTime?         @map("usado_em")
+  // Convite aceito: usuário Visitante criado.
+  aceitoEm    DateTime?         @map("aceito_em")
+  usuarioId   Int?              @map("usuario_id")
+  canceladoEm DateTime?         @map("cancelado_em")
+  createdAt   DateTime          @default(now()) @map("created_at")
+  cliente   Cliente  @relation(fields: [clienteId], references: [id])
+  geradoPor Usuario  @relation("AcessoGeradoPor", fields: [geradoPorId], references: [id])
+  usuario   Usuario? @relation("AcessoUsuario", fields: [usuarioId], references: [id])
+  @@index([clienteId])
+  @@map("acessos_cliente")
+}
+
+// Retrato diário dos KPIs do Dashboard (comparação "vs. semana passada" e minigráfico).
+model KpiDiario {
+  id                Int      @id @default(autoincrement())
+  dia               DateTime @unique @db.Date
+  cargasAtivas      Int      @map("cargas_ativas")
+  emRisco           Int      @map("em_risco")
+  fardosPendentes   Int      @map("fardos_pendentes")
+  taxaCumprimento   Float    @map("taxa_cumprimento")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  @@map("kpis_diarios")
+}
+
 model Usuario {
   id        Int           @id @default(autoincrement())
   nome      String
@@ -327,6 +374,8 @@ model Usuario {
   filial  Origem?  @relation(fields: [filialId], references: [id])
   auditoria AuditoriaLog[]
   resetTokens PasswordResetToken[]
+  acessosGerados AcessoCliente[] @relation("AcessoGeradoPor")
+  acessosVisitante AcessoCliente[] @relation("AcessoUsuario")
   @@index([email])
   @@map("usuarios")
 }
