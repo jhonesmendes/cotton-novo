@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 import { Bar, BarChart, Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { CheckCircleIcon, ExclamationTriangleIcon, ExclamationCircleIcon, ClockIcon } from '@heroicons/react/24/solid';
 
@@ -94,7 +94,12 @@ export function PendenciasPorCliente({ dados, modo, selecionado, onSelecionar }:
   onSelecionar: (id: number) => void;
 }) {
   const chave = modo === 'fardos' ? 'fardos' : 'cargas';
-  const linhas = [...dados].sort((a, b) => b[chave] - a[chave]).slice(0, 12);
+  // Até 8 clientes; o resto soma numa barra "Outros (N)".
+  const ordenados = [...dados].sort((a, b) => b[chave] - a[chave]);
+  const resto = ordenados.slice(8);
+  const linhas = resto.length
+    ? [...ordenados.slice(0, 8), { id: -1, nome: `Outros (${resto.length})`, fardos: resto.reduce((s, d) => s + d.fardos, 0), cargas: resto.reduce((s, d) => s + d.cargas, 0) }]
+    : ordenados;
   if (!linhas.length) return <Vazio />;
   return (
     <ResponsiveContainer width="100%" height={Math.max(160, linhas.length * 34)}>
@@ -108,10 +113,10 @@ export function PendenciasPorCliente({ dados, modo, selecionado, onSelecionar }:
             <p className="text-ui-text-muted">Clique para filtrar o painel</p>
           </CaixaTooltip>
         ) : null} />
-        <Bar dataKey={chave} radius={[0, 4, 4, 0]} cursor="pointer" onClick={(d: any) => onSelecionar(d.id)}
+        <Bar dataKey={chave} radius={[0, 4, 4, 0]} cursor="pointer" onClick={(d: any) => d.id > 0 && onSelecionar(d.id)}
           label={{ position: 'right', fontSize: 11, fill: 'var(--viz-axis)', formatter: (v: number) => num(v) }}>
           {linhas.map((l) => (
-            <Cell key={l.id} fill="var(--series-1)" opacity={selecionado && selecionado !== l.id ? 0.3 : 1} />
+            <Cell key={l.id} fill={l.id > 0 ? 'var(--series-1)' : 'var(--series-outros)'} opacity={selecionado && selecionado !== l.id ? 0.3 : 1} />
           ))}
         </Bar>
       </BarChart>
@@ -120,59 +125,77 @@ export function PendenciasPorCliente({ dados, modo, selecionado, onSelecionar }:
 }
 
 // ─── Volume por filial (rosca + lista) ──────────────────────────────────────
-// A cor segue a filial (posição fixa entre todas as filiais), nunca o ranking.
-export function corFilial(ordem: number[], id: number) {
-  const i = ordem.indexOf(id);
-  return i >= 0 && i < 8 ? `var(--series-${i + 1})` : 'var(--series-outros)';
-}
+// Até 6 filiais com cor própria; o resto vira "Outras" (cinza) — mais de 8 cores
+// não dá para distinguir. "Ver todas" abre a lista completa.
+const MAX_FILIAIS = 6;
+const OUTRAS = -1;
 
-export function VolumePorFilial({ dados, modo, ordem, selecionado, onSelecionar }: {
+export function VolumePorFilial({ dados, modo, selecionado, onSelecionar }: {
   dados: { id: number; nome: string; total: number; cargas: number }[];
   modo: Modo;
-  ordem: number[];
   selecionado?: number;
   onSelecionar: (id: number) => void;
 }) {
+  const [todas, setTodas] = useState(false);
   const chave = modo === 'fardos' ? 'total' : 'cargas';
+  const ordenados = [...dados].sort((a, b) => b[chave] - a[chave]);
+  const principais = ordenados.slice(0, MAX_FILIAIS);
+  const resto = ordenados.slice(MAX_FILIAIS);
+  const fatias = resto.length
+    ? [...principais, { id: OUTRAS, nome: `Outras (${resto.length})`, total: resto.reduce((s, d) => s + d.total, 0), cargas: resto.reduce((s, d) => s + d.cargas, 0) }]
+    : principais;
+  const cor = (id: number) => {
+    const i = principais.findIndex((d) => d.id === id);
+    return i >= 0 ? `var(--series-${i + 1})` : 'var(--series-outros)';
+  };
   const soma = dados.reduce((s, d) => s + d[chave], 0);
+  const lista = todas ? ordenados : fatias;
+  const clicar = (id: number) => (id === OUTRAS ? setTodas(true) : onSelecionar(id));
   if (!dados.length) return <Vazio />;
   return (
-    <div className="flex flex-col items-center gap-4 sm:flex-row">
-      <div className="h-44 w-44 shrink-0">
+    <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-start">
+      <div className="h-40 w-40 shrink-0">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
-            <Pie data={dados} dataKey={chave} nameKey="nome" innerRadius="62%" outerRadius="100%" paddingAngle={1}
-              stroke="var(--viz-surface)" strokeWidth={2} cursor="pointer" onClick={(d: any) => onSelecionar(d.id)} isAnimationActive={false}>
-              {dados.map((d) => <Cell key={d.id} fill={corFilial(ordem, d.id)} opacity={selecionado && selecionado !== d.id ? 0.3 : 1} />)}
+            <Pie data={fatias} dataKey={chave} nameKey="nome" innerRadius="62%" outerRadius="100%" paddingAngle={1}
+              stroke="var(--viz-surface)" strokeWidth={2} cursor="pointer" onClick={(d: any) => clicar(d.id)} isAnimationActive={false}>
+              {fatias.map((d) => <Cell key={d.id} fill={cor(d.id)} opacity={selecionado && selecionado !== d.id ? 0.3 : 1} />)}
             </Pie>
             <Tooltip content={({ active, payload }) => active && payload?.[0] ? (
               <CaixaTooltip>
                 <p className="font-semibold">{payload[0].payload.nome}</p>
                 <p>{num(payload[0].payload.total)} fardos · {num(payload[0].payload.cargas)} carga(s)</p>
+                {payload[0].payload.id === OUTRAS && <p className="text-ui-text-muted">Clique para ver todas</p>}
               </CaixaTooltip>
             ) : null} />
           </PieChart>
         </ResponsiveContainer>
       </div>
-      <ul className="w-full space-y-2 text-sm">
-        {dados.map((d) => (
-          <li key={d.id}>
-            <button type="button" onClick={() => onSelecionar(d.id)}
-              className={`w-full rounded-lg px-2 py-1 text-left hover:bg-ui-muted ${selecionado && selecionado !== d.id ? 'opacity-40' : ''}`}>
-              <div className="flex items-center justify-between gap-2">
-                <span className="flex items-center gap-2 truncate">
-                  <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: corFilial(ordem, d.id) }} />
-                  <span className="truncate text-ui-text">{d.nome}</span>
-                </span>
-                <span className="shrink-0 text-xs text-ui-text-muted">{num(d[chave])} {modo === 'fardos' ? 'fardos' : 'cargas'}</span>
-              </div>
-              <div className="mt-1 h-1 rounded-full bg-ui-muted">
-                <div className="h-1 rounded-full" style={{ width: `${soma ? (d[chave] / soma) * 100 : 0}%`, background: corFilial(ordem, d.id) }} />
-              </div>
-            </button>
-          </li>
-        ))}
-      </ul>
+      <div className="w-full min-w-0">
+        <ul className={`space-y-1 text-sm ${todas ? 'max-h-64 overflow-y-auto pr-1' : ''}`}>
+          {lista.map((d) => (
+            <li key={d.id}>
+              <button type="button" onClick={() => clicar(d.id)}
+                className={`w-full rounded-md px-2 py-1 text-left hover:bg-ui-muted ${selecionado && selecionado !== d.id ? 'opacity-40' : ''}`}>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="flex min-w-0 items-center gap-2">
+                    <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: cor(d.id) }} />
+                    <span className="truncate text-ui-text">{d.nome}</span>
+                  </span>
+                  <span className="shrink-0 text-xs tabular-nums text-ui-text-muted">
+                    {num(d[chave])} <span className="hidden sm:inline">· {soma ? Math.round((d[chave] / soma) * 100) : 0}%</span>
+                  </span>
+                </div>
+              </button>
+            </li>
+          ))}
+        </ul>
+        {resto.length > 0 && (
+          <button type="button" onClick={() => setTodas((t) => !t)} className="mt-2 px-2 text-xs font-semibold text-ui-primary hover:underline">
+            {todas ? 'Mostrar só as principais' : `Ver todas as ${dados.length} filiais`}
+          </button>
+        )}
+      </div>
     </div>
   );
 }

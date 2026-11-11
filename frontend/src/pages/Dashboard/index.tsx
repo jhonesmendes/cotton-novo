@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowPathIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import api from '@/services/api';
 import { abrirLinha } from '@/utils/abrirLinha';
 import { formatDate, formatDateTime } from '@/utils/format';
-import { STATUS_LABELS, SM_LABELS, VeiculoStatus, StatusSM } from '@/utils/status';
+import { STATUS_LABELS, SM_LABELS, RASTREAMENTO_LABELS, VeiculoStatus, StatusSM, StatusRastreamento } from '@/utils/status';
+import { labelCampo } from '@/utils/auditoria';
 import { Cartao, Kpi, LinhaDoTempo, Modo, PendenciasPorCliente, SITUACOES, SituacaoPrazo, Vazio, VolumePorFilial, rotuloSituacao } from './Blocos';
 
 // Dashboard interativo: clicar num cliente, filial, dia ou situação filtra o painel
@@ -53,12 +54,6 @@ export default function DashboardPage() {
     placeholderData: (anterior) => anterior,
   });
 
-  // Ordem fixa das filiais (por id) — a cor de cada filial não muda com o filtro.
-  const { data: origens } = useQuery({ queryKey: ['origens', 'lista-dashboard'], queryFn: () => api.get('/origens?limit=1000').then((r) => r.data) });
-  const ordemFiliais: number[] = useMemo(
-    () => (Array.isArray(origens) ? origens : origens?.data ?? []).map((o: any) => o.id).sort((a: number, b: number) => a - b),
-    [origens],
-  );
 
   // Contador regressivo até a próxima atualização.
   const [agora, setAgora] = useState(Date.now());
@@ -151,13 +146,13 @@ export default function DashboardPage() {
             <Kpi titulo="Taxa de cumprimento" valor={data.kpis.taxaCumprimento} sufixo="%" historico={serie('taxaCumprimento')} comparacao={comparar('taxaCumprimento', true)} meta={data.kpis.meta} onClick={abrirLiberacoes} />
           </div>
 
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+          <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-2">
             <Cartao titulo="Pendências por cliente" descricao={modo === 'fardos' ? 'Fardos ainda a carregar' : 'Cargas ativas'}>
               <PendenciasPorCliente dados={data.pendenciasPorCliente} modo={modo} selecionado={Number(filtros.clienteId) || undefined}
                 onSelecionar={(id) => alterar('clienteId', String(id))} />
             </Cartao>
             <Cartao titulo="Volume ativo por filial" descricao={modo === 'fardos' ? 'Total de fardos das liberações ativas' : 'Cargas ativas'}>
-              <VolumePorFilial dados={data.volumePorFilial} modo={modo} ordem={ordemFiliais} selecionado={Number(filtros.origemId) || undefined}
+              <VolumePorFilial dados={data.volumePorFilial} modo={modo} selecionado={Number(filtros.origemId) || undefined}
                 onSelecionar={(id) => alterar('origemId', String(id))} />
             </Cartao>
           </div>
@@ -193,7 +188,14 @@ function descreverAtividade(a: any): string {
   if (a.campos.includes('statusSm') && a.depois.statusSm) partes.push(`SM ${SM_LABELS[a.depois.statusSm as StatusSM] ?? a.depois.statusSm}`);
   if (a.campos.includes('dataAgendamento')) partes.push(a.depois.dataAgendamento ? `agendado ${formatDateTime(a.depois.dataAgendamento)}` : 'agendamento removido');
   if (a.campos.includes('ativo')) partes.push(a.depois.ativo ? 'reativado' : 'inativado');
-  return partes.join(' · ') || a.campos.join(', ');
+  if (a.campos.includes('statusRastreamento') && a.depois.statusRastreamento) {
+    partes.push(`rastreamento ${RASTREAMENTO_LABELS[a.depois.statusRastreamento as StatusRastreamento] ?? a.depois.statusRastreamento}`);
+  }
+  if (a.campos.includes('possuiIsca') || a.campos.includes('numeroIsca')) {
+    partes.push(a.depois.possuiIsca === false ? 'sem isca' : a.depois.numeroIsca ? `isca ${a.depois.numeroIsca}` : 'isca alterada');
+  }
+  // Demais campos: nome legível (o mesmo do histórico de alterações).
+  return partes.join(' · ') || a.campos.map(labelCampo).join(', ');
 }
 
 function Atividade({ itens }: { itens: any[] }) {
