@@ -1,59 +1,15 @@
+# Monitoramento de deadline (timeline nov/2026)
 
+```
+AGUARDANDO GR → TRÂNSITO CARREGAMENTO → LOCAL   ── deadline monitorado (ainda não carregou)
+    → MANIFESTADO → FALTA AGENDAR → AGENDADO → AGUARDANDO DESCARGA → FINALIZADO
+      └── a partir daqui conta como carregado: o deadline (de carregamento) deixa de valer
+```
 
-
-SOLICITADO
-    ↓
-FALTA CONTRATAR → FALTA AGENDAR → AGENDADO
-    ↓
-LIBERADO  ──────▶ [INÍCIA MONITORAMENTO DEADLINE]
-    ↓
-AGUARDANDO NFE / AGUARDANDO GR (paralelo)
-    ↓
-AGUARDANDO CARREGAMENTO
-    ↓
-CARREGADO
-    ↓
-EM TRANSITO
-    ↓
-AGUARDANDO DESCARGA
-    ↓
-FINALIZADO  ────▶ [PARA MONITORAMENTO]
-----
-
-// CONSTANTES
-const STATUS_INICIAL = 'SOLICITADO';
-const STATUS_FINAL = 'FINALIZADO';
-
-// Status que ativam monitoramento de deadline
-const STATUS_MONITORAMENTO = [
-  'LIBERADO',
-  'AGUARDANDO NFE',
-  'AGUARDANDO GR',
-  'AGUARDANDO CARREGAMENTO',
-  'CARREGADO',
-  'EM TRANSITO',
-  'AGUARDANDO DESCARGA'
-];
-
-// Status que NÃO ativam monitoramento
-const STATUS_SEM_MONITORAMENTO = [
-  'SOLICITADO',
-  'FALTA CONTRATAR',
-  'FALTA AGENDAR',
-  'AGENDADO',
-  'FINALIZADO'
-];
-
-// Regra de disparo
-function deveIniciarMonitoramento(novoStatus, statusAnterior) {
-  // Inicia quando entra em um status de monitoramento
-  // e não estava em um status de monitoramento antes
-  const entraMonitoramento = STATUS_MONITORAMENTO.includes(novoStatus);
-  const saiOperacao = statusAnterior === 'FINALIZADO';
-  
-  return entraMonitoramento && !saiOperacao;
-}
-
-function devePararMonitoramento(novoStatus) {
-  return novoStatus === 'FINALIZADO';
-}
+- O deadline da liberação é de **carregamento**. Alertas e Dashboard só cobram prazo de
+  veículos ativos antes de MANIFESTADO (`STATUS_MONITORAMENTO` em
+  `backend/src/services/liberacao-status.ts`).
+- Liberação com tudo carregado não aparece como vencida, mesmo com a data passada.
+- Liberação SUSPENSA não gera alertas; veículo inativo não é monitorado.
+- Alerta "Pendência de fechamento": todos os veículos finalizados com dado faltando
+  (ver checklist em `checklistFechamento`).

@@ -88,24 +88,45 @@ npm run lint          # eslint src/
 - `frontend/src/services/api.ts` — client axios central.
 - `frontend/src/stores/auth.store.ts` — sessão/autenticação (zustand).
 
-## Domínio — fluxo de status de carga (`StatusVeiculo`)
+## Domínio — timeline do veículo (`StatusVeiculo`, nov/2026)
 
 ```
-SOLICITADO → FALTA_CONTRATAR → FALTA_AGENDAR → AGENDADO
-    → LIBERADO  [inicia monitoramento de deadline]
-    → AGUARDANDO_NFE / AGUARDANDO_GR (paralelo)
-    → AGUARDANDO_CARREGAMENTO → CARREGADO → EM_TRANSITO
-    → AGUARDANDO_DESCARGA → FINALIZADO  [para monitoramento]
+AGUARDANDO_GR → TRANSITO_CARREGAMENTO → LOCAL → MANIFESTADO
+    → FALTA_AGENDAR → AGENDADO → AGUARDANDO_DESCARGA → FINALIZADO
 ```
 
-- Monitoramento de deadline liga ao entrar em qualquer status de `LIBERADO` até
-  `AGUARDANDO_DESCARGA`, e desliga em `FINALIZADO` (ver `monitor.md` na raiz).
-- **Conclusão da liberação** (`backend/src/services/liberacao-status.ts`): conclui sozinha só
-  com todos os veículos `FINALIZADO` **e** saldo de fardos `<= 0`. Todos finalizados com saldo
-  pendente → continua `ATIVA` (`aguardandoFechamento` na API, pop-up na tela) até um ADMIN
-  fechar manualmente (`POST /liberacoes/:id/finalizar`), o que grava `fechamentoManual`,
-  `fardosPendentesFechamento`, motivo, quem e quando — aparece em amarelo na lista. Se algum
-  veículo sair de `FINALIZADO`, a liberação reabre e o fechamento manual é limpo.
+- Regras centralizadas em `backend/src/services/liberacao-status.ts` (frontend espelha em
+  `frontend/src/utils/status.ts`). LOCAL = no local de carregamento, ainda não carregado;
+  AGENDADO = agendamento **da descarga**.
+- **Programado × carregado**: programado = fardos dos veículos ativos (qualquer etapa);
+  carregado = só os de MANIFESTADO em diante (`STATUS_CARREGADO`). Saldo a programar =
+  total − programado; saldo a carregar = total − carregado. `Liberacao.carregado` é só um
+  cache desse carregado real, recalculado em `reavaliarStatusLiberacao` — nunca digitado.
+- **Deadline é de carregamento**: alertas/Dashboard só cobram prazo de veículo antes de
+  MANIFESTADO (`STATUS_MONITORAMENTO`); liberação com tudo carregado não aparece vencida.
+- **Excluir veículo = inativar** (`DELETE /veiculos/:id` com `motivo`, perfis ADMIN/OPERADOR/
+  GESTOR_FILIAL; reativar só ADMIN em `POST /veiculos/:id/reativar`). Inativo fica na lista,
+  bloqueado para edição e fora de programado/carregado/saldo/frete/relatórios/alertas.
+- **Peso**: `Liberacao.pesoTotal` e `Veiculo.pesoCarregado` em **toneladas** no banco; o
+  modal do veículo recebe **kg** e converte. Peso médio do fardo = pesoTotal ÷ totalFardos.
+- **Situação calculada** (ao lado do status gravado): FALTA_PROGRAMAR / FALTA_CARREGAR /
+  EM_FINALIZACAO / PENDENCIA_DADOS. Status `SUSPENSA` (ADMIN/Gestor, motivo obrigatório):
+  sem alertas e fora dos KPIs; veículos continuam podendo mudar.
+- **Conclusão da liberação**: conclui sozinha só com todos os veículos **ativos** em
+  `FINALIZADO` **e** o checklist completo (`checklistFechamento`): saldo a programar ≤ 0,
+  peso da instrução informado, soma dos pesos dos veículos dentro da tolerância
+  (parâmetro `tolerancia_peso_fechamento`, % — tela Revisão de Dados › Parâmetros), e em
+  cada veículo: peso, agendamento, SM ENCERRADA, rastreamento ≠ PENDENTE, isca respondida
+  (`possuiIsca`), CPF, forma de pagamento e frete motorista. Faltando algo → continua
+  `ATIVA` em amarelo (`aguardandoFechamento`, `pendencias`) e aparece em Alertas
+  (`GET /alertas/pendencias-fechamento`) até um ADMIN corrigir ou fechar manualmente
+  (`POST /liberacoes/:id/finalizar`, motivo obrigatório; grava `fechamentoManual`,
+  `pendenciasFechamento`, `fardosPendentesFechamento`, quem e quando). Já concluídas não
+  passam pelas regras novas; se algum veículo ativo sair de `FINALIZADO`, reabre.
+- **Forma de pagamento** do veículo: só informativa; opções em `referencias_cadastro`
+  tipo `formasPagamento` (bloco em Revisão de Dados, só ADMIN cria/edita).
+- **Parâmetros do sistema**: tabela `configuracoes_sistema` (chave → valor); chaves
+  aceitas e limites em `backend/src/services/parametros.ts`; `GET/PUT /api/parametros`.
 - **Relatórios** (`/relatorios`, `backend/src/controllers/relatorios.controller.ts`): agrupam por
   `Liberacao.concluidaEm` e `Veiculo.finalizadoEm` (preenchidos ao mudar de status; o histórico
   anterior a out/2026 foi estimado na migration `datas_conclusao_relatorios`). Instantes são

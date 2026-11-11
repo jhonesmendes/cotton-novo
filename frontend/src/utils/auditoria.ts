@@ -40,6 +40,7 @@ export const TABELA_LABELS: Record<string, string> = {
   ReferenciaCadastro: 'Referência de cadastro',
   Transportadora: 'Transportadora',
   AlertaConfig: 'Configuração de alerta',
+  ConfiguracaoSistema: 'Parâmetro do sistema',
 };
 
 const CAMPO_LABELS: Record<string, string> = {
@@ -56,7 +57,13 @@ const CAMPO_LABELS: Record<string, string> = {
   status: 'Status',
   statusSm: 'SM (monitoramento)',
   statusRastreamento: 'Rastreamento',
-  numeroIsca: 'Isca',
+  numeroIsca: 'Número da isca',
+  possuiIsca: 'Possui isca',
+  formaPagamento: 'Forma de pagamento',
+  motivoInativacao: 'Motivo da inativação',
+  inativadoPor: 'Inativado por',
+  inativadoEm: 'Inativado em',
+  motivoReativacao: 'Motivo da reativação',
   dataAgendamento: 'Data de agendamento',
   dataCarregamento: 'Data de carregamento',
   dataDescarga: 'Data de descarga',
@@ -91,6 +98,12 @@ const CAMPO_LABELS: Record<string, string> = {
   motivoFechamento: 'Motivo do fechamento',
   fechamentoManualPor: 'Fechado por',
   fechamentoManualEm: 'Fechado em',
+  pendenciasFechamento: 'Pendências no fechamento',
+  pesoTotal: 'Peso da instrução (t)',
+  motivoSuspensao: 'Motivo da suspensão',
+  suspensaPor: 'Suspensa por',
+  suspensaEm: 'Suspensa em',
+  chave: 'Parâmetro',
   // Usuário / cadastros
   nome: 'Nome',
   email: 'Email',

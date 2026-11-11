@@ -24,7 +24,7 @@ const criarSchema = z.object({
   comprimentoM: z.number().positive().optional().nullable(),
   freteMotorista: z.number().positive(),
   qtdFardos: z.number().int().positive(),
-  // Toneladas carregadas na viagem (opcional — preenchido com NF/balança).
+  // Toneladas carregadas na viagem (opcional — NF/balança). A tela recebe em kg e converte.
   pesoCarregado: z.number().positive().nullable().optional(),
   motoristaNome: z.string().min(3),
   motoristaTelefone: z.string().min(10),
@@ -32,10 +32,14 @@ const criarSchema = z.object({
   motoristaCpf: z.string().min(10).max(11).nullable().optional(),
   motoristaEmail: z.string().email().optional(),
   transportadoraId: z.number().int().positive().optional(),
-  status: z.nativeEnum(StatusVeiculo).optional().default(StatusVeiculo.AGENDADO),
+  status: z.nativeEnum(StatusVeiculo).optional().default(StatusVeiculo.AGUARDANDO_GR),
   statusSm: z.nativeEnum(StatusSM).optional().default(StatusSM.PENDENTE),
-  statusRastreamento: z.nativeEnum(StatusRastreamento).optional().default(StatusRastreamento.NAO_RASTREADO),
+  statusRastreamento: z.nativeEnum(StatusRastreamento).optional().default(StatusRastreamento.PENDENTE),
+  // null = não respondido; false = "Não possui isca"; true = possui (com número).
+  possuiIsca: z.boolean().nullable().optional(),
   numeroIsca: z.string().optional().nullable(),
+  // Informativo (conferência no ERP); opções em Revisão de Dados.
+  formaPagamento: z.string().trim().max(100).nullable().optional(),
   dataAgendamento: z.string().datetime({ offset: true }).optional().nullable(),
   dataCarregamento: z.string().datetime({ offset: true }).optional().nullable(),
   dataDescarga: z.string().datetime({ offset: true }).optional().nullable(),
@@ -43,6 +47,20 @@ const criarSchema = z.object({
 });
 
 type DadosVeiculo = z.infer<typeof criarSchema>;
+
+// "Não possui isca" apaga o número; número informado sem resposta vale como "Sim".
+function normalizarIsca<T extends { possuiIsca?: boolean | null; numeroIsca?: string | null }>(data: T): T {
+  if (data.possuiIsca === false) return { ...data, numeroIsca: null };
+  if (data.possuiIsca === undefined && data.numeroIsca?.trim()) return { ...data, possuiIsca: true };
+  return data;
+}
+
+const motivoSchema = z.object({ motivo: z.string().trim().min(3, 'Informe o motivo').max(500) });
+
+async function nomeUsuario(req: AuthRequest) {
+  const usuario = await prisma.usuario.findUnique({ where: { id: req.user!.id }, select: { nome: true } });
+  return usuario?.nome ?? req.user?.email ?? null;
+}
 
 // Resposta do usuário ao aviso de motorista já cadastrado (MOTORISTA_EXISTENTE):
 // "atualizar" aplica os dados digitados ao motorista escolhido; "novo" grava
@@ -256,7 +274,7 @@ export async function buscarMotoristaPorCpf(req: AuthRequest, res: Response) {
 }
 
 export async function criar(req: AuthRequest, res: Response) {
-  const data = criarSchema.parse(req.body);
+  const data = normalizarIsca(criarSchema.parse(req.body));
 
   const liberacao = await prisma.liberacao.findUnique({ where: { id: data.liberacaoId } });
   if (!liberacao) throw new AppError('Liberação não encontrada', 404);
@@ -278,17 +296,17 @@ export async function criar(req: AuthRequest, res: Response) {
     include: { modeloCarreta: true },
   });
 
-  // Atualiza total carregado na liberação
-  await recalcularCarregado(data.liberacaoId);
+  await reavaliarStatusLiberacao(data.liberacaoId);
 
   return res.status(201).json(veiculo);
 }
 
 export async function atualizar(req: AuthRequest, res: Response) {
   const { id } = req.params;
-  const data = criarSchema.partial().parse(req.body);
+  const data = normalizarIsca(criarSchema.partial().parse(req.body));
   const atual = await prisma.veiculo.findUnique({ where: { id: parseInt(id) } });
   if (!atual) throw new AppError('Veículo não encontrado', 404);
+  if (!atual.ativo) throw new AppError('Veículo inativo não pode ser alterado. Peça a um administrador para reativá-lo.', 400, 'VEICULO_INATIVO');
   const dadosCompletos = { ...atual, ...data, placa: data.placa ?? atual.placa } as DadosVeiculo;
   const motoristaMudou =
     normalizar(dadosCompletos.motoristaNome) !== normalizar(atual.motoristaNome)
@@ -322,34 +340,44 @@ export async function atualizar(req: AuthRequest, res: Response) {
     include: { modeloCarreta: true },
   });
 
-  await recalcularCarregado(veiculo.liberacaoId);
+  await reavaliarStatusLiberacao(veiculo.liberacaoId);
 
   return res.json(veiculo);
 }
 
+// "Excluir" não apaga: inativa o veículo com motivo. Ele continua na lista,
+// bloqueado e fora de programado/carregado/saldo/frete/relatórios.
 export async function deletar(req: AuthRequest, res: Response) {
-  const { id } = req.params;
+  const id = parseInt(req.params.id);
+  const { motivo } = motivoSchema.parse(req.body ?? {});
 
-  const veiculo = await prisma.veiculo.findUnique({ where: { id: parseInt(id) } });
+  const veiculo = await prisma.veiculo.findUnique({ where: { id } });
   if (!veiculo) throw new AppError('Veículo não encontrado', 404);
+  if (!veiculo.ativo) throw new AppError('Veículo já está inativo', 400, 'VEICULO_INATIVO');
 
-  await prisma.veiculo.delete({ where: { id: parseInt(id) } });
-  await recalcularCarregado(veiculo.liberacaoId);
+  const atualizado = await prisma.veiculo.update({
+    where: { id },
+    data: { ativo: false, motivoInativacao: motivo, inativadoPor: await nomeUsuario(req), inativadoEm: new Date(), motivoReativacao: null },
+  });
+  await reavaliarStatusLiberacao(veiculo.liberacaoId);
 
-  return res.json({ message: 'Veículo removido' });
+  return res.json(atualizado);
 }
 
-async function recalcularCarregado(liberacaoId: number) {
-  const soma = await prisma.veiculo.aggregate({
-    where: { liberacaoId },
-    _sum: { qtdFardos: true },
-  });
-  const carregado = soma._sum.qtdFardos ?? 0;
+// Reativar: só ADMIN (ver rota), com motivo. Inativação e reativação ficam no histórico.
+export async function reativar(req: AuthRequest, res: Response) {
+  const id = parseInt(req.params.id);
+  const { motivo } = motivoSchema.parse(req.body ?? {});
 
-  await prisma.liberacao.update({
-    where: { id: liberacaoId },
-    data: { carregado },
-  });
+  const veiculo = await prisma.veiculo.findUnique({ where: { id } });
+  if (!veiculo) throw new AppError('Veículo não encontrado', 404);
+  if (veiculo.ativo) throw new AppError('Veículo já está ativo', 400);
 
-  await reavaliarStatusLiberacao(liberacaoId);
+  const atualizado = await prisma.veiculo.update({
+    where: { id },
+    data: { ativo: true, motivoReativacao: motivo, motivoInativacao: null, inativadoPor: null, inativadoEm: null },
+  });
+  await reavaliarStatusLiberacao(veiculo.liberacaoId);
+
+  return res.json(atualizado);
 }

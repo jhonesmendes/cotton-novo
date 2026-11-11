@@ -24,6 +24,9 @@ const liberacaoSchema = z.object({
   // Opcional (liberações antigas não têm). Vazio = null.
   freteMotorista: z.preprocess((v) => (v === '' || v == null || Number.isNaN(v) ? null : Number(v)), z.number().min(0, 'Não pode ser negativo').nullable()),
   totalFardos: z.coerce.number().int().min(1, 'Deve ser maior que 0'),
+  // Toneladas. Obrigatório para instrução nova ou ainda aberta (ver onSubmit);
+  // as já concluídas/canceladas podem ficar sem.
+  pesoTotal: z.preprocess((v) => (v === '' || v == null || Number.isNaN(v) ? null : Number(v)), z.number().positive('Peso deve ser maior que 0').nullable()),
   tipoFardo: z.string().min(1, 'Tipo de fardo é obrigatório'),
   deadline: z.string().min(1, 'Dead line é obrigatória'),
   observacao: z.string().optional().nullable(),
@@ -51,7 +54,7 @@ export default function LiberacaoForm() {
   const rotuloLocal = localSimilar ? LOCAIS[localSimilar.tipo].rotulo : '';
   const ultimoEnvio = useRef<any>(null);
 
-  const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<LiberacaoFormData>({
+  const { register, handleSubmit, reset, watch, setValue, setError, formState: { errors } } = useForm<LiberacaoFormData>({
     resolver: zodResolver(liberacaoSchema) as any,
     defaultValues: {
       tipoFardo: 'FARDAO',
@@ -115,6 +118,12 @@ export default function LiberacaoForm() {
   });
 
   const onSubmit = (data: any) => {
+    const exigePeso = !isEdit || editData?.status === 'ATIVA' || editData?.status === 'SUSPENSA';
+    if (exigePeso && !data.pesoTotal) {
+      setError('pesoTotal', { message: 'Informe o peso da instrução (t)' });
+      return;
+    }
+    if (!data.pesoTotal) delete data.pesoTotal;
     ultimoEnvio.current = data;
     mutation.mutate(data);
   };
@@ -167,6 +176,7 @@ export default function LiberacaoForm() {
             <Field label="Data de Coleta*" type="date" {...register('dataColeta')} error={errors.dataColeta?.message} />
             <Field label="Dead Line*" type="date" {...register('deadline')} error={errors.deadline?.message} />
             <Field label="Total de Fardos*" type="number" {...register('totalFardos')} error={errors.totalFardos?.message} />
+            <Field label="Peso da instrução (t)*" type="number" step="0.001" {...register('pesoTotal')} error={errors.pesoTotal?.message} placeholder="Ex: 144,3" />
             <Field label="Frete Empresa (R$/t)*" type="number" step="0.01" {...register('freteEmpresa')} error={errors.freteEmpresa?.message} />
             <div>
               <Field label="Frete Motorista (R$/t)" type="number" step="0.01" {...register('freteMotorista')} error={errors.freteMotorista?.message} />
@@ -180,6 +190,7 @@ export default function LiberacaoForm() {
                 <option value="FARDINHO">FARDINHO</option>
               </select>
               {errors.tipoFardo && <p className="text-[10px] text-red-500 mt-0.5">{errors.tipoFardo.message}</p>}
+              <PesoMedio peso={watch('pesoTotal')} fardos={watch('totalFardos')} />
             </div>
             <div className="col-span-2">
               <label className="block text-xs text-gray-500 mb-1">Observação</label>
@@ -287,6 +298,18 @@ function MargemPrevia({ empresa, motorista }: { empresa: unknown; motorista: unk
     <p className="text-[11px] text-gray-500 mt-1">
       Margem: <strong className="text-gray-700">{(((e - m) / e) * 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%</strong>
       <span className="ml-1">= ({e.toLocaleString('pt-BR')} − {m.toLocaleString('pt-BR')}) ÷ {e.toLocaleString('pt-BR')}</span>
+    </p>
+  );
+}
+
+// Peso médio do fardo = peso da instrução (t) ÷ total de fardos, mostrado em kg.
+function PesoMedio({ peso, fardos }: { peso: unknown; fardos: unknown }) {
+  const p = Number(peso);
+  const f = Number(fardos);
+  if (!p || !f) return null;
+  return (
+    <p className="text-[11px] text-gray-500 mt-1">
+      Peso médio: <strong className="text-gray-700">{Math.round((p * 1000) / f).toLocaleString('pt-BR')} kg/fardo</strong>
     </p>
   );
 }

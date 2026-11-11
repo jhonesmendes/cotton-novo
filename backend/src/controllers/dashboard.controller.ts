@@ -2,16 +2,8 @@ import { Response } from 'express';
 import prisma from '../database/prisma';
 import { AuthRequest } from '../middleware/auth';
 import { StatusLiberacao, StatusVeiculo } from '@prisma/client';
+import { STATUS_MONITORAMENTO } from '../services/liberacao-status';
 
-const STATUS_MONITORAMENTO: StatusVeiculo[] = [
-  StatusVeiculo.LIBERADO,
-  StatusVeiculo.AGUARDANDO_NFE,
-  StatusVeiculo.AGUARDANDO_GR,
-  StatusVeiculo.AGUARDANDO_CARREGAMENTO,
-  StatusVeiculo.CARREGADO,
-  StatusVeiculo.EM_TRANSITO,
-  StatusVeiculo.AGUARDANDO_DESCARGA,
-];
 
 export async function getResumo(_req: AuthRequest, res: Response) {
   const hoje = new Date();
@@ -19,22 +11,23 @@ export async function getResumo(_req: AuthRequest, res: Response) {
   const em3dias = new Date(hoje);
   em3dias.setDate(em3dias.getDate() + 3);
 
-  const [ativas, vencidas, em3Dias, volumePendente] = await Promise.all([
-    prisma.liberacao.count({ where: { status: StatusLiberacao.ATIVA } }),
-    prisma.liberacao.count({
-      where: { status: StatusLiberacao.ATIVA, deadline: { lt: hoje } },
-    }),
-    prisma.liberacao.count({
-      where: {
-        status: StatusLiberacao.ATIVA,
-        deadline: { gte: hoje, lte: em3dias },
-      },
-    }),
-    prisma.liberacao.aggregate({
-      where: { status: StatusLiberacao.ATIVA },
-      _sum: { totalFardos: true, carregado: true },
-    }),
-  ]);
+  // Deadline é de carregamento: liberação com tudo carregado não está "em risco",
+  // mesmo com a data passada. `carregado` é o cache do carregado real (veículos ativos
+  // a partir de MANIFESTADO). Suspensas ficam fora (status ATIVA).
+  const ativasLista = await prisma.liberacao.findMany({
+    where: { status: StatusLiberacao.ATIVA },
+    select: { deadline: true, totalFardos: true, carregado: true },
+  });
+  const comSaldo = ativasLista.filter((l) => l.carregado < l.totalFardos);
+  const ativas = ativasLista.length;
+  const vencidas = comSaldo.filter((l) => l.deadline < hoje).length;
+  const em3Dias = comSaldo.filter((l) => l.deadline >= hoje && l.deadline <= em3dias).length;
+  const volumePendente = {
+    _sum: {
+      totalFardos: ativasLista.reduce((s, l) => s + l.totalFardos, 0),
+      carregado: ativasLista.reduce((s, l) => s + l.carregado, 0),
+    },
+  };
 
   const total = volumePendente._sum.totalFardos ?? 0;
   const carregado = volumePendente._sum.carregado ?? 0;
@@ -77,7 +70,8 @@ export async function getVeiculosVencendo(req: AuthRequest, res: Response) {
   if (origemId) liberacaoWhere.origemId = parseInt(origemId);
   if (terminalId) liberacaoWhere.terminalId = parseInt(terminalId);
 
-  const veiculoWhere: any = { liberacao: liberacaoWhere };
+  // Veículo inativo (excluído) não é monitorado.
+  const veiculoWhere: any = { liberacao: liberacaoWhere, ativo: true };
   if (status) {
     veiculoWhere.status = status as StatusVeiculo;
   } else {

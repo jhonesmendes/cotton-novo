@@ -3,12 +3,12 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useEffect, useRef, useState } from 'react';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
-import { formatDate, formatDateTime, formatMoney, formatTelefone, formatToneladas } from '@/utils/format';
-import { STATUS_OPTIONS, STATUS_LABELS, STATUS_SEM_MONITORAMENTO, SM_OPTIONS, SM_LABELS, RASTREAMENTO_LABELS } from '@/utils/status';
+import { formatDate, formatDateTime, formatMoney, formatPeso, formatTelefone } from '@/utils/format';
+import { STATUS_OPTIONS, STATUS_LABELS, SM_OPTIONS, SM_LABELS, RASTREAMENTO_LABELS, SITUACAO_LABELS, STATUS_LIBERACAO_CLASSES, SituacaoLiberacao } from '@/utils/status';
 import UrgenciaBadge from '@/components/UrgenciaBadge';
 import ConfirmModal from '@/components/ConfirmModal';
 import TimelineStatus from '@/components/TimelineStatus';
-import { PlusIcon, PencilSquareIcon, TrashIcon, PhoneIcon, ChevronDownIcon, ChevronUpIcon, EyeIcon, EyeSlashIcon, ClockIcon, ArrowLeftIcon, ExclamationTriangleIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, PencilSquareIcon, TrashIcon, PhoneIcon, ChevronDownIcon, ChevronUpIcon, EyeIcon, EyeSlashIcon, ClockIcon, ArrowLeftIcon, ExclamationTriangleIcon, CheckCircleIcon, PauseCircleIcon, PlayCircleIcon, ArrowPathIcon, NoSymbolIcon } from '@heroicons/react/24/outline';
 import VeiculoModal from './VeiculoModal';
 import { urlListaLiberacoes } from './navegacao';
 import { useAuthStore } from '@/stores/auth.store';
@@ -21,14 +21,20 @@ export default function LiberacaoDetalhe() {
   const podeEditarLiberacao = perfil !== 'OPERADOR';
   const podeVerHistorico = perfil !== 'CLIENTE';
   const isAdmin = perfil === 'ADMIN';
-  // Pop-up de "faltam fardos" — todos os veículos finalizados, mas com saldo pendente.
+  const podeSuspender = perfil === 'ADMIN' || perfil === 'GESTOR_FILIAL';
+  const podeInativarVeiculo = perfil === 'ADMIN' || perfil === 'OPERADOR' || perfil === 'GESTOR_FILIAL';
+  // Suspender (motivo obrigatório) / reativar a liberação.
+  const [suspensao, setSuspensao] = useState<{ motivo: string } | null>(null);
+  // Inativar (excluir) / reativar veículo — sempre com motivo.
+  const [inativacao, setInativacao] = useState<{ veiculo: any; acao: 'inativar' | 'reativar'; motivo: string } | null>(null);
+  // Pop-up de pendência de fechamento — todos os veículos finalizados, mas com dado faltando.
   const [avisoFechamento, setAvisoFechamento] = useState(false);
   const [motivoFechamento, setMotivoFechamento] = useState('');
   const [historicoAberto, setHistoricoAberto] = useState(false);
   const navigate = useNavigate();
   const [veiculoModal, setVeiculoModal] = useState<'novo' | number | null>(null);
   const [expandedTimeline, setExpandedTimeline] = useState<number | null>(null);
-  const [confirmDelete, setConfirmDelete] = useState<{ type: 'veiculo' | 'liberacao'; id?: number } | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{ type: 'liberacao' } | null>(null);
   // Oculta os valores de frete antes de tirar print pra enviar pra fora — o valor
   // combinado com o motorista/empresa não pode aparecer no print.
   const [ocultarValores, setOcultarValores] = useState(false);
@@ -56,7 +62,7 @@ export default function LiberacaoDetalhe() {
   }, [lib]);
 
   const finalizarManual = useMutation({
-    mutationFn: () => api.post(`/liberacoes/${id}/finalizar`, { motivo: motivoFechamento.trim() || undefined }),
+    mutationFn: () => api.post(`/liberacoes/${id}/finalizar`, { motivo: motivoFechamento.trim() }),
     onSuccess: () => {
       toast.success('Instrução finalizada manualmente');
       qc.invalidateQueries({ queryKey: ['liberacao', id] });
@@ -67,14 +73,30 @@ export default function LiberacaoDetalhe() {
     onError: (err: any) => toast.error(err?.response?.data?.error?.message ?? 'Erro ao finalizar a instrução'),
   });
 
-  const deletarVeiculo = useMutation({
-    mutationFn: (vid: number) => api.delete(`/veiculos/${vid}`),
-    onSuccess: () => {
-      toast.success('Veículo removido com sucesso');
+  const inativarVeiculo = useMutation({
+    mutationFn: ({ vid, acao, motivo }: { vid: number; acao: 'inativar' | 'reativar'; motivo: string }) =>
+      acao === 'inativar'
+        ? api.delete(`/veiculos/${vid}`, { data: { motivo } })
+        : api.post(`/veiculos/${vid}/reativar`, { motivo }),
+    onSuccess: (_r, { acao }) => {
+      toast.success(acao === 'inativar' ? 'Veículo inativado' : 'Veículo reativado');
       qc.invalidateQueries({ queryKey: ['liberacao', id] });
-      setConfirmDelete(null);
+      qc.invalidateQueries({ queryKey: ['liberacoes'] });
+      setInativacao(null);
     },
-    onError: () => toast.error('Erro ao remover veículo'),
+    onError: (err: any) => toast.error(err?.response?.data?.error?.message ?? 'Erro ao alterar o veículo'),
+  });
+
+  const suspenderLiberacao = useMutation({
+    mutationFn: (motivo?: string) =>
+      motivo ? api.post(`/liberacoes/${id}/suspender`, { motivo }) : api.post(`/liberacoes/${id}/reativar`),
+    onSuccess: (_r, motivo) => {
+      toast.success(motivo ? 'Liberação suspensa' : 'Liberação reativada');
+      qc.invalidateQueries({ queryKey: ['liberacao', id] });
+      qc.invalidateQueries({ queryKey: ['liberacoes'] });
+      setSuspensao(null);
+    },
+    onError: (err: any) => toast.error(err?.response?.data?.error?.message ?? 'Erro ao alterar a liberação'),
   });
 
   const [savingStatusId, setSavingStatusId] = useState<number | null>(null);
@@ -139,8 +161,9 @@ export default function LiberacaoDetalhe() {
   if (!lib) return <div className="p-8 text-center text-red-500">Liberação não encontrada</div>;
 
   const diasParaDeadline = lib.diasParaDeadline;
-  const toneladas = (lib.veiculos ?? []).reduce((s: number, v: any) => s + (v.pesoCarregado ?? 0), 0);
-  const urgencia = lib.status === 'CONCLUIDA' || lib.status === 'CANCELADA'
+  const toneladas: number = lib.toneladasCarregadas ?? 0;
+  // Deadline é de carregamento: tudo carregado = no prazo, mesmo com a data passada.
+  const urgencia = lib.status !== 'ATIVA' || lib.prazoCumprido
     ? 'OK'
     : diasParaDeadline < 0 ? 'VENCIDO' : diasParaDeadline === 0 ? 'HOJE' :
     diasParaDeadline <= 1 ? 'CRITICO' : diasParaDeadline <= 3 ? 'ALERTA' :
@@ -162,6 +185,7 @@ export default function LiberacaoDetalhe() {
           <div className="flex items-center gap-3 flex-wrap">
             <h1 className="text-2xl font-bold text-gray-900">{lib.instrucao}</h1>
             <UrgenciaBadge nivel={urgencia} />
+            <SituacaoBadge situacao={lib.situacao} pendencias={lib.pendencias?.length} />
           </div>
           <p className="text-gray-500 text-sm mt-1">
             {lib.clienteNome ?? lib.cliente?.nome} · {lib.filialNome ?? lib.origem?.nome} → {lib.destinoNome ?? lib.destino?.nome} · {lib.origemNome ?? lib.terminal?.nome}
@@ -176,6 +200,20 @@ export default function LiberacaoDetalhe() {
             {ocultarValores ? <EyeSlashIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
             {ocultarValores ? 'Mostrar valores' : 'Ocultar valores'}
           </button>
+          {podeSuspender && lib.status === 'ATIVA' && (
+            <button onClick={() => setSuspensao({ motivo: '' })}
+              className="flex items-center gap-2 border border-amber-300 text-amber-700 px-4 py-2 rounded-lg text-sm hover:bg-amber-50 transition-colors">
+              <PauseCircleIcon className="w-4 h-4" />
+              Suspender
+            </button>
+          )}
+          {podeSuspender && lib.status === 'SUSPENSA' && (
+            <button onClick={() => suspenderLiberacao.mutate(undefined)} disabled={suspenderLiberacao.isPending}
+              className="flex items-center gap-2 border border-green-300 text-green-700 px-4 py-2 rounded-lg text-sm hover:bg-green-50 transition-colors disabled:opacity-60">
+              <PlayCircleIcon className="w-4 h-4" />
+              Reativar
+            </button>
+          )}
           {podeEditarLiberacao && (
             <Link to={`/liberacoes/${id}/editar`}
               className="flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm hover:bg-gray-50 transition-colors">
@@ -195,18 +233,37 @@ export default function LiberacaoDetalhe() {
       {/* Info cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Total de Fardos', value: lib.totalFardos },
+          {
+            label: 'Total de Fardos',
+            value: <>{lib.totalFardos}{lib.pesoTotal != null && <span className="ml-2 text-xs text-gray-500">{formatPeso(lib.pesoTotal)}</span>}</>,
+          },
+          {
+            label: 'Programado',
+            hint: 'Fardos com caminhão (veículos ativos, qualquer etapa)',
+            value: <>{lib.programado}</>,
+          },
           {
             label: 'Carregado',
-            value: <>{lib.carregado}{toneladas > 0 && <span className="ml-2 text-xs text-gray-500">{formatToneladas(toneladas)}</span>}</>
+            hint: 'Fardos de veículos a partir de MANIFESTADO',
+            value: <>{lib.carregado}{toneladas > 0 && <span className="ml-2 text-xs text-gray-500">{formatPeso(toneladas)}</span>}</>
           },
           {
-            label: 'Saldo Pendente',
-            value: <span className={lib.saldo > 0 ? 'text-orange-600 font-bold' : 'text-green-600'}>{lib.saldo}</span>
+            label: 'Saldo',
+            value: (
+              <span className="block space-y-0.5">
+                <span className={`block ${lib.saldo > 0 ? 'text-orange-600 font-bold' : 'text-green-600'}`}>
+                  {lib.saldo} a programar
+                  {lib.saldo > 0 && lib.pesoMedioFardoKg != null && (
+                    <span className="ml-1 text-xs font-normal text-gray-500">~{formatPeso((lib.saldo * lib.pesoMedioFardoKg) / 1000)}</span>
+                  )}
+                </span>
+                <span className={`block text-xs ${lib.saldoCarregar > 0 ? 'text-orange-600' : 'text-green-600'}`}>{lib.saldoCarregar} a carregar</span>
+              </span>
+            ),
           },
           {
-            label: 'Deadline',
-            value: <><span>{formatDate(lib.deadline)}</span><span className="ml-2 text-xs">({diasParaDeadline}d)</span></>
+            label: 'Deadline (carregamento)',
+            value: <><span>{formatDate(lib.deadline)}</span><span className="ml-2 text-xs">{lib.prazoCumprido ? '(tudo carregado)' : `(${diasParaDeadline}d)`}</span></>
           },
           {
             label: 'Frete (R$/t)',
@@ -224,32 +281,53 @@ export default function LiberacaoDetalhe() {
           },
           { label: 'Local de Coleta', value: lib.localColetaNome ?? lib.localColeta?.nome },
           { label: 'Local de Entrega', value: lib.localEntregaNome ?? lib.localEntrega?.nome ?? '—' },
-          { label: 'Tipo de Fardo', value: lib.tipoFardo },
+          {
+            label: 'Tipo de Fardo',
+            value: (
+              <span className="block space-y-0.5">
+                <span className="block">{lib.tipoFardo === 'FARDAO' ? 'FARDÃO' : lib.tipoFardo}</span>
+                {lib.pesoMedioFardoKg != null && <span className="block text-xs font-normal text-gray-500">médio {Math.round(lib.pesoMedioFardoKg).toLocaleString('pt-BR')} kg/fardo</span>}
+                {lib.pesoMedioRealKg != null && <span className="block text-xs font-normal text-gray-500">real {Math.round(lib.pesoMedioRealKg).toLocaleString('pt-BR')} kg/fardo</span>}
+                {lib.pesoTotal == null && lib.status === 'ATIVA' && <span className="block text-xs font-normal text-amber-600">peso da instrução não informado</span>}
+              </span>
+            ),
+          },
           {
             label: 'Status',
             value: (
               <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                lib.status === 'ATIVA' ? 'bg-green-100 text-green-700'
-                : lib.status === 'CONCLUIDA' && lib.fechamentoManual ? 'bg-amber-100 text-amber-700'
-                : lib.status === 'CONCLUIDA' ? 'bg-blue-100 text-blue-700'
-                : 'bg-gray-100 text-gray-500'
+                lib.status === 'CONCLUIDA' && lib.fechamentoManual ? 'bg-amber-100 text-amber-700' : STATUS_LIBERACAO_CLASSES[lib.status] ?? 'bg-gray-100 text-gray-500'
               }`}>{lib.status}{lib.status === 'CONCLUIDA' && lib.fechamentoManual ? ' (MANUAL)' : ''}</span>
             )
           },
-        ].map((c) => (
-          <div key={c.label} className="bg-white border rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+        ].map((c: { label: string; value: React.ReactNode; hint?: string }) => (
+          <div key={c.label} className="bg-white border rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow" title={c.hint}>
             <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">{c.label}</p>
-            <p className="text-sm font-semibold text-gray-800 mt-1">{c.value}</p>
+            <div className="text-sm font-semibold text-gray-800 mt-1">{c.value}</div>
           </div>
         ))}
       </div>
 
+      {lib.status === 'SUSPENSA' && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800 flex items-start gap-3">
+          <PauseCircleIcon className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+          <div>
+            <strong>Liberação suspensa.</strong> Não gera alertas e fica fora dos indicadores de risco.
+            {(lib.suspensaPor || lib.suspensaEm) && <span> Por {lib.suspensaPor ?? '—'} em {formatDateTime(lib.suspensaEm)}.</span>}
+            {lib.motivoSuspensao && <p className="mt-1"><strong>Motivo:</strong> {lib.motivoSuspensao}</p>}
+          </div>
+        </div>
+      )}
+
       {lib.aguardandoFechamento && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800 flex items-center gap-3 flex-wrap">
-          <ExclamationTriangleIcon className="w-5 h-5 text-amber-600 shrink-0" />
+        <div className="bg-amber-50 border border-amber-300 rounded-xl p-4 text-sm text-amber-800 flex items-start gap-3 flex-wrap">
+          <ExclamationTriangleIcon className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
           <div className="flex-1 min-w-[220px]">
-            <strong>Faltam {lib.saldo} fardos a serem carregados.</strong> Todos os veículos estão finalizados, mas a
-            instrução continua ativa até carregar o restante{isAdmin ? ' ou ser finalizada manualmente.' : ' ou um administrador finalizá-la.'}
+            <strong>Pendência de dados para concluir ({lib.pendencias.length}).</strong> Todos os veículos estão finalizados, mas a
+            instrução só conclui com os dados completos{isAdmin ? '. Corrija os dados ou finalize mesmo assim.' : ' — ou um administrador finaliza.'}
+            <ul className="mt-2 list-disc pl-5 space-y-0.5 text-xs">
+              {lib.pendencias.map((p: string) => <li key={p}>{p}</li>)}
+            </ul>
           </div>
           {isAdmin && (
             <button
@@ -267,11 +345,16 @@ export default function LiberacaoDetalhe() {
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800 flex items-start gap-3">
           <ExclamationTriangleIcon className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
           <div>
-            <strong>Fechada manualmente com {lib.fardosPendentesFechamento} fardos pendentes.</strong>
+            <strong>Fechada manualmente{lib.fardosPendentesFechamento ? ` com ${lib.fardosPendentesFechamento} fardos pendentes` : ' com pendência de dados'}.</strong>
             {(lib.fechamentoManualPor || lib.fechamentoManualEm) && (
               <span> Por {lib.fechamentoManualPor ?? '—'} em {formatDateTime(lib.fechamentoManualEm)}.</span>
             )}
             {lib.motivoFechamento && <p className="mt-1"><strong>Motivo:</strong> {lib.motivoFechamento}</p>}
+            {lib.pendenciasFechamento && (
+              <ul className="mt-1 list-disc pl-5 text-xs">
+                {lib.pendenciasFechamento.split('\n').map((p: string) => <li key={p}>{p}</li>)}
+              </ul>
+            )}
           </div>
         </div>
       )}
@@ -288,7 +371,10 @@ export default function LiberacaoDetalhe() {
         <div className="px-5 py-4 border-b flex items-center justify-between">
           <div>
             <h2 className="font-bold text-gray-800">Veículos</h2>
-            <p className="text-xs text-gray-400 mt-0.5">{lib.veiculos?.length ?? 0} veículo(s) vinculado(s)</p>
+            <p className="text-xs text-gray-400 mt-0.5">
+              {(lib.veiculos ?? []).filter((v: any) => v.ativo).length} veículo(s) ativo(s)
+              {(lib.veiculos ?? []).some((v: any) => !v.ativo) && ` · ${(lib.veiculos ?? []).filter((v: any) => !v.ativo).length} inativo(s)`}
+            </p>
           </div>
           <button onClick={() => setVeiculoModal('novo')}
             className="flex items-center gap-2 bg-ui-primary text-white px-3 py-1.5 rounded-lg text-sm hover:bg-ui-primary-hover transition-colors font-medium">
@@ -303,14 +389,35 @@ export default function LiberacaoDetalhe() {
               Nenhum veículo vinculado. Clique em "Adicionar Veículo" para começar.
             </div>
           )}
-          {(lib.veiculos ?? []).map((v: any) => (
-            <div key={v.id} className="hover:bg-gray-50 transition-colors">
-              {/* Veículo row */}
-              <div className="px-5 py-4 flex items-center gap-4 flex-wrap">
+          {(lib.veiculos ?? []).map((v: any) => {
+            const inativo = !v.ativo;
+            // Finalizado com dado faltando: borda amarela + lista do que falta.
+            const comPendencia = !inativo && v.status === 'FINALIZADO' && v.pendencias?.length > 0;
+            return (
+            <div key={v.id} className={`transition-colors ${inativo ? 'bg-gray-50' : comPendencia ? 'bg-amber-50/60 border-l-4 border-amber-400' : 'hover:bg-gray-50'}`}>
+              {inativo && (
+                <div className="px-5 pt-3 flex items-center gap-2 flex-wrap text-xs text-gray-500">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-gray-200 px-2 py-0.5 font-bold text-gray-600"><NoSymbolIcon className="w-3 h-3" />INATIVO</span>
+                  <span><strong>Motivo:</strong> {v.motivoInativacao ?? '—'}</span>
+                  {(v.inativadoPor || v.inativadoEm) && <span>· {v.inativadoPor ?? '—'} em {formatDateTime(v.inativadoEm)}</span>}
+                  {isAdmin && (
+                    <button onClick={() => setInativacao({ veiculo: v, acao: 'reativar', motivo: '' })}
+                      className="ml-auto inline-flex items-center gap-1 rounded-lg border border-green-300 px-2 py-1 font-semibold text-green-700 hover:bg-green-50">
+                      <ArrowPathIcon className="w-3.5 h-3.5" />Reativar
+                    </button>
+                  )}
+                </div>
+              )}
+              {comPendencia && (
+                <p className="px-5 pt-3 text-xs text-amber-700"><ExclamationTriangleIcon className="inline w-3.5 h-3.5 mr-1" />Falta: {v.pendencias.join(' · ')}</p>
+              )}
+              {/* Veículo row — inativo fica apagado e bloqueado */}
+              <fieldset disabled={inativo} className={`px-5 py-4 flex items-center gap-4 flex-wrap ${inativo ? 'opacity-50 line-through decoration-gray-400' : ''}`}>
                 {/* Placa + modelo */}
                 <div className="min-w-[110px]">
                   <p className="font-mono font-bold text-gray-900 text-base tracking-wider">{v.placa}</p>
                   <p className="text-[10px] text-gray-400 mt-0.5 uppercase">{v.modeloCarreta?.nomeDescricao}</p>
+                  {v.formaPagamento && <p className="mt-1 inline-block rounded bg-indigo-50 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-700 no-underline">{v.formaPagamento}</p>}
                 </div>
 
                 {/* Motorista */}
@@ -329,11 +436,13 @@ export default function LiberacaoDetalhe() {
                 {/* Rastreamento + Isca */}
                 <div className="min-w-[130px]">
                   <p className="text-[10px] text-gray-500">Rastreamento</p>
-                  <p className="text-xs font-semibold text-gray-800">{RASTREAMENTO_LABELS[v.statusRastreamento as keyof typeof RASTREAMENTO_LABELS] ?? v.statusRastreamento}</p>
+                  <p className={`text-xs font-semibold ${v.statusRastreamento === 'PENDENTE' ? 'text-amber-600' : 'text-gray-800'}`}>{RASTREAMENTO_LABELS[v.statusRastreamento as keyof typeof RASTREAMENTO_LABELS] ?? v.statusRastreamento}</p>
                   <p className="text-xs mt-0.5">
-                    {v.numeroIsca
-                      ? <span>🟢 <span className="font-mono text-gray-700">{v.numeroIsca}</span></span>
-                      : <span>🔴 <span className="text-gray-400">Isca não informada</span></span>
+                    {v.possuiIsca === true
+                      ? <span>🟢 <span className="font-mono text-gray-700">{v.numeroIsca || 'sem número'}</span></span>
+                      : v.possuiIsca === false
+                      ? <span className="text-gray-500">Não possui isca</span>
+                      : <span className="text-amber-600">Isca pendente</span>
                     }
                   </p>
                 </div>
@@ -370,7 +479,13 @@ export default function LiberacaoDetalhe() {
                 {/* Fardos + Frete */}
                 <div className="text-right">
                   <p className="text-sm font-bold text-gray-900">{v.qtdFardos} fardos</p>
-                  <p className="text-xs text-gray-500">{v.pesoCarregado != null ? formatToneladas(v.pesoCarregado) : <span className="text-amber-600">sem peso</span>}</p>
+                  <p className="text-xs text-gray-500">
+                    {v.pesoCarregado != null
+                      ? formatPeso(v.pesoCarregado)
+                      : <span className="text-amber-600" title="Estimado pelo peso médio da instrução">
+                          sem peso{lib.pesoMedioFardoKg != null && ` · ~${formatPeso((v.qtdFardos * lib.pesoMedioFardoKg) / 1000)} estimado`}
+                        </span>}
+                  </p>
                   <p className="text-xs text-gray-400">{ocultarValores ? 'R$ ••••••' : formatMoney(v.freteMotorista)}</p>
                 </div>
 
@@ -386,14 +501,8 @@ export default function LiberacaoDetalhe() {
                     disabled={savingStatusId === v.id}
                     className="w-full border border-gray-200 rounded px-2 py-1 text-xs bg-white"
                   >
-                    {STATUS_OPTIONS.map((status) => (
-                      <option
-                        key={status}
-                        value={status}
-                        className={STATUS_SEM_MONITORAMENTO.includes(status) ? 'text-gray-500' : 'text-gray-900'}
-                      >
-                        {STATUS_LABELS[status]}
-                      </option>
+                    {STATUS_OPTIONS.map((status, i) => (
+                      <option key={status} value={status}>{i + 1}. {STATUS_LABELS[status]}</option>
                     ))}
                   </select>
                   {v.ultimaAlteracao && (
@@ -429,15 +538,17 @@ export default function LiberacaoDetalhe() {
                   >
                     <PencilSquareIcon className="w-4 h-4" />
                   </button>
-                  <button
-                    onClick={() => setConfirmDelete({ type: 'veiculo', id: v.id })}
-                    className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                    title="Remover"
-                  >
-                    <TrashIcon className="w-4 h-4" />
-                  </button>
+                  {podeInativarVeiculo && (
+                    <button
+                      onClick={() => setInativacao({ veiculo: v, acao: 'inativar', motivo: '' })}
+                      className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      title="Excluir (inativar)"
+                    >
+                      <TrashIcon className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
-              </div>
+              </fieldset>
 
               {/* Timeline Expandida */}
               {expandedTimeline === v.id && (
@@ -447,6 +558,7 @@ export default function LiberacaoDetalhe() {
                   </p>
                   <TimelineStatus
                     status={v.status}
+                    ativo={v.ativo}
                     dataAgendamento={v.dataAgendamento}
                     dataCarregamento={v.dataCarregamento}
                     dataDescarga={v.dataDescarga}
@@ -454,7 +566,8 @@ export default function LiberacaoDetalhe() {
                 </div>
               )}
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
@@ -523,16 +636,20 @@ export default function LiberacaoDetalhe() {
       {/* Pop-up: veículos finalizados com fardos pendentes */}
       <ConfirmModal
         isOpen={avisoFechamento && !!lib.aguardandoFechamento}
-        title={`Faltam ${lib.saldo} fardos a serem carregados`}
+        title={`Pendência de dados (${lib.pendencias?.length ?? 0})`}
         message={isAdmin
-          ? `Todos os veículos estão finalizados, mas ainda há ${lib.saldo} de ${lib.totalFardos} fardos pendentes. A instrução não será concluída automaticamente. Deseja finalizá-la mesmo assim? Ela ficará marcada em amarelo como "fardos pendentes – fechada manualmente".`
-          : `Todos os veículos estão finalizados, mas ainda há ${lib.saldo} de ${lib.totalFardos} fardos pendentes. A instrução continua ativa até carregar o restante ou um administrador finalizá-la.`}
+          ? 'Todos os veículos estão finalizados, mas faltam dados para concluir (lista na faixa amarela). Corrija os dados ou finalize mesmo assim — ela ficará marcada em amarelo como "fechada manualmente", com o que faltava e o motivo.'
+          : 'Todos os veículos estão finalizados, mas faltam dados para concluir (lista na faixa amarela). A instrução continua ativa até os dados serem corrigidos ou um administrador finalizá-la.'}
         variant="warning"
         confirmLabel={isAdmin ? 'Finalizar instrução' : 'Entendi'}
         cancelLabel="Agora não"
         hideCancel={!isAdmin}
         loading={finalizarManual.isPending}
-        onConfirm={() => (isAdmin ? finalizarManual.mutate() : setAvisoFechamento(false))}
+        onConfirm={() => {
+          if (!isAdmin) return setAvisoFechamento(false);
+          if (motivoFechamento.trim().length < 3) return toast.error('Informe o motivo do fechamento');
+          finalizarManual.mutate();
+        }}
         onCancel={() => setAvisoFechamento(false)}
       >
         {isAdmin && (
@@ -541,23 +658,70 @@ export default function LiberacaoDetalhe() {
             onChange={(e) => setMotivoFechamento(e.target.value)}
             maxLength={500}
             rows={3}
-            placeholder="Motivo do fechamento (opcional)"
+            placeholder="Motivo do fechamento (obrigatório)"
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white text-gray-800"
           />
         )}
       </ConfirmModal>
 
-      {/* Modal Confirmação - Veículo */}
+      {/* Inativar (excluir) / reativar veículo — motivo obrigatório */}
       <ConfirmModal
-        isOpen={confirmDelete?.type === 'veiculo'}
-        title="Remover Veículo"
-        message="Esta ação irá remover permanentemente o veículo desta liberação. Todos os dados de agendamento e carregamento associados serão perdidos. Deseja continuar?"
-        confirmLabel="Sim, remover"
-        variant="danger"
-        loading={deletarVeiculo.isPending}
-        onConfirm={() => confirmDelete?.id && deletarVeiculo.mutate(confirmDelete.id)}
-        onCancel={() => setConfirmDelete(null)}
-      />
+        isOpen={!!inativacao}
+        title={inativacao?.acao === 'reativar' ? `Reativar veículo ${inativacao?.veiculo.placa}` : `Excluir veículo ${inativacao?.veiculo.placa ?? ''}`}
+        message={inativacao?.acao === 'reativar'
+          ? 'O veículo volta a contar em programado, carregado, saldo e relatórios, e pode ser editado de novo.'
+          : 'O veículo não é apagado: fica inativo na lista (bloqueado para edição) e deixa de contar em programado, carregado, saldo, frete e relatórios. Só um administrador pode reativar.'}
+        confirmLabel={inativacao?.acao === 'reativar' ? 'Reativar' : 'Inativar veículo'}
+        variant={inativacao?.acao === 'reativar' ? 'info' : 'danger'}
+        loading={inativarVeiculo.isPending}
+        onConfirm={() => {
+          if (!inativacao) return;
+          if (inativacao.motivo.trim().length < 3) return toast.error('Informe o motivo');
+          inativarVeiculo.mutate({ vid: inativacao.veiculo.id, acao: inativacao.acao, motivo: inativacao.motivo.trim() });
+        }}
+        onCancel={() => setInativacao(null)}
+      >
+        {inativacao?.acao === 'inativar' && (
+          <div className="mb-2 flex flex-wrap gap-1">
+            {['Motorista desistiu', 'Lançado errado', 'Trocou de caminhão'].map((m) => (
+              <button key={m} type="button" onClick={() => setInativacao((x) => x && { ...x, motivo: m })}
+                className="rounded-full border border-gray-300 px-2 py-0.5 text-xs text-gray-600 hover:bg-gray-100">{m}</button>
+            ))}
+          </div>
+        )}
+        <textarea
+          value={inativacao?.motivo ?? ''}
+          onChange={(e) => setInativacao((x) => x && { ...x, motivo: e.target.value })}
+          maxLength={500}
+          rows={3}
+          placeholder="Motivo (obrigatório)"
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white text-gray-800"
+        />
+      </ConfirmModal>
+
+      {/* Suspender liberação — motivo obrigatório */}
+      <ConfirmModal
+        isOpen={!!suspensao}
+        title="Suspender liberação"
+        message="A liberação suspensa não gera alertas, sai dos indicadores de risco e aparece em amarelo na lista. Os veículos continuam podendo ser movimentados. Dá para reativar depois."
+        confirmLabel="Suspender"
+        variant="warning"
+        loading={suspenderLiberacao.isPending}
+        onConfirm={() => {
+          if (!suspensao || suspensao.motivo.trim().length < 3) return toast.error('Informe o motivo da suspensão');
+          suspenderLiberacao.mutate(suspensao.motivo.trim());
+        }}
+        onCancel={() => setSuspensao(null)}
+      >
+        <textarea
+          value={suspensao?.motivo ?? ''}
+          onChange={(e) => setSuspensao({ motivo: e.target.value })}
+          maxLength={500}
+          rows={3}
+          placeholder="Motivo da suspensão (obrigatório)"
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white text-gray-800"
+        />
+      </ConfirmModal>
 
       {/* Modal Confirmação - Liberação */}
       <ConfirmModal
@@ -571,6 +735,16 @@ export default function LiberacaoDetalhe() {
         onCancel={() => setConfirmDelete(null)}
       />
     </div>
+  );
+}
+
+function SituacaoBadge({ situacao, pendencias }: { situacao?: SituacaoLiberacao; pendencias?: number }) {
+  if (!situacao) return null;
+  const s = SITUACAO_LABELS[situacao];
+  return (
+    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${s.className}`}>
+      {s.label}{situacao === 'PENDENCIA_DADOS' && pendencias ? ` (${pendencias})` : ''}
+    </span>
   );
 }
 

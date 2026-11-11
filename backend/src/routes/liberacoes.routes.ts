@@ -13,6 +13,8 @@ import {
   excluirReferencia,
   usoReferencia,
   finalizarManual,
+  suspender,
+  reativarSuspensa,
   exportarViagens,
 } from '../controllers/liberacoes.controller';
 
@@ -35,4 +37,7 @@ liberacoesRouter.put('/:id', requireRole('ADMIN', 'GESTOR_FILIAL'), atualizar);
 // Troca direta de status passa por cima da regra de conclusão (saldo de fardos) — só ADMIN.
 liberacoesRouter.patch('/:id/status', requireRole('ADMIN'), atualizarStatus);
 liberacoesRouter.post('/:id/finalizar', requireRole('ADMIN'), finalizarManual);
+// Suspender/reativar: quem pode editar a liberação (motivo obrigatório para suspender).
+liberacoesRouter.post('/:id/suspender', requireRole('ADMIN', 'GESTOR_FILIAL'), suspender);
+liberacoesRouter.post('/:id/reativar', requireRole('ADMIN', 'GESTOR_FILIAL'), reativarSuspensa);
 liberacoesRouter.delete('/:id', deletar);

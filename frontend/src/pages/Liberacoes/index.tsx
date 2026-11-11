@@ -8,25 +8,34 @@ import { formatDate } from '@/utils/format';
 import PageHeader from '@/components/ui/PageHeader';
 import AlternarVisualizacao, { useModoVisualizacao } from '@/components/ui/AlternarVisualizacao';
 import { useAuthStore } from '@/stores/auth.store';
+import { SITUACAO_LABELS, STATUS_LIBERACAO_CLASSES, SituacaoLiberacao } from '@/utils/status';
 
 const fechadaManual = (l: any) => l.status === 'CONCLUIDA' && l.fechamentoManual;
+// Amarelo: precisa de atenção que não é prazo (dado faltando, suspensa, fechada com pendência).
+const destacarAmarelo = (l: any) => fechadaManual(l) || l.situacao === 'PENDENCIA_DADOS' || l.status === 'SUSPENSA';
 
 function DiasDeadline({ l }: { l: any }) {
-  if (l.status === 'CONCLUIDA' || l.status === 'CANCELADA')
-    return <span className="text-gray-600">{l.diasParaDeadline}d</span>;
+  // Deadline é de carregamento: com tudo carregado não fica "vencido".
+  if (l.status !== 'ATIVA' || l.prazoCumprido)
+    return <span className="text-gray-600" title={l.prazoCumprido ? 'Tudo carregado' : undefined}>{l.diasParaDeadline}d</span>;
   if (l.diasParaDeadline < 0) return <span className="text-red-600 font-bold">{l.diasParaDeadline}d</span>;
   if (l.diasParaDeadline <= 3) return <span className="text-orange-600 font-semibold">{l.diasParaDeadline}d</span>;
   return <span className="text-gray-600">{l.diasParaDeadline}d</span>;
 }
 
 function StatusLiberacao({ l }: { l: any }) {
+  const situacao = SITUACAO_LABELS[l.situacao as SituacaoLiberacao];
   return (
-    <span className={`text-xs px-2 py-0.5 rounded-full ${
-      l.status === 'ATIVA' ? 'bg-green-100 text-green-700' :
-      fechadaManual(l) ? 'bg-amber-100 text-amber-700' :
-      l.status === 'CONCLUIDA' ? 'bg-blue-100 text-blue-700' :
-      'bg-gray-100 text-gray-500'
-    }`}>{l.status}</span>
+    <span className="inline-flex flex-col items-start gap-1">
+      <span className={`text-xs px-2 py-0.5 rounded-full ${
+        fechadaManual(l) ? 'bg-amber-100 text-amber-700' : STATUS_LIBERACAO_CLASSES[l.status] ?? 'bg-gray-100 text-gray-500'
+      }`}>{l.status}</span>
+      {l.status === 'ATIVA' && situacao && (
+        <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${situacao.className}`}>
+          {situacao.label}{l.situacao === 'PENDENCIA_DADOS' && l.totalPendencias ? ` (${l.totalPendencias})` : ''}
+        </span>
+      )}
+    </span>
   );
 }
 
@@ -34,13 +43,13 @@ function AvisoFechamento({ l }: { l: any }) {
   if (fechadaManual(l))
     return (
       <p className="mt-1 text-[11px] font-medium text-amber-700">
-        {l.fardosPendentesFechamento} fardos pendentes · fechada manualmente
+        {l.fardosPendentesFechamento ? `${l.fardosPendentesFechamento} fardos pendentes · ` : ''}fechada manualmente
       </p>
     );
   if (l.aguardandoFechamento)
     return (
       <p className="mt-1 text-[11px] font-medium text-amber-700">
-        Faltam {l.saldo} fardos · veículos finalizados
+        {l.totalPendencias} pendência(s) de dados · veículos finalizados
       </p>
     );
   return null;
@@ -50,7 +59,7 @@ function CardLiberacao({ l }: { l: any }) {
   return (
     <Link to={`/liberacoes/${l.id}`}
       className={`flex flex-col gap-3 rounded-ui-lg border p-4 shadow-sm transition hover:shadow-md ${
-        fechadaManual(l) ? 'border-amber-200 bg-amber-50 hover:bg-amber-100' : 'border-ui-border bg-ui-surface hover:border-ui-primary/40'
+        destacarAmarelo(l) ? 'border-amber-200 bg-amber-50 hover:bg-amber-100' : 'border-ui-border bg-ui-surface hover:border-ui-primary/40'
       }`}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
@@ -71,14 +80,18 @@ function CardLiberacao({ l }: { l: any }) {
         <dd className="truncate">{l.destinoNome ?? l.destino?.nome}</dd>
       </dl>
 
-      <div className="mt-auto grid grid-cols-3 gap-2 border-t border-ui-border-subtle pt-3 text-center">
+      <div className="mt-auto grid grid-cols-4 gap-2 border-t border-ui-border-subtle pt-3 text-center">
         <div>
           <p className="text-[11px] uppercase text-ui-text-muted">Total</p>
           <p className="text-sm">{l.totalFardos}</p>
         </div>
-        <div>
-          <p className="text-[11px] uppercase text-ui-text-muted">Saldo</p>
+        <div title="Fardos ainda sem caminhão">
+          <p className="text-[11px] uppercase text-ui-text-muted">A progr.</p>
           <p className="text-sm font-semibold">{l.saldo}</p>
+        </div>
+        <div title="Fardos ainda não carregados (antes de MANIFESTADO)">
+          <p className="text-[11px] uppercase text-ui-text-muted">A carregar</p>
+          <p className="text-sm">{l.saldoCarregar}</p>
         </div>
         <div>
           <p className="text-[11px] uppercase text-ui-text-muted">{formatDate(l.deadline)}</p>
@@ -164,6 +177,7 @@ export default function LiberacoesPage() {
           <option value="">Todos status</option>
           <option value="ATIVA">Ativas</option>
           <option value="CONCLUIDA">Concluídas</option>
+          <option value="SUSPENSA">Suspensas</option>
           <option value="CANCELADA">Canceladas</option>
         </select>
       </div>
@@ -191,7 +205,8 @@ export default function LiberacoesPage() {
                   <th className="px-4 py-3 text-left">Destino</th>
                   <th className="px-4 py-3 text-left">Local de Entrega</th>
                   <th className="px-4 py-3 text-right">Total</th>
-                  <th className="px-4 py-3 text-right">Saldo</th>
+                  <th className="px-4 py-3 text-right" title="Fardos ainda sem caminhão">A programar</th>
+                  <th className="px-4 py-3 text-right" title="Fardos ainda não carregados (antes de MANIFESTADO)">A carregar</th>
                   <th className="px-4 py-3 text-right">Deadline</th>
                   <th className="px-4 py-3 text-right">Dias</th>
                   <th className="px-4 py-3 text-left">Status</th>
@@ -200,7 +215,7 @@ export default function LiberacoesPage() {
               </thead>
               <tbody className="divide-y divide-ui-border-subtle">
                 {(data?.data ?? []).map((l: any) => (
-                  <tr key={l.id} className={`transition-colors ${fechadaManual(l) ? 'bg-amber-50 hover:bg-amber-100' : 'hover:bg-ui-muted/60'}`}>
+                  <tr key={l.id} className={`transition-colors ${destacarAmarelo(l) ? 'bg-amber-50 hover:bg-amber-100' : 'hover:bg-ui-muted/60'}`}>
                     <td className="px-4 py-3 font-medium text-ui-primary">
                       <Link to={`/liberacoes/${l.id}`} className="hover:underline">{l.instrucao}</Link>
                     </td>
@@ -211,6 +226,7 @@ export default function LiberacoesPage() {
                     <td className="px-4 py-3 text-xs text-gray-500">{l.localEntregaNome ?? l.localEntrega?.nome ?? '—'}</td>
                     <td className="px-4 py-3 text-right">{l.totalFardos}</td>
                     <td className="px-4 py-3 text-right font-semibold">{l.saldo}</td>
+                    <td className="px-4 py-3 text-right">{l.saldoCarregar}</td>
                     <td className="px-4 py-3 text-right text-xs">{formatDate(l.deadline)}</td>
                     <td className="px-4 py-3 text-right"><DiasDeadline l={l} /></td>
                     <td className="px-4 py-3 whitespace-nowrap">

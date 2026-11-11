@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import api from '@/services/api';
 import UrgenciaBadge from '@/components/UrgenciaBadge';
-import { PhoneIcon, PencilSquareIcon, CheckIcon } from '@heroicons/react/24/outline';
+import { PhoneIcon, PencilSquareIcon, CheckIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import { Link } from 'react-router-dom';
 import { formatDate } from '@/utils/format';
 import PageHeader from '@/components/ui/PageHeader';
@@ -42,7 +42,9 @@ export default function AlertasPage() {
 
   return (
     <div className="ui-page space-y-6">
-      <PageHeader title="Alertas de Deadline" description="Cargas com prazo crítico ou vencido" />
+      <PageHeader title="Alertas de Deadline" description="Veículos que ainda não carregaram, com prazo crítico ou vencido" />
+
+      <PendenciasFechamento />
 
       {/* Sumário */}
       {sumario && (
@@ -212,4 +214,39 @@ function DiasParaVencerBold({ dias }: { dias: number }) {
   if (dias === 1) return <span className="text-orange-600 font-bold">{dias}d</span>;
   if (dias <= 3) return <span className="text-amber-600 font-semibold">{dias}d</span>;
   return <span className="text-yellow-600">{dias}d</span>;
+}
+
+// Alerta "Pendência de fechamento": instrução com todos os veículos finalizados,
+// mas com dado faltando. Some sozinho quando o dado é corrigido.
+function PendenciasFechamento() {
+  const { data } = useQuery({
+    queryKey: ['alertas', 'pendencias-fechamento'],
+    queryFn: () => api.get('/alertas/pendencias-fechamento').then((r) => r.data),
+    refetchInterval: 60_000,
+  });
+  const itens: any[] = data?.data ?? [];
+  if (!itens.length) return null;
+  return (
+    <div className="ui-card overflow-hidden border-amber-300">
+      <div className="ui-card-header flex items-center gap-2 bg-amber-50 py-3 text-sm font-semibold text-amber-800">
+        <ExclamationTriangleIcon className="h-5 w-5 text-amber-600" />
+        Pendência de fechamento · {itens.length} instrução(ões) com veículos finalizados e dado faltando
+      </div>
+      <div className="divide-y divide-ui-border-subtle">
+        {itens.map((l) => (
+          <div key={l.liberacaoId} className="px-5 py-3 text-sm">
+            <div className="flex flex-wrap items-center gap-2">
+              <Link to={`/liberacoes/${l.liberacaoId}`} className="font-semibold text-ui-primary hover:underline">{l.instrucao}</Link>
+              <span className="text-xs text-ui-text-muted">{l.cliente} · {l.filial} · deadline {formatDate(l.deadline)}</span>
+              <span className="ml-auto rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800">{l.total} pendência(s)</span>
+            </div>
+            <ul className="mt-1 list-disc pl-5 text-xs text-ui-text-muted">
+              {l.instrucaoPendencias.map((p: string) => <li key={p}>{p}</li>)}
+              {l.veiculos.map((v: any) => <li key={v.id}><span className="font-mono font-semibold">{v.placa}</span>: {v.pendencias.join(', ')}</li>)}
+            </ul>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }

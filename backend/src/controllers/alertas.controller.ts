@@ -2,16 +2,13 @@ import { Response } from 'express';
 import prisma from '../database/prisma';
 import { AuthRequest } from '../middleware/auth';
 import { StatusLiberacao, StatusVeiculo } from '@prisma/client';
+import {
+  SELECT_VEICULO_FECHAMENTO,
+  STATUS_MONITORAMENTO,
+  situacaoFechamento,
+  toleranciaPesoFechamento,
+} from '../services/liberacao-status';
 
-const STATUS_MONITORAMENTO: StatusVeiculo[] = [
-  StatusVeiculo.LIBERADO,
-  StatusVeiculo.AGUARDANDO_NFE,
-  StatusVeiculo.AGUARDANDO_GR,
-  StatusVeiculo.AGUARDANDO_CARREGAMENTO,
-  StatusVeiculo.CARREGADO,
-  StatusVeiculo.EM_TRANSITO,
-  StatusVeiculo.AGUARDANDO_DESCARGA,
-];
 
 export async function listarAlertas(req: AuthRequest, res: Response) {
   const {
@@ -33,7 +30,7 @@ export async function listarAlertas(req: AuthRequest, res: Response) {
   if (origemId) liberacaoWhere.origemId = parseInt(origemId);
   if (terminalId) liberacaoWhere.terminalId = parseInt(terminalId);
 
-  const veiculoWhere: any = { liberacao: liberacaoWhere, status: { in: STATUS_MONITORAMENTO } };
+  const veiculoWhere: any = { liberacao: liberacaoWhere, ativo: true, status: { in: STATUS_MONITORAMENTO } };
   if (motorista) {
     veiculoWhere.OR = [
       { motoristaNome: { contains: motorista, mode: 'insensitive' } },
@@ -142,4 +139,39 @@ export async function salvarConfig(req: AuthRequest, res: Response) {
     : await prisma.alertaConfig.create({ data });
 
   return res.json(config);
+}
+
+// Alerta "Pendência de fechamento": instruções ativas com todos os veículos
+// finalizados, mas com dado faltando no checklist. Calculado na hora — some
+// sozinho quando o dado é corrigido.
+export async function pendenciasFechamento(_req: AuthRequest, res: Response) {
+  const [liberacoes, tolerancia] = await Promise.all([
+    prisma.liberacao.findMany({
+      where: { status: StatusLiberacao.ATIVA, veiculos: { some: { ativo: true } } },
+      select: {
+        id: true, instrucao: true, status: true, totalFardos: true, pesoTotal: true, deadline: true,
+        clienteNome: true, cliente: { select: { nome: true } },
+        filialNome: true, origem: { select: { nome: true } },
+        veiculos: { select: SELECT_VEICULO_FECHAMENTO },
+      },
+      orderBy: { deadline: 'asc' },
+    }),
+    toleranciaPesoFechamento(),
+  ]);
+
+  const data = liberacoes
+    .map((l) => ({ l, sit: situacaoFechamento(l, l.veiculos, tolerancia) }))
+    .filter(({ sit }) => sit.aguardandoFechamento)
+    .map(({ l, sit }) => ({
+      liberacaoId: l.id,
+      instrucao: l.instrucao,
+      cliente: l.clienteNome ?? l.cliente?.nome,
+      filial: l.filialNome ?? l.origem?.nome,
+      deadline: l.deadline,
+      instrucaoPendencias: sit.pendenciasInstrucao,
+      veiculos: sit.pendenciasPorVeiculo,
+      total: sit.pendencias.length,
+    }));
+
+  return res.json({ data, total: data.length });
 }

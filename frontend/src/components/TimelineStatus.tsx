@@ -1,155 +1,59 @@
 import React from 'react';
-import { CheckCircleIcon, ClockIcon, TruckIcon, ArchiveBoxIcon } from '@heroicons/react/24/solid';
-import { XCircleIcon } from '@heroicons/react/24/outline';
-import { STATUS_LABELS, VeiculoStatus } from '@/utils/status';
+import { CheckCircleIcon, TruckIcon, ArchiveBoxIcon, MapPinIcon, DocumentCheckIcon, CalendarDaysIcon, ShieldCheckIcon } from '@heroicons/react/24/solid';
+import { NoSymbolIcon } from '@heroicons/react/24/outline';
+import { STATUS_DESCRICOES, STATUS_LABELS, STATUS_OPTIONS, VeiculoStatus, isCarregado } from '@/utils/status';
 
-// "AGUARDANDO_CTE" ainda não existe como StatusVeiculo real no sistema — é só uma
-// etapa decorativa pedida pro painel visual; nenhum veículo nunca fica "atual" nela
-// de verdade (ver conversa sobre criar o status pra valer, se decidirem adotar).
-type StatusStepKey = VeiculoStatus | 'AGUARDANDO_CTE';
+type StepKey = VeiculoStatus | 'INATIVO';
 
 interface StatusStep {
-  key: StatusStepKey;
+  key: StepKey;
   label: string;
   description: string;
-  icon: React.ReactNode;
+  icon: React.ReactElement;
   color: string;
   bgColor: string;
   borderColor: string;
 }
 
-const STATUS_FLOW: StatusStep[] = [
-  {
-    key: 'SOLICITADO',
-    label: STATUS_LABELS.SOLICITADO,
-    description: 'Instrução recebida do cliente',
-    icon: <ClockIcon className="w-4 h-4" />,
-    color: 'text-gray-600',
-    bgColor: 'bg-gray-100',
-    borderColor: 'border-gray-300',
-  },
-  {
-    key: 'FALTA_CONTRATAR',
-    label: STATUS_LABELS.FALTA_CONTRATAR,
-    description: 'Falta contratar caminhão',
-    icon: <XCircleIcon className="w-4 h-4" />,
-    color: 'text-red-600',
-    bgColor: 'bg-red-100',
-    borderColor: 'border-red-300',
-  },
-  {
-    key: 'AGUARDANDO_GR',
-    label: STATUS_LABELS.AGUARDANDO_GR,
-    description: 'Aguardando liberação pelo GR',
-    icon: <ClockIcon className="w-4 h-4" />,
-    color: 'text-amber-600',
-    bgColor: 'bg-amber-100',
-    borderColor: 'border-amber-300',
-  },
-  {
-    key: 'LIBERADO',
-    label: STATUS_LABELS.LIBERADO,
-    description: 'Cadastro liberado pelo GR',
-    icon: <CheckCircleIcon className="w-4 h-4" />,
-    color: 'text-indigo-600',
-    bgColor: 'bg-indigo-100',
-    borderColor: 'border-indigo-300',
-  },
-  {
-    key: 'EM_TRANSITO',
-    label: STATUS_LABELS.EM_TRANSITO,
-    description: 'Veículo em trânsito para o carregamento',
-    icon: <TruckIcon className="w-4 h-4" />,
-    color: 'text-orange-600',
-    bgColor: 'bg-orange-100',
-    borderColor: 'border-orange-300',
-  },
-  {
-    key: 'AGUARDANDO_CARREGAMENTO',
-    label: STATUS_LABELS.AGUARDANDO_CARREGAMENTO,
-    description: 'Veículo no local aguardando carregamento',
-    icon: <ArchiveBoxIcon className="w-4 h-4" />,
-    color: 'text-amber-600',
-    bgColor: 'bg-amber-100',
-    borderColor: 'border-amber-300',
-  },
-  {
-    key: 'CARREGADO',
-    label: STATUS_LABELS.CARREGADO,
-    description: 'Veículo carregado aguardando manifesto',
-    icon: <ArchiveBoxIcon className="w-4 h-4" />,
-    color: 'text-amber-600',
-    bgColor: 'bg-amber-100',
-    borderColor: 'border-amber-300',
-  },
-  {
-    key: 'AGUARDANDO_NFE',
-    label: 'AGUARDANDO NF-e',
-    description: 'Aguardando troca de nota',
-    icon: <ClockIcon className="w-4 h-4" />,
-    color: 'text-amber-600',
-    bgColor: 'bg-amber-100',
-    borderColor: 'border-amber-300',
-  },
-  {
-    key: 'AGUARDANDO_CTE',
-    label: 'AGUARDANDO CT-e',
-    description: 'Aguardando filial enviar o manifesto',
-    icon: <ClockIcon className="w-4 h-4" />,
-    color: 'text-amber-600',
-    bgColor: 'bg-amber-100',
-    borderColor: 'border-amber-300',
-  },
-  {
-    key: 'FALTA_AGENDAR',
-    label: STATUS_LABELS.FALTA_AGENDAR,
-    description: 'Veículo em trânsito para o destino',
-    icon: <TruckIcon className="w-4 h-4" />,
-    color: 'text-orange-600',
-    bgColor: 'bg-orange-100',
-    borderColor: 'border-orange-300',
-  },
-  {
-    key: 'AGENDADO',
-    label: STATUS_LABELS.AGENDADO,
-    description: 'Veículo agendado para descarregar',
-    icon: <ClockIcon className="w-4 h-4" />,
-    color: 'text-blue-600',
-    bgColor: 'bg-blue-100',
-    borderColor: 'border-blue-300',
-  },
-  {
-    key: 'AGUARDANDO_DESCARGA',
-    label: STATUS_LABELS.AGUARDANDO_DESCARGA,
-    description: 'Aguardando descarga no destino',
-    icon: <ClockIcon className="w-4 h-4" />,
-    color: 'text-orange-600',
-    bgColor: 'bg-orange-100',
-    borderColor: 'border-orange-300',
-  },
-  {
-    key: 'FINALIZADO',
-    label: STATUS_LABELS.FINALIZADO,
-    description: 'Transporte finalizado com sucesso',
-    icon: <CheckCircleIcon className="w-4 h-4" />,
-    color: 'text-green-600',
-    bgColor: 'bg-green-100',
-    borderColor: 'border-green-300',
-  },
-];
+const ICONES: Record<VeiculoStatus, React.ReactElement> = {
+  AGUARDANDO_GR: <ShieldCheckIcon className="w-4 h-4" />,
+  TRANSITO_CARREGAMENTO: <TruckIcon className="w-4 h-4" />,
+  LOCAL: <MapPinIcon className="w-4 h-4" />,
+  MANIFESTADO: <DocumentCheckIcon className="w-4 h-4" />,
+  FALTA_AGENDAR: <TruckIcon className="w-4 h-4" />,
+  AGENDADO: <CalendarDaysIcon className="w-4 h-4" />,
+  AGUARDANDO_DESCARGA: <ArchiveBoxIcon className="w-4 h-4" />,
+  FINALIZADO: <CheckCircleIcon className="w-4 h-4" />,
+};
 
-const CANCELADO_STEP: StatusStep = {
-  key: 'CANCELADO',
-  label: STATUS_LABELS.CANCELADO,
-  description: 'Operação cancelada',
-  icon: <XCircleIcon className="w-4 h-4" />,
-  color: 'text-red-600',
-  bgColor: 'bg-red-100',
-  borderColor: 'border-red-300',
+// Programado (antes de carregar) em âmbar; carregado em azul; finalizado em verde.
+function cores(status: VeiculoStatus) {
+  if (status === 'FINALIZADO') return { color: 'text-green-600', bgColor: 'bg-green-100', borderColor: 'border-green-300' };
+  if (isCarregado(status)) return { color: 'text-blue-600', bgColor: 'bg-blue-100', borderColor: 'border-blue-300' };
+  return { color: 'text-amber-600', bgColor: 'bg-amber-100', borderColor: 'border-amber-300' };
+}
+
+const STATUS_FLOW: StatusStep[] = STATUS_OPTIONS.map((key) => ({
+  key,
+  label: STATUS_LABELS[key],
+  description: STATUS_DESCRICOES[key],
+  icon: ICONES[key],
+  ...cores(key),
+}));
+
+const INATIVO_STEP: StatusStep = {
+  key: 'INATIVO',
+  label: 'INATIVO',
+  description: 'Veículo excluído (inativado) — fora das somas',
+  icon: <NoSymbolIcon className="w-4 h-4" />,
+  color: 'text-gray-600',
+  bgColor: 'bg-gray-100',
+  borderColor: 'border-gray-300',
 };
 
 interface TimelineStatusProps {
   status: VeiculoStatus;
+  ativo?: boolean;
   dataAgendamento?: string | null;
   dataCarregamento?: string | null;
   dataDescarga?: string | null;
@@ -162,18 +66,12 @@ function formatDateTime(dateStr?: string | null): string | null {
   return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
 }
 
-function getStepDate(stepKey: StatusStepKey, dataAgendamento?: string | null, dataCarregamento?: string | null, dataDescarga?: string | null): string | null {
+function getStepDate(stepKey: StepKey, dataAgendamento?: string | null, dataCarregamento?: string | null, dataDescarga?: string | null): string | null {
   switch (stepKey) {
-    case 'AGENDADO':
-    case 'LIBERADO':
-    case 'AGUARDANDO_NFE':
-    case 'AGUARDANDO_GR':
-    case 'AGUARDANDO_CARREGAMENTO':
-      return formatDateTime(dataAgendamento);
-    case 'CARREGADO':
-    case 'EM_TRANSITO':
-    case 'AGUARDANDO_DESCARGA':
+    case 'MANIFESTADO':
       return formatDateTime(dataCarregamento);
+    case 'AGENDADO':
+      return formatDateTime(dataAgendamento);
     case 'FINALIZADO':
       return formatDateTime(dataDescarga);
     default:
@@ -181,23 +79,19 @@ function getStepDate(stepKey: StatusStepKey, dataAgendamento?: string | null, da
   }
 }
 
-export default function TimelineStatus({ status, dataAgendamento, dataCarregamento, dataDescarga, compact = false }: TimelineStatusProps) {
-  const isCancelled = status === 'CANCELADO';
-
-  const steps = isCancelled
-    ? [...STATUS_FLOW, CANCELADO_STEP]
-    : STATUS_FLOW;
-
-  const currentIndex = isCancelled
-    ? steps.length - 1
-    : STATUS_FLOW.findIndex((s) => s.key === status);
+export default function TimelineStatus({ status, ativo = true, dataAgendamento, dataCarregamento, dataDescarga, compact = false }: TimelineStatusProps) {
+  const inativo = !ativo;
+  const posicao = STATUS_FLOW.findIndex((s) => s.key === status);
+  const steps = inativo ? [...STATUS_FLOW, INATIVO_STEP] : STATUS_FLOW;
+  // Inativo: mostra até onde chegou e a etapa final "INATIVO" como atual.
+  const currentIndex = inativo ? steps.length - 1 : posicao;
 
   if (compact) {
     return (
       <div className="flex items-center gap-1.5 flex-wrap">
         {STATUS_FLOW.map((step, idx) => {
-          const isDone = idx < currentIndex;
-          const isActive = idx === currentIndex && !isCancelled;
+          const isDone = idx < posicao || (inativo && idx === posicao);
+          const isActive = idx === posicao && !inativo;
           return (
             <div key={step.key} className="flex items-center gap-1.5">
               <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border transition-all ${
@@ -229,48 +123,29 @@ export default function TimelineStatus({ status, dataAgendamento, dataCarregamen
 
       <div className="space-y-0">
         {steps.map((step, idx) => {
-          const isDone = isCancelled
-            ? idx < steps.length - 1
-            : idx < currentIndex;
           const isActive = idx === currentIndex;
+          const isDone = !isActive && (inativo ? idx <= posicao : idx < currentIndex);
           const isPending = !isDone && !isActive;
-
-          const date = isCancelled && isActive
-            ? null
-            : getStepDate(step.key, dataAgendamento, dataCarregamento, dataDescarga);
+          const date = getStepDate(step.key, dataAgendamento, dataCarregamento, dataDescarga);
 
           return (
             <div key={step.key} className="relative flex items-start gap-4 pb-6 last:pb-0">
-              {/* Circle */}
               <div className={`relative z-10 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-2 transition-all duration-300 ${
                 isActive
-                  ? `${step.bgColor} ${step.borderColor} shadow-md ring-4 ring-${step.bgColor}/30`
+                  ? `${step.bgColor} ${step.borderColor} shadow-md`
                   : isDone
                   ? 'bg-green-100 border-green-400 shadow-sm'
                   : 'bg-white border-gray-200'
               }`}>
-                <span className={
-                  isActive ? step.color
-                  : isDone ? 'text-green-600'
-                  : 'text-gray-300'
-                }>
-                  {isDone
-                    ? <CheckCircleIcon className="w-5 h-5" />
-                    : React.cloneElement(step.icon as React.ReactElement, {
-                        className: `w-5 h-5 ${isActive ? step.color : 'text-gray-300'}`
-                      })
-                  }
-                </span>
+                {isDone
+                  ? <CheckCircleIcon className="w-5 h-5 text-green-600" />
+                  : React.cloneElement(step.icon, { className: `w-5 h-5 ${isActive ? step.color : 'text-gray-300'}` })}
               </div>
 
-              {/* Content */}
               <div className={`flex-1 min-w-0 pt-1.5 transition-opacity ${isPending ? 'opacity-40' : 'opacity-100'}`}>
                 <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <span className={`text-sm font-bold ${
-                    isActive ? step.color
-                    : isDone ? 'text-green-700'
-                    : 'text-gray-400'
-                  }`}>
+                  <span className={`text-sm font-bold ${isActive ? step.color : isDone ? 'text-green-700' : 'text-gray-400'}`}>
+                    <span className="mr-1 text-[10px] font-semibold text-gray-400">{step.key === 'INATIVO' ? '' : `${idx + 1}.`}</span>
                     {step.label}
                     {isActive && (
                       <span className={`ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${step.bgColor} ${step.color}`}>
@@ -283,9 +158,7 @@ export default function TimelineStatus({ status, dataAgendamento, dataCarregamen
                       </span>
                     )}
                   </span>
-                  {date && (
-                    <span className="text-[10px] text-gray-400 font-mono">{date}</span>
-                  )}
+                  {date && <span className="text-[10px] text-gray-400 font-mono">{date}</span>}
                 </div>
                 <p className="text-xs text-gray-500 mt-0.5">{step.description}</p>
               </div>

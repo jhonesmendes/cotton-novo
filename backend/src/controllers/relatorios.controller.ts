@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { Prisma, StatusLiberacao, StatusVeiculo, TipoFardo } from '@prisma/client';
 import prisma from '../database/prisma';
 import { AuthRequest } from '../middleware/auth';
-import { situacaoFechamento } from '../services/liberacao-status';
+import { SELECT_VEICULO_FECHAMENTO, situacaoFechamento, toleranciaPesoFechamento } from '../services/liberacao-status';
 
 // Brasília é UTC-3 fixo (sem horário de verão desde 2019).
 const OFFSET_BRT_MS = 3 * 60 * 60 * 1000;
@@ -207,7 +207,8 @@ export async function getRelatorio(req: AuthRequest, res: Response) {
         origem: { select: { id: true, nome: true } },
         destino: { select: { id: true, nome: true } },
         localColeta: { select: { id: true, nome: true } },
-        veiculos: { select: { pesoCarregado: true, freteMotorista: true } },
+        // Veículo inativo (excluído) fica fora de frete, peso e margem.
+        veiculos: { where: { ativo: true }, select: { pesoCarregado: true, freteMotorista: true } },
       },
       orderBy: { concluidaEm: 'desc' },
     }),
@@ -222,6 +223,7 @@ export async function getRelatorio(req: AuthRequest, res: Response) {
     prisma.veiculo.findMany({
       where: {
         status: StatusVeiculo.FINALIZADO,
+        ativo: true,
         finalizadoEm: { gte: instanteDe(inicioAnterior), lt: instanteDe(fimExclusivo) },
         liberacao: { ...dims, ...fechamento },
       },
@@ -233,7 +235,7 @@ export async function getRelatorio(req: AuthRequest, res: Response) {
       include: {
         cliente: { select: { id: true, nome: true } },
         origem: { select: { id: true, nome: true } },
-        veiculos: { select: { status: true, qtdFardos: true, pesoCarregado: true } },
+        veiculos: { select: SELECT_VEICULO_FECHAMENTO },
       },
     }),
   ]);
@@ -266,18 +268,20 @@ export async function getRelatorio(req: AuthRequest, res: Response) {
   };
 
   // ─── Rodando agora ────────────────────────────────────────────────────────
-  const situacoes = emAndamento.map((l) => ({ l, ...situacaoFechamento(l, l.veiculos) }));
+  const tolerancia = await toleranciaPesoFechamento();
+  const situacoes = emAndamento.map((l) => ({ l, ...situacaoFechamento(l, l.veiculos, tolerancia) }));
   const veiculosRodando = emAndamento.flatMap((l) => l.veiculos)
-    .filter((v) => v.status !== StatusVeiculo.FINALIZADO && v.status !== StatusVeiculo.CANCELADO);
+    .filter((v) => v.ativo && v.status !== StatusVeiculo.FINALIZADO);
   const rodando = {
     liberacoes: emAndamento.length,
     fardosTotal: emAndamento.reduce((s, l) => s + l.totalFardos, 0),
-    fardosCarregados: emAndamento.reduce((s, l) => s + l.veiculos.reduce((x, v) => x + v.qtdFardos, 0), 0),
+    // Carregado real (a partir de MANIFESTADO), não o programado.
+    fardosCarregados: situacoes.reduce((s, x) => s + x.carregado, 0),
     saldo: situacoes.reduce((s, x) => s + Math.max(0, x.saldo), 0),
     aguardandoFechamento: situacoes.filter((x) => x.aguardandoFechamento).length,
     vencidas: emAndamento.filter((l) => diaDeData(l.deadline) < hoje).length,
     veiculosEmAndamento: veiculosRodando.length,
-    toneladasCarregadas: arred(emAndamento.flatMap((l) => l.veiculos).reduce((s, v) => s + (v.pesoCarregado ?? 0), 0), 3),
+    toneladasCarregadas: arred(situacoes.reduce((s, x) => s + x.toneladasCarregadas, 0), 3),
   };
 
   // ─── Fechado x Rodando por cliente e por filial ───────────────────────────

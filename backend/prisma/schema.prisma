@@ -12,27 +12,24 @@ enum StatusLiberacao {
   ATIVA
   CONCLUIDA
   CANCELADA
+  // Parada temporariamente (motivo obrigatório): sem alertas e fora dos KPIs de risco.
+  SUSPENSA
 }
 enum TipoFardo {
   FARDAO
   FARDINHO
 }
+// Timeline do veículo (nov/2026), em sequência. Conta como "carregado" a partir de
+// MANIFESTADO (ver STATUS_CARREGADO em services/liberacao-status.ts).
 enum StatusVeiculo {
-  AGENDADO
-  CARREGADO
-  EM_TRANSITO
-  FINALIZADO
-  CANCELADO
-  LIBERADO
-  AGUARDANDO_CARREGAMENTO
-  AGUARDANDO_DESCARGA
-  AGUARDANDO_NFE
   AGUARDANDO_GR
+  TRANSITO_CARREGAMENTO
+  LOCAL
+  MANIFESTADO
   FALTA_AGENDAR
-  FALTA_CONTRATAR
-  SOLICITADO
-  PIX_PAGO
-  CARTA_FRETE
+  AGENDADO
+  AGUARDANDO_DESCARGA
+  FINALIZADO
 }
 enum StatusSM {
   PENDENTE
@@ -41,6 +38,8 @@ enum StatusSM {
   ENCERRADA
 }
 enum StatusRastreamento {
+  // Ainda não informado — padrão de todo veículo novo.
+  PENDENTE
   RASTREADOR
   LOCALIZADO
   APLICATIVO
@@ -209,6 +208,11 @@ model Liberacao {
   totalFardos    Int @map("total_fardos")
   tipoFardo      TipoFardo        @default(FARDAO) @map("tipo_fardo")
   deadline       DateTime
+  // Peso total da instrução, em toneladas. Obrigatório em instruções novas;
+  // as antigas ficam sem até alguém editar. Peso médio do fardo = pesoTotal ÷ totalFardos.
+  pesoTotal      Float? @map("peso_total")
+  // Cache do carregado real: soma dos fardos dos veículos ativos a partir de
+  // MANIFESTADO (recalculado a cada alteração de veículo). Nunca digitado.
   carregado      Int              @default(0)
   observacao     String?
   status         StatusLiberacao  @default(ATIVA)
@@ -219,6 +223,12 @@ model Liberacao {
   motivoFechamento          String?   @map("motivo_fechamento")
   fechamentoManualPor       String?   @map("fechamento_manual_por")
   fechamentoManualEm        DateTime? @map("fechamento_manual_em")
+  // O que faltava no checklist de fechamento quando o ADMIN finalizou mesmo assim (uma pendência por linha).
+  pendenciasFechamento      String?   @map("pendencias_fechamento")
+  // Suspensão (status SUSPENSA).
+  motivoSuspensao           String?   @map("motivo_suspensao")
+  suspensaPor               String?   @map("suspensa_por")
+  suspensaEm                DateTime? @map("suspensa_em")
   // Quando passou a CONCLUIDA (automática ou manual) — base dos relatórios por período.
   concluidaEm               DateTime? @map("concluida_em")
   createdAt      DateTime         @default(now()) @map("created_at")
@@ -245,17 +255,28 @@ model Veiculo {
   // R$ por tonelada desta viagem.
   freteMotorista     Float @map("frete_motorista")
   qtdFardos          Int @map("qtd_fardos")
-  // Peso real carregado nesta viagem, em toneladas (NF/balança).
+  // Peso real carregado nesta viagem, em toneladas (NF/balança). A tela recebe em kg e converte.
   pesoCarregado      Float? @map("peso_carregado")
   motoristaNome      String @map("motorista_nome")
   motoristaTelefone  String @map("motorista_telefone")
   motoristaCpf       String? @map("motorista_cpf")
   motoristaEmail     String? @map("motorista_email")
   transportadoraId   Int? @map("transportadora_id")
-  status             StatusVeiculo @default(AGENDADO)
+  status             StatusVeiculo @default(AGUARDANDO_GR)
   statusSm           StatusSM      @default(PENDENTE) @map("status_sm")
-  statusRastreamento StatusRastreamento @default(NAO_RASTREADO) @map("status_rastreamento")
+  statusRastreamento StatusRastreamento @default(PENDENTE) @map("status_rastreamento")
+  // Isca: null = não respondido; false = "Não possui isca"; true = possui (numeroIsca).
+  possuiIsca         Boolean?      @map("possui_isca")
   numeroIsca         String?       @map("numero_isca")
+  // Forma de pagamento combinada — só informativa (conferência no ERP). Opções em
+  // referencias_cadastro, tipo "formasPagamento".
+  formaPagamento     String?       @map("forma_pagamento")
+  // Excluir veículo = inativar (não apaga). Inativo fica bloqueado e fora de todas as somas.
+  ativo              Boolean       @default(true)
+  motivoInativacao   String?       @map("motivo_inativacao")
+  inativadoPor       String?       @map("inativado_por")
+  inativadoEm        DateTime?     @map("inativado_em")
+  motivoReativacao   String?       @map("motivo_reativacao")
   dataAgendamento    DateTime? @map("data_agendamento")
   dataCarregamento   DateTime? @map("data_carregamento")
   dataDescarga       DateTime? @map("data_descarga")
@@ -272,7 +293,16 @@ model Veiculo {
   @@index([placa])
   @@index([status])
   @@index([finalizadoEm])
+  @@index([ativo])
   @@map("veiculos")
+}
+// Parâmetros do sistema ajustáveis na tela (Revisão de Dados › Parâmetros), chave → valor.
+model ConfiguracaoSistema {
+  id        Int      @id @default(autoincrement())
+  chave     String   @unique
+  valor     String
+  updatedAt DateTime @updatedAt @map("updated_at")
+  @@map("configuracoes_sistema")
 }
 model Usuario {
   id        Int           @id @default(autoincrement())

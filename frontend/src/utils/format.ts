@@ -28,3 +28,13 @@ export function formatToneladas(valor?: number | null) {
   if (valor == null) return '—';
   return `${valor.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} t`;
 }
+
+// Peso: o banco guarda toneladas; o usuário digita kg (como vem da balança/NF).
+export const kgParaToneladas = (kg: number) => kg / 1000;
+export const toneladasParaKg = (t: number) => Math.round(t * 1000 * 1000) / 1000;
+
+// "35,760 t" — 3 casas, para não confundir kg com t.
+export function formatPeso(toneladas?: number | null) {
+  if (toneladas == null) return '—';
+  return `${toneladas.toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 })} t`;
+}

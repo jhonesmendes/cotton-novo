@@ -18,6 +18,7 @@ import destinosRouter from './routes/destinos.routes';
 import locaisColetaRouter from './routes/locais-coleta.routes';
 import { auditoriaRouter } from './routes/auditoria.routes';
 import { relatoriosRouter } from './routes/relatorios.routes';
+import { parametrosRouter } from './routes/parametros.routes';
 
 // A instância de desenvolvimento pode priorizar o .env local sem alterar a
 // configuração herdada por processos de produção.
@@ -48,6 +49,7 @@ app.use('/api/destinos', destinosRouter);
 app.use('/api/locais-coleta', locaisColetaRouter);
 app.use('/api/auditoria', auditoriaRouter);
 app.use('/api/relatorios', relatoriosRouter);
+app.use('/api/parametros', parametrosRouter);
 
 app.get('/health', (_, res) => {
   res.json({ status: 'ok', source: 'cotton-backend', timestamp: new Date().toISOString() });

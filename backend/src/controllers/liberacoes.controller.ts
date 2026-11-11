@@ -4,7 +4,12 @@ import prisma from '../database/prisma';
 import { AppError } from '../middleware/errorHandler';
 import { AuthRequest } from '../middleware/auth';
 import { StatusLiberacao, TipoFardo, Prisma } from '@prisma/client';
-import { reavaliarStatusLiberacao, situacaoFechamento } from '../services/liberacao-status';
+import {
+  SELECT_VEICULO_FECHAMENTO,
+  reavaliarStatusLiberacao,
+  situacaoFechamento,
+  toleranciaPesoFechamento,
+} from '../services/liberacao-status';
 import { similares } from '../services/cadastros-duplicados';
 
 const criarSchema = z.object({
@@ -27,6 +32,8 @@ const criarSchema = z.object({
   freteEmpresa: z.number().positive(),
   freteMotorista: z.number().nonnegative().nullable().optional(),
   totalFardos: z.number().int().positive(),
+  // Toneladas. Obrigatório ao criar; instruções antigas podem estar sem.
+  pesoTotal: z.number().positive().max(100000),
   tipoFardo: z.nativeEnum(TipoFardo).default(TipoFardo.FARDAO),
   deadline: z.string(),
   observacao: z.string().optional(),
@@ -168,6 +175,9 @@ export async function listar(req: AuthRequest, res: Response) {
   if (origemId) where.origemId = parseInt(origemId);
   if (terminalId) where.terminalId = parseInt(terminalId);
   if (status) where.status = status as StatusLiberacao;
+  if (status && !Object.values(StatusLiberacao).includes(status as StatusLiberacao)) {
+    throw new AppError(`Status inválido: ${status}`, 400, 'INVALID_STATUS');
+  }
 
   // Tratamento de datas para deadline
   const deadlineFilter: any = {};
@@ -213,7 +223,7 @@ export async function listar(req: AuthRequest, res: Response) {
         localEntrega: { select: { id: true, nome: true } },
         veiculos: {
           select: {
-            id: true, placa: true, status: true, qtdFardos: true,
+            ...SELECT_VEICULO_FECHAMENTO,
             motoristaNome: true, motoristaTelefone: true,
             modeloCarreta: { select: { id: true, nomeDescricao: true } },
           },
@@ -222,21 +232,33 @@ export async function listar(req: AuthRequest, res: Response) {
       orderBy: { deadline: 'asc' },
     }),
   ]);
+  const tolerancia = await toleranciaPesoFechamento();
 
   // Calcula saldo e dias para deadline
   const hoje = new Date();
   hoje.setHours(0, 0, 0, 0);
   
   const data = items.map((l) => {
-    const carregado = l.veiculos.reduce((s, v) => s + v.qtdFardos, 0);
-    const saldo = l.totalFardos - carregado;
     const deadlineDate = new Date(l.deadline);
     deadlineDate.setHours(0, 0, 0, 0);
     const diasParaDeadline = Math.ceil(
       (deadlineDate.getTime() - hoje.getTime()) / 86400000,
     );
-    const { aguardandoFechamento } = situacaoFechamento(l, l.veiculos);
-    return { ...l, carregado, saldo, diasParaDeadline, aguardandoFechamento };
+    const sit = situacaoFechamento(l, l.veiculos, tolerancia);
+    return {
+      ...l,
+      programado: sit.programado,
+      carregado: sit.carregado,
+      saldo: sit.saldoProgramar,
+      saldoCarregar: sit.saldoCarregar,
+      toneladasCarregadas: sit.toneladasCarregadas,
+      situacao: sit.situacao,
+      // Deadline é de carregamento: tudo carregado = prazo cumprido (não mostra vencido).
+      prazoCumprido: sit.saldoCarregar <= 0,
+      diasParaDeadline,
+      aguardandoFechamento: sit.aguardandoFechamento,
+      totalPendencias: sit.pendencias.length,
+    };
   });
 
   return res.json({ data, total, page: parseInt(page), limit: take });
@@ -256,6 +278,11 @@ export async function referencias(_req: AuthRequest, res: Response) {
     clientes: valores('clienteNome', 'clientes'), filiais: valores('filialNome', 'filiais'), destinos: valores('destinoNome', 'destinos'), origens: valores('origemNome', 'origens'), locaisColeta: valores('localColetaNome', 'locaisColeta'), locaisEntrega: valores('localEntregaNome', 'locaisEntrega'),
     // Todos os modelos cadastrados (não só os usados em veículos), para os sem uso poderem ser excluídos.
     modelosCarreta: [...new Set(modelos.map((item) => item.nomeDescricao?.trim()).filter(Boolean))].sort(),
+    // Opções cadastráveis (só ADMIN cria) + valores já gravados em veículos.
+    formasPagamento: [...new Set([
+      ...cadastradas.filter((item) => item.tipo === 'formasPagamento').map((item) => item.valor),
+      ...veiculos.map((item) => item.formaPagamento?.trim()).filter((v): v is string => !!v),
+    ])].sort(),
     motoristas: [...new Set(veiculos.map((item) => item.motoristaCpf ? `${item.motoristaNome} · CPF ${item.motoristaCpf}` : item.motoristaNome).filter(Boolean))].sort(),
   });
 }
@@ -268,15 +295,22 @@ function exigirAdminParaFiliais(req: AuthRequest, tipo: string) {
 
 export async function criarReferencia(req: AuthRequest, res: Response) {
   const data = z.object({
-    tipo: z.enum(['clientes', 'filiais', 'destinos', 'origens', 'locaisColeta', 'locaisEntrega']),
+    tipo: z.enum(['clientes', 'filiais', 'destinos', 'origens', 'locaisColeta', 'locaisEntrega', 'formasPagamento']),
     valor: z.string().min(2),
     // Usuário já foi avisado do local de coleta/entrega parecido e confirmou que é outro.
     confirmarSimilar: z.boolean().optional(),
   }).parse(req.body);
+  const valor = data.valor.trim();
+  if (data.tipo === 'formasPagamento') {
+    if (req.user?.perfil !== 'ADMIN') throw new AppError('Somente administradores podem cadastrar formas de pagamento', 403, 'CADASTRO_SOMENTE_ADMIN');
+    const existentes = await prisma.referenciaCadastro.findMany({ where: { tipo: data.tipo } });
+    const igual = existentes.find((r) => mesmoValor(r.valor, valor));
+    if (igual) throw new AppError(`Forma de pagamento "${igual.valor}" já está cadastrada`, 409, 'DUPLICATE');
+    return res.status(201).json(await prisma.referenciaCadastro.create({ data: { tipo: data.tipo, valor } }));
+  }
   if (!ehLocalLivre(data.tipo) && req.user?.perfil !== 'ADMIN') {
     throw new AppError(`Somente administradores podem cadastrar ${rotulosReferencia[data.tipo].toLowerCase()}`, 403, 'CADASTRO_SOMENTE_ADMIN');
   }
-  const valor = data.valor.trim();
   const existentes = await valoresReferencia(data.tipo);
   const igual = existentes.find((v) => mesmoValor(v, valor));
   if (igual) throw new AppError(`${rotulosReferencia[data.tipo]} "${igual}" já está cadastrado(a)`, 409, 'DUPLICATE');
@@ -291,7 +325,7 @@ export async function criarReferencia(req: AuthRequest, res: Response) {
   return res.status(201).json(referencia);
 }
 
-const tiposExcluiveis = ['clientes', 'filiais', 'destinos', 'origens', 'locaisColeta', 'locaisEntrega', 'motoristas', 'modelosCarreta'] as const;
+const tiposExcluiveis = ['clientes', 'filiais', 'destinos', 'origens', 'locaisColeta', 'locaisEntrega', 'motoristas', 'modelosCarreta', 'formasPagamento'] as const;
 
 // Motorista não tem tabela própria: vem dos veículos, listado como "NOME · CPF 123" (ou só "NOME").
 function filtroMotorista(valor: string): Prisma.VeiculoWhereInput {
@@ -320,9 +354,9 @@ export async function usoReferencia(req: AuthRequest, res: Response) {
     });
     return res.json({ liberacoes: [], veiculos, usuarios: [] });
   }
-  if (query.tipo === 'modelosCarreta') {
+  if (query.tipo === 'modelosCarreta' || query.tipo === 'formasPagamento') {
     const veiculos = await prisma.veiculo.findMany({
-      where: { modeloCarreta: { nomeDescricao: query.valor } },
+      where: query.tipo === 'modelosCarreta' ? { modeloCarreta: { nomeDescricao: query.valor } } : { formaPagamento: query.valor },
       select: { id: true, placa: true, status: true, liberacao: { select: liberacaoSelect } },
       orderBy: { createdAt: 'desc' },
     });
@@ -372,6 +406,19 @@ async function excluirModeloCarreta(valor: string, substituto: string | undefine
   return 0;
 }
 
+// Forma de pagamento: só texto no veículo. Em uso, precisa de substituto.
+async function excluirFormaPagamento(valor: string, substituto: string | undefined) {
+  const emUso = await prisma.veiculo.count({ where: { formaPagamento: valor } });
+  if (emUso > 0 && !substituto) {
+    throw new AppError(`Em uso por ${emUso} veículo(s). Escolha um substituto antes de excluir.`, 400, 'HAS_DEPENDENCIES');
+  }
+  await prisma.$transaction(async (tx) => {
+    if (emUso > 0) await tx.veiculo.updateMany({ where: { formaPagamento: valor }, data: { formaPagamento: substituto } });
+    await tx.referenciaCadastro.deleteMany({ where: { tipo: 'formasPagamento', valor } });
+  });
+  return emUso;
+}
+
 // Exclui uma referência (ex: filial duplicada). Se estiver em uso, as liberações
 // (e usuários, no caso de filial) são movidas para o `substituto` antes.
 export async function excluirReferencia(req: AuthRequest, res: Response) {
@@ -388,6 +435,9 @@ export async function excluirReferencia(req: AuthRequest, res: Response) {
   }
   if (body.tipo === 'modelosCarreta') {
     return res.json({ transferidos: await excluirModeloCarreta(body.valor, body.substituto) });
+  }
+  if (body.tipo === 'formasPagamento') {
+    return res.json({ transferidos: await excluirFormaPagamento(body.valor, body.substituto) });
   }
   const { campo, fk, model } = vinculosReferencia[body.tipo];
 
@@ -444,8 +494,19 @@ export async function excluirReferencia(req: AuthRequest, res: Response) {
 }
 
 export async function atualizarReferencia(req: AuthRequest, res: Response) {
-  const body = z.object({ tipo: z.enum(['clientes', 'filiais', 'destinos', 'origens', 'locaisColeta', 'locaisEntrega', 'modelosCarreta', 'motoristas']), atual: z.string().min(1), novo: z.string().min(2) }).parse(req.body);
+  const body = z.object({ tipo: z.enum(['clientes', 'filiais', 'destinos', 'origens', 'locaisColeta', 'locaisEntrega', 'modelosCarreta', 'motoristas', 'formasPagamento']), atual: z.string().min(1), novo: z.string().min(2) }).parse(req.body);
   exigirAdminParaFiliais(req, body.tipo);
+  if (body.tipo === 'formasPagamento') {
+    if (req.user?.perfil !== 'ADMIN') throw new AppError('Somente administradores editam formas de pagamento', 403, 'FORBIDDEN');
+    const novo = body.novo.trim();
+    const resultado = await prisma.$transaction(async (tx) => {
+      const veiculos = await tx.veiculo.updateMany({ where: { formaPagamento: body.atual }, data: { formaPagamento: novo } });
+      const refs = await tx.referenciaCadastro.updateMany({ where: { tipo: body.tipo, valor: body.atual }, data: { valor: novo } });
+      return veiculos.count + refs.count;
+    });
+    if (resultado === 0) throw new AppError('Forma de pagamento não encontrada', 404, 'NOT_FOUND');
+    return res.json({ atualizados: resultado });
+  }
   if (body.tipo === 'modelosCarreta') {
     const resultado = await prisma.modeloCarreta.updateMany({ where: { nomeDescricao: body.atual }, data: { nomeDescricao: body.novo.trim() } });
     return res.json({ atualizados: resultado.count });
@@ -525,7 +586,8 @@ export async function buscarPorId(req: AuthRequest, res: Response) {
     (deadlineDate.getTime() - hoje.getTime()) / 86400000,
   );
   
-  const carregado = liberacao.veiculos.reduce((s, v) => s + v.qtdFardos, 0);
+  const sit = situacaoFechamento(liberacao, liberacao.veiculos, await toleranciaPesoFechamento());
+  const pendenciasPorVeiculo = new Map(sit.pendenciasPorVeiculo.map((p) => [p.id, p.pendencias]));
 
   // Quem mexeu por último em cada veículo (status, SM, dados) — vem da auditoria.
   const ultimasAlteracoes = await prisma.auditoriaLog.findMany({
@@ -542,6 +604,7 @@ export async function buscarPorId(req: AuthRequest, res: Response) {
     const ultima = ultimaPorVeiculo.get(v.id);
     return {
       ...v,
+      pendencias: pendenciasPorVeiculo.get(v.id) ?? [],
       ultimaAlteracao: ultima
         ? { usuario: ultima.usuario, em: ultima.createdAt, acao: ultima.acao, campos: ultima.camposAlterados?.split(',') ?? [] }
         : null,
@@ -551,10 +614,19 @@ export async function buscarPorId(req: AuthRequest, res: Response) {
   return res.json({
     ...liberacao,
     veiculos,
-    carregado, 
-    saldo: liberacao.totalFardos - carregado, 
+    programado: sit.programado,
+    carregado: sit.carregado,
+    saldo: sit.saldoProgramar,
+    saldoCarregar: sit.saldoCarregar,
+    toneladasCarregadas: sit.toneladasCarregadas,
+    pesoMedioFardoKg: sit.pesoMedioFardoKg,
+    pesoMedioRealKg: sit.pesoMedioRealKg,
+    situacao: sit.situacao,
+    prazoCumprido: sit.saldoCarregar <= 0,
     diasParaDeadline,
-    aguardandoFechamento: situacaoFechamento(liberacao, liberacao.veiculos).aguardandoFechamento,
+    aguardandoFechamento: sit.aguardandoFechamento,
+    pendencias: sit.pendencias,
+    pendenciasInstrucao: sit.pendenciasInstrucao,
   });
 }
 
@@ -714,6 +786,9 @@ export async function atualizarStatus(req: AuthRequest, res: Response) {
   if (!Object.values(StatusLiberacao).includes(status)) {
     throw new AppError(`Status inválido: ${status}`, 400, 'INVALID_STATUS');
   }
+  if (status === StatusLiberacao.SUSPENSA) {
+    throw new AppError('Para suspender use "Suspender" (motivo obrigatório)', 400, 'INVALID_STATUS');
+  }
 
   const liberacao = await prisma.liberacao.findUnique({ where: { id: parseInt(id) } });
   if (!liberacao) throw new AppError('Liberação não encontrada', 404, 'LIBERACAO_NOT_FOUND');
@@ -737,44 +812,80 @@ export async function atualizarStatus(req: AuthRequest, res: Response) {
   return res.json(atualizada);
 }
 
-// Fechamento manual (somente ADMIN): todos os veículos finalizados, mas ainda
-// com fardos pendentes — a regra automática não conclui nesse caso.
+// Fechamento manual (somente ADMIN): todos os veículos ativos finalizados, mas
+// com pendência no checklist (saldo, peso, SM, isca...) — a regra automática não
+// conclui nesse caso. Motivo obrigatório; o que faltava fica gravado.
 export async function finalizarManual(req: AuthRequest, res: Response) {
   const id = parseInt(req.params.id);
-  const { motivo } = z.object({ motivo: z.string().trim().max(500).optional() }).parse(req.body ?? {});
+  const { motivo } = z.object({ motivo: z.string().trim().min(3, 'Informe o motivo do fechamento').max(500) }).parse(req.body ?? {});
 
   const liberacao = await prisma.liberacao.findUnique({
     where: { id },
-    include: { veiculos: { select: { status: true, qtdFardos: true } } },
+    include: { veiculos: { select: SELECT_VEICULO_FECHAMENTO } },
   });
   if (!liberacao) throw new AppError('Liberação não encontrada', 404, 'LIBERACAO_NOT_FOUND');
   if (liberacao.status !== StatusLiberacao.ATIVA) {
     throw new AppError('Só é possível finalizar uma liberação ativa', 400, 'INVALID_STATUS');
   }
 
-  const { saldo, todosFinalizados } = situacaoFechamento(liberacao, liberacao.veiculos);
-  if (!todosFinalizados) {
-    throw new AppError('Todos os veículos precisam estar FINALIZADOS antes de fechar a instrução', 400, 'VEICULOS_PENDENTES');
+  const sit = situacaoFechamento(liberacao, liberacao.veiculos, await toleranciaPesoFechamento());
+  if (!sit.todosFinalizados) {
+    throw new AppError('Todos os veículos ativos precisam estar FINALIZADOS antes de fechar a instrução', 400, 'VEICULOS_PENDENTES');
   }
 
   const usuario = await prisma.usuario.findUnique({ where: { id: req.user!.id }, select: { nome: true } });
   const atualizada = await prisma.liberacao.update({
     where: { id },
-    data: saldo > 0
+    data: sit.pendencias.length > 0
       ? {
           status: StatusLiberacao.CONCLUIDA,
           fechamentoManual: true,
-          fardosPendentesFechamento: saldo,
-          motivoFechamento: motivo || null,
+          fardosPendentesFechamento: Math.max(0, sit.saldoProgramar),
+          pendenciasFechamento: sit.pendencias.join('\n'),
+          motivoFechamento: motivo,
           fechamentoManualPor: usuario?.nome ?? null,
           fechamentoManualEm: new Date(),
           concluidaEm: new Date(),
         }
-      // Sem saldo pendente é a conclusão normal.
+      // Checklist completo é a conclusão normal.
       : { status: StatusLiberacao.CONCLUIDA, concluidaEm: new Date() },
   });
 
   return res.json(atualizada);
+}
+
+// Suspender (ADMIN / Gestor de filial): motivo obrigatório. Suspensa não gera
+// alertas e sai dos KPIs de risco; veículos continuam podendo ser movimentados.
+export async function suspender(req: AuthRequest, res: Response) {
+  const id = parseInt(req.params.id);
+  const { motivo } = z.object({ motivo: z.string().trim().min(3, 'Informe o motivo da suspensão').max(500) }).parse(req.body ?? {});
+  const liberacao = await prisma.liberacao.findUnique({ where: { id } });
+  if (!liberacao) throw new AppError('Liberação não encontrada', 404, 'LIBERACAO_NOT_FOUND');
+  if (liberacao.status !== StatusLiberacao.ATIVA) {
+    throw new AppError('Só é possível suspender uma liberação ativa', 400, 'INVALID_STATUS');
+  }
+  const usuario = await prisma.usuario.findUnique({ where: { id: req.user!.id }, select: { nome: true } });
+  const atualizada = await prisma.liberacao.update({
+    where: { id },
+    data: { status: StatusLiberacao.SUSPENSA, motivoSuspensao: motivo, suspensaPor: usuario?.nome ?? null, suspensaEm: new Date() },
+  });
+  return res.json(atualizada);
+}
+
+export async function reativarSuspensa(req: AuthRequest, res: Response) {
+  const id = parseInt(req.params.id);
+  const liberacao = await prisma.liberacao.findUnique({ where: { id } });
+  if (!liberacao) throw new AppError('Liberação não encontrada', 404, 'LIBERACAO_NOT_FOUND');
+  if (liberacao.status !== StatusLiberacao.SUSPENSA) {
+    throw new AppError('A liberação não está suspensa', 400, 'INVALID_STATUS');
+  }
+  await prisma.liberacao.update({
+    where: { id },
+    data: { status: StatusLiberacao.ATIVA, motivoSuspensao: null, suspensaPor: null, suspensaEm: null },
+  });
+  // Pode ter finalizado tudo enquanto estava suspensa.
+  await reavaliarStatusLiberacao(id);
+  return res.json(await prisma.liberacao.findUnique({ where: { id } }));
 }
 
 // Datas "só dia" (dataLiberacao, dataColeta, deadline) ficam à meia-noite UTC:
@@ -809,9 +920,11 @@ export async function exportarViagens(_req: AuthRequest, res: Response) {
   const cabecalho = [
     'Instrução', 'Status da liberação', 'Cliente', 'Filial embarcadora', 'Origem', 'Local de coleta', 'Destino', 'Local de entrega',
     'Data da liberação', 'Data de coleta', 'Deadline', 'Tipo de fardo', 'Total de fardos (liberação)', 'Frete empresa (R$/t)', 'Frete motorista liberação (R$/t)',
+    'Peso da instrução (t)',
     'Placa', 'Tipo do veículo', 'Motorista', 'CPF', 'Telefone', 'Email', 'Transportadora',
-    'Status do veículo', 'SM', 'Rastreamento', 'Isca', 'Qtd. fardos', 'Peso carregado (t)', 'Frete motorista viagem (R$/t)',
+    'Status do veículo', 'SM', 'Rastreamento', 'Possui isca', 'Isca', 'Forma de pagamento', 'Qtd. fardos', 'Peso carregado (t)', 'Frete motorista viagem (R$/t)',
     'Agendamento', 'Carregamento', 'Descarga', 'Finalizado em', 'Observação do veículo', 'Lançado em',
+    'Veículo ativo', 'Motivo da inativação',
   ];
   const linhas = veiculos.map((v) => {
     const l = v.liberacao;
@@ -819,9 +932,12 @@ export async function exportarViagens(_req: AuthRequest, res: Response) {
       l.instrucao, rotuloEnum(l.status), l.clienteNome ?? l.cliente?.nome, l.filialNome ?? l.origem?.nome, l.origemNome ?? l.terminal?.nome,
       l.localColetaNome ?? l.localColeta?.nome, l.destinoNome ?? l.destino?.nome, l.localEntregaNome ?? l.localEntrega?.nome ?? '',
       dia(l.dataLiberacao), dia(l.dataColeta), dia(l.deadline), rotuloEnum(l.tipoFardo), l.totalFardos, l.freteEmpresa, l.freteMotorista,
+      l.pesoTotal ?? '',
       v.placa, v.modeloCarreta?.nomeDescricao ?? '', v.motoristaNome, v.motoristaCpf ?? '', v.motoristaTelefone, v.motoristaEmail ?? '', v.transportadora?.nome ?? '',
-      rotuloEnum(v.status), rotuloEnum(v.statusSm), rotuloEnum(v.statusRastreamento), v.numeroIsca ?? '', v.qtdFardos, v.pesoCarregado, v.freteMotorista,
+      rotuloEnum(v.status), rotuloEnum(v.statusSm), rotuloEnum(v.statusRastreamento),
+      v.possuiIsca == null ? '' : v.possuiIsca ? 'Sim' : 'Não', v.numeroIsca ?? '', v.formaPagamento ?? '', v.qtdFardos, v.pesoCarregado, v.freteMotorista,
       instante(v.dataAgendamento), instante(v.dataCarregamento), instante(v.dataDescarga), instante(v.finalizadoEm), v.observacao ?? '', instante(v.createdAt),
+      v.ativo ? 'Sim' : 'Não', v.motivoInativacao ?? '',
     ];
   });
 

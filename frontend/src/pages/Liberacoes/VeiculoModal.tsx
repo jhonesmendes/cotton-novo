@@ -5,7 +5,8 @@ import toast from 'react-hot-toast';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { useAuthStore } from '@/stores/auth.store';
 import EscolhaModal from '@/components/EscolhaModal';
-import { STATUS_OPTIONS, STATUS_LABELS, STATUS_SEM_MONITORAMENTO, RASTREAMENTO_OPTIONS, RASTREAMENTO_LABELS } from '@/utils/status';
+import { STATUS_OPTIONS, STATUS_LABELS, RASTREAMENTO_OPTIONS, RASTREAMENTO_LABELS, isCarregado } from '@/utils/status';
+import { kgParaToneladas, toneladasParaKg } from '@/utils/format';
 
 interface Props {
   liberacaoId: number;
@@ -33,10 +34,12 @@ export default function VeiculoModal({ liberacaoId, veiculoId, freteMotoristaPad
   const modelos: string[] = referencias?.modelosCarreta ?? [];
   const [form, setForm] = useState<any>({
     liberacaoId, placa: '', modeloCarretaId: '', nomeDescricao: '',
-    freteMotorista: freteMotoristaPadrao ?? '', qtdFardos: '', pesoCarregado: '',
+    freteMotorista: freteMotoristaPadrao ?? '', qtdFardos: '', pesoKg: '',
     motoristaNome: '', motoristaTelefone: '', motoristaCpf: '',
-    status: 'AGENDADO', statusRastreamento: 'NAO_RASTREADO', numeroIsca: '', observacao: '',
+    status: 'AGUARDANDO_GR', statusRastreamento: 'PENDENTE', possuiIsca: null, numeroIsca: '',
+    formaPagamento: '', observacao: '',
   });
+  const formasPagamento: string[] = referencias?.formasPagamento ?? [];
 
   const { data: veiculoData, isFetchedAfterMount } = useQuery({
     queryKey: ['veiculo', veiculoId],
@@ -56,6 +59,9 @@ export default function VeiculoModal({ liberacaoId, veiculoId, freteMotoristaPad
     preenchido.current = true;
     setForm({
       ...veiculoData,
+      // Banco em toneladas; o campo é em kg (como vem da balança/NF).
+      pesoKg: veiculoData.pesoCarregado != null ? toneladasParaKg(veiculoData.pesoCarregado) : '',
+      formaPagamento: veiculoData.formaPagamento ?? '',
       modeloCarretaId: veiculoData.modeloCarretaId,
       nomeDescricao: veiculoData.modeloCarreta?.nomeDescricao ?? '',
     });
@@ -91,6 +97,10 @@ export default function VeiculoModal({ liberacaoId, veiculoId, freteMotoristaPad
       toast.error('Informe o modelo da carreta');
       return;
     }
+    if (form.possuiIsca === true && !form.numeroIsca?.trim()) {
+      toast.error('Informe o número da isca (ou marque "Não possui isca")');
+      return;
+    }
     mutation.mutate(montarPayload(form));
   }
 
@@ -114,14 +124,16 @@ export default function VeiculoModal({ liberacaoId, veiculoId, freteMotoristaPad
       nomeDescricao: form.nomeDescricao.trim(),
       qtdFardos: Number(form.qtdFardos),
       freteMotorista: Number(form.freteMotorista),
-      pesoCarregado: form.pesoCarregado === '' || form.pesoCarregado == null || Number.isNaN(Number(form.pesoCarregado)) ? null : Number(form.pesoCarregado),
+      pesoCarregado: form.pesoKg === '' || form.pesoKg == null || Number.isNaN(Number(form.pesoKg)) ? null : kgParaToneladas(Number(form.pesoKg)),
       motoristaNome: form.motoristaNome?.trim(),
       motoristaTelefone: form.motoristaTelefone?.replace(/\D/g, ''),
       // null permite remover um CPF incorreto já gravado.
       motoristaCpf: form.motoristaCpf?.replace(/\D/g, '') || null,
       status: form.status,
       statusRastreamento: form.statusRastreamento,
-      numeroIsca: form.numeroIsca?.trim() || null,
+      possuiIsca: form.possuiIsca,
+      numeroIsca: form.possuiIsca ? form.numeroIsca?.trim() || null : null,
+      formaPagamento: form.formaPagamento?.trim() || null,
       observacao: form.observacao?.trim() || undefined,
     };
   }
@@ -185,7 +197,10 @@ export default function VeiculoModal({ liberacaoId, veiculoId, freteMotoristaPad
             </div>
           )}
           <Field label="Qtde Fardos*" type="number" value={form.qtdFardos} onChange={(v: string) => set('qtdFardos', parseInt(v))} />
-          <Field label="Peso carregado (t)" type="number" value={form.pesoCarregado} onChange={(v: string) => set('pesoCarregado', v)} placeholder="Ex: 36,5 (NF/balança)" />
+          <div>
+            <Field label="Peso carregado (kg)" type="number" value={form.pesoKg} onChange={(v: string) => set('pesoKg', v)} placeholder="Ex: 35760 (NF/balança)" />
+            <AvisoPeso kg={form.pesoKg} />
+          </div>
           <Field label="Frete Motorista (R$/t)*" type="number" value={form.freteMotorista} onChange={(v: string) => set('freteMotorista', parseFloat(v))} />
           <Field label="Nome do Motorista*" value={form.motoristaNome} onChange={(v: string) => set('motoristaNome', v)} />
           <Field label="Telefone do Motorista*" value={form.motoristaTelefone} onChange={(v: string) => set('motoristaTelefone', v)} placeholder="11999998888" />
@@ -194,13 +209,13 @@ export default function VeiculoModal({ liberacaoId, veiculoId, freteMotoristaPad
             <label className="block text-xs text-gray-500 mb-1">Status</label>
             <select value={form.status} onChange={(e) => set('status', e.target.value)}
               className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm">
-              {STATUS_OPTIONS.map((s) => (
-                <option key={s} value={s} className={STATUS_SEM_MONITORAMENTO.includes(s) ? 'text-gray-500' : 'text-gray-900'}>
-                  {STATUS_LABELS[s]}
-                </option>
+              {STATUS_OPTIONS.map((s, i) => (
+                <option key={s} value={s}>{i + 1}. {STATUS_LABELS[s]}</option>
               ))}
             </select>
-            <p className="text-[11px] text-gray-500 mt-1">Itens em "Sem Dead Line" mantêm o mesmo estilo, sem alterar a sequência.</p>
+            <p className="text-[11px] text-gray-500 mt-1">
+              {isCarregado(form.status) ? 'Conta como carregado (a partir de Manifestado).' : 'Conta só como programado (ainda não carregou).'}
+            </p>
           </div>
           <div>
             <label className="block text-xs text-gray-500 mb-1">Status do Rastreamento</label>
@@ -211,7 +226,31 @@ export default function VeiculoModal({ liberacaoId, veiculoId, freteMotoristaPad
               ))}
             </select>
           </div>
-          <Field label="Controle de Isca" value={form.numeroIsca} onChange={(v: string) => set('numeroIsca', v)} placeholder="Número da isca" />
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Controle de Isca</label>
+            <div className="flex gap-2">
+              <select value={form.possuiIsca == null ? '' : form.possuiIsca ? 'sim' : 'nao'}
+                onChange={(e) => set('possuiIsca', e.target.value === '' ? null : e.target.value === 'sim')}
+                className={`border rounded px-2 py-1.5 text-sm ${form.possuiIsca == null ? 'border-amber-300 bg-amber-50' : form.possuiIsca ? 'border-green-300 bg-green-50' : 'border-gray-200'}`}>
+                <option value="">Pendente</option>
+                <option value="sim">Sim</option>
+                <option value="nao">Não possui</option>
+              </select>
+              {form.possuiIsca === true && (
+                <input value={form.numeroIsca ?? ''} onChange={(e) => set('numeroIsca', e.target.value)} placeholder="Número da isca"
+                  className="flex-1 min-w-0 border border-gray-200 rounded px-2 py-1.5 text-sm" />
+              )}
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Forma de pagamento combinada</label>
+            <select value={form.formaPagamento ?? ''} onChange={(e) => set('formaPagamento', e.target.value)}
+              className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm">
+              <option value="">Não informada</option>
+              {[...new Set([...(form.formaPagamento ? [form.formaPagamento] : []), ...formasPagamento])].map((f) => <option key={f} value={f}>{f}</option>)}
+            </select>
+            <p className="text-[11px] text-gray-500 mt-1">Só informativo — para conferir na emissão do documento no ERP.</p>
+          </div>
           <div className="col-span-2">
             <label className="block text-xs text-gray-500 mb-1">Observação</label>
             <textarea value={form.observacao ?? ''} onChange={(e) => set('observacao', e.target.value)}
@@ -271,6 +310,15 @@ export default function VeiculoModal({ liberacaoId, veiculoId, freteMotoristaPad
       </EscolhaModal>
     </div>
   );
+}
+
+// Peso fora do comum para um caminhão: provavelmente digitado em toneladas ou com zero a mais.
+function AvisoPeso({ kg }: { kg: unknown }) {
+  const n = Number(kg);
+  if (kg === '' || kg == null || Number.isNaN(n)) return null;
+  if (n > 60000) return <p className="text-[11px] text-amber-600 mt-1">Acima de 60.000 kg — confira se não sobrou um zero.</p>;
+  if (n < 1000) return <p className="text-[11px] text-amber-600 mt-1">Abaixo de 1.000 kg — o campo é em kg (ex.: 35,76 t = 35760).</p>;
+  return <p className="text-[11px] text-gray-500 mt-1">= {(n / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 })} t</p>;
 }
 
 function Field({ label, value, onChange, onBlur, type = 'text', placeholder, suggestions }: any) {
