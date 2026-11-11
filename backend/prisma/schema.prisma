@@ -277,6 +277,12 @@ model Veiculo {
   inativadoPor       String?       @map("inativado_por")
   inativadoEm        DateTime?     @map("inativado_em")
   motivoReativacao   String?       @map("motivo_reativacao")
+  // Informe (ordem do caminhão p/ WhatsApp): dimensões e quem captou o motorista.
+  comprimento        String?       // texto livre, ex.: 12.35X12.35
+  altura             Float?        // metros
+  captacao           String?       // nome livre de quem captou o motorista
+  // Usuário que lançou o veículo (linha CADASTRO do Informe).
+  cadastradoPor      String?       @map("cadastrado_por")
   dataAgendamento    DateTime? @map("data_agendamento")
   dataCarregamento   DateTime? @map("data_carregamento")
   dataDescarga       DateTime? @map("data_descarga")

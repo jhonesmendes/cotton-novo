@@ -41,6 +41,10 @@ const criarSchema = z.object({
   // Informativo (conferência no ERP); opções em Revisão de Dados. Obrigatório ao
   // cadastrar; veículos antigos sem ela só travam o fechamento da instrução.
   formaPagamento: z.string().trim().min(1, 'Informe a forma de pagamento').max(100),
+  // Informe (ordem do caminhão): comprimento livre (ex.: 12.35X12.35), altura em metros, captação = nome livre.
+  comprimento: z.string().trim().max(40).nullable().optional(),
+  altura: z.number().positive().max(10).nullable().optional(),
+  captacao: z.string().trim().max(100).nullable().optional(),
   dataAgendamento: z.string().datetime({ offset: true }).optional().nullable(),
   dataCarregamento: z.string().datetime({ offset: true }).optional().nullable(),
   dataDescarga: z.string().datetime({ offset: true }).optional().nullable(),
@@ -223,8 +227,16 @@ export async function buscarPorPlaca(req: AuthRequest, res: Response) {
   const placaVeiculo = placa.trim().toUpperCase();
 
   const cadastro = await prisma.modeloCarreta.findFirst({ where: { placaVeiculo } });
+  // Comprimento/altura da última viagem com a mesma placa (pré-preenche o Informe).
+  const ultimaComDimensoes = await prisma.veiculo.findFirst({
+    where: { placa: placaVeiculo, OR: [{ comprimento: { not: null } }, { altura: { not: null } }] },
+    orderBy: { createdAt: 'desc' },
+    select: { comprimento: true, altura: true },
+  });
+  const dimensoes = { comprimento: ultimaComDimensoes?.comprimento ?? null, altura: ultimaComDimensoes?.altura ?? null };
   if (cadastro) {
     return res.json({
+      ...dimensoes,
       modeloCarretaId: cadastro.id,
       nomeDescricao: cadastro.nomeDescricao,
       capacidadeMaximaFardos: cadastro.capacidadeMaximaFardos,
@@ -244,6 +256,7 @@ export async function buscarPorPlaca(req: AuthRequest, res: Response) {
   if (!veiculo) return res.json(null); // Retorna null se não encontrar, sem erro 404 para não poluir o console
 
   return res.json({
+    ...dimensoes,
     modeloCarretaId: veiculo.modeloCarretaId,
     nomeDescricao: veiculo.modeloCarreta.nomeDescricao,
     capacidadeMaximaFardos: veiculo.modeloCarreta.capacidadeMaximaFardos,
@@ -288,6 +301,7 @@ export async function criar(req: AuthRequest, res: Response) {
       ...dadosOperacionais,
       placa: placaVeiculo,
       modeloCarretaId: cadastro.id,
+      cadastradoPor: await nomeUsuario(req),
       motoristaCpf: data.motoristaCpf ?? null,
       finalizadoEm: data.status === StatusVeiculo.FINALIZADO ? new Date() : null,
       dataAgendamento: data.dataAgendamento ? new Date(data.dataAgendamento) : null,

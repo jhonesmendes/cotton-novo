@@ -1,15 +1,17 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import { useEffect, useRef, useState } from 'react';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
 import { formatDate, formatDateTime, formatMoney, formatPeso, formatTelefone } from '@/utils/format';
-import { STATUS_OPTIONS, STATUS_LABELS, SM_OPTIONS, SM_LABELS, RASTREAMENTO_LABELS, SITUACAO_LABELS, STATUS_LIBERACAO_CLASSES, SituacaoLiberacao } from '@/utils/status';
+import { STATUS_OPTIONS, STATUS_LABELS, SM_OPTIONS, SM_LABELS, SITUACAO_LABELS, STATUS_LIBERACAO_CLASSES, SituacaoLiberacao } from '@/utils/status';
 import UrgenciaBadge from '@/components/UrgenciaBadge';
 import ConfirmModal from '@/components/ConfirmModal';
 import TimelineStatus from '@/components/TimelineStatus';
 import { PlusIcon, PencilSquareIcon, TrashIcon, PhoneIcon, ChevronDownIcon, ChevronUpIcon, EyeIcon, EyeSlashIcon, ClockIcon, ArrowLeftIcon, ExclamationTriangleIcon, CheckCircleIcon, PauseCircleIcon, PlayCircleIcon, ArrowPathIcon, NoSymbolIcon } from '@heroicons/react/24/outline';
 import VeiculoModal from './VeiculoModal';
+import InformeModal, { LinhaInforme } from './Informe';
+import { CargaRapida, FormaPagamentoRapida, RastreamentoIscaRapido } from './EdicaoRapida';
 import { urlListaLiberacoes } from './navegacao';
 import { useAuthStore } from '@/stores/auth.store';
 import AlteracoesDetalhe from '@/components/AlteracoesDetalhe';
@@ -33,6 +35,8 @@ export default function LiberacaoDetalhe() {
   const [historicoAberto, setHistoricoAberto] = useState(false);
   const navigate = useNavigate();
   const [veiculoModal, setVeiculoModal] = useState<'novo' | number | null>(null);
+  const [informe, setInforme] = useState<number | null>(null);
+  const location = useLocation();
   const [expandedTimeline, setExpandedTimeline] = useState<number | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<{ type: 'liberacao' } | null>(null);
   // Oculta os valores de frete antes de tirar print pra enviar pra fora — o valor
@@ -51,6 +55,41 @@ export default function LiberacaoDetalhe() {
     queryFn: () => api.get(`/auditoria/liberacao/${id}`).then((r) => r.data),
     enabled: podeVerHistorico && historicoAberto,
   });
+
+  // Formas de pagamento e nomes de captação (edição rápida e Informe).
+  const { data: referencias } = useQuery({
+    queryKey: ['liberacoes-referencias'],
+    queryFn: () => api.get('/liberacoes/referencias/lista').then((r) => r.data),
+  });
+
+  // Edição rápida na linha do veículo: grava só os campos alterados.
+  const editarVeiculo = useMutation({
+    mutationFn: ({ veiculoId, campos }: { veiculoId: number; campos: Record<string, unknown> }) => api.put(`/veiculos/${veiculoId}`, campos),
+    onSuccess: () => {
+      toast.success('Veículo atualizado');
+      qc.invalidateQueries({ queryKey: ['liberacao', id] });
+      qc.invalidateQueries({ queryKey: ['liberacoes'] });
+      qc.invalidateQueries({ queryKey: ['liberacoes-referencias'] });
+    },
+    onError: (err: any) => {
+      const e = err?.response?.data?.error;
+      toast.error(e?.details?.[0]?.message ?? e?.message ?? 'Erro ao atualizar o veículo');
+    },
+  });
+  const salvarVeiculo = (veiculoId: number) => (campos: Record<string, unknown>) => editarVeiculo.mutateAsync({ veiculoId, campos });
+
+  // Link com #veiculo-ID (placa clicada na lista): rola até o veículo e destaca.
+  const [veiculoDestacado, setVeiculoDestacado] = useState<number | null>(null);
+  useEffect(() => {
+    const m = location.hash.match(/^#veiculo-(\d+)$/);
+    if (!m || !lib) return;
+    const alvo = document.getElementById(`veiculo-${m[1]}`);
+    if (!alvo) return;
+    alvo.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setVeiculoDestacado(Number(m[1]));
+    const t = setTimeout(() => setVeiculoDestacado(null), 2500);
+    return () => clearTimeout(t);
+  }, [location.hash, lib]);
 
   // Abre o pop-up ao entrar na liberação nessa situação e sempre que ela passar
   // a valer (ex: acabou de finalizar o último veículo).
@@ -394,7 +433,7 @@ export default function LiberacaoDetalhe() {
             // Finalizado com dado faltando: borda amarela + lista do que falta.
             const comPendencia = !inativo && v.status === 'FINALIZADO' && v.pendencias?.length > 0;
             return (
-            <div key={v.id} className={`transition-colors ${inativo ? 'bg-gray-50' : comPendencia ? 'bg-amber-50/60 border-l-4 border-amber-400' : 'hover:bg-gray-50'}`}>
+            <div key={v.id} id={`veiculo-${v.id}`} className={`transition-colors ${veiculoDestacado === v.id ? 'ring-2 ring-inset ring-indigo-400 bg-indigo-50/50' : ''} ${inativo ? 'bg-gray-50' : comPendencia ? 'bg-amber-50/60 border-l-4 border-amber-400' : 'hover:bg-gray-50'}`}>
               {inativo && (
                 <div className="px-5 pt-3 flex items-center gap-2 flex-wrap text-xs text-gray-500">
                   <span className="inline-flex items-center gap-1 rounded-full bg-gray-200 px-2 py-0.5 font-bold text-gray-600"><NoSymbolIcon className="w-3 h-3" />INATIVO</span>
@@ -417,7 +456,14 @@ export default function LiberacaoDetalhe() {
                 <div className="min-w-[110px]">
                   <p className="font-mono font-bold text-gray-900 text-base tracking-wider">{v.placa}</p>
                   <p className="text-[10px] text-gray-400 mt-0.5 uppercase">{v.modeloCarreta?.nomeDescricao}</p>
-                  {v.formaPagamento && <p className="mt-1 inline-block rounded bg-indigo-50 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-700 no-underline">{v.formaPagamento}</p>}
+                  <FormaPagamentoRapida v={v} opcoes={referencias?.formasPagamento ?? []} salvar={salvarVeiculo(v.id)} desabilitado={inativo} />
+                  <div className="mt-1 flex items-center gap-2">
+                    <button type="button" onClick={() => setInforme(v.id)}
+                      className="rounded border border-indigo-200 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-700 hover:bg-indigo-50">
+                      Informe
+                    </button>
+                  </div>
+                  <LinhaInforme v={v} />
                 </div>
 
                 {/* Motorista */}
@@ -433,19 +479,8 @@ export default function LiberacaoDetalhe() {
                   </a>
                 </div>
 
-                {/* Rastreamento + Isca */}
-                <div className="min-w-[130px]">
-                  <p className="text-[10px] text-gray-500">Rastreamento</p>
-                  <p className={`text-xs font-semibold ${v.statusRastreamento === 'PENDENTE' ? 'text-amber-600' : 'text-gray-800'}`}>{RASTREAMENTO_LABELS[v.statusRastreamento as keyof typeof RASTREAMENTO_LABELS] ?? v.statusRastreamento}</p>
-                  <p className="text-xs mt-0.5">
-                    {v.possuiIsca === true
-                      ? <span>🟢 <span className="font-mono text-gray-700">{v.numeroIsca || 'sem número'}</span></span>
-                      : v.possuiIsca === false
-                      ? <span className="text-gray-500">Não possui isca</span>
-                      : <span className="text-amber-600">Isca pendente</span>
-                    }
-                  </p>
-                </div>
+                {/* Rastreamento + Isca — clique altera */}
+                <RastreamentoIscaRapido v={v} salvar={salvarVeiculo(v.id)} desabilitado={inativo} />
 
                 {/* SM - Monitoramento do Veículo */}
                 <div className="min-w-[120px]">
@@ -476,18 +511,8 @@ export default function LiberacaoDetalhe() {
                   }}
                 />
 
-                {/* Fardos + Frete */}
-                <div className="text-right">
-                  <p className="text-sm font-bold text-gray-900">{v.qtdFardos} fardos</p>
-                  <p className="text-xs text-gray-500">
-                    {v.pesoCarregado != null
-                      ? formatPeso(v.pesoCarregado)
-                      : <span className="text-amber-600" title="Estimado pelo peso médio da instrução">
-                          sem peso{lib.pesoMedioFardoKg != null && ` · ~${formatPeso((v.qtdFardos * lib.pesoMedioFardoKg) / 1000)} estimado`}
-                        </span>}
-                  </p>
-                  <p className="text-xs text-gray-400">{ocultarValores ? 'R$ ••••••' : formatMoney(v.freteMotorista)}</p>
-                </div>
+                {/* Fardos + Peso + Frete — clique altera */}
+                <CargaRapida v={v} salvar={salvarVeiculo(v.id)} desabilitado={inativo} ocultarValores={ocultarValores} pesoMedioFardoKg={lib.pesoMedioFardoKg} />
 
                 {/* Status update */}
                 <div className="min-w-[140px]">
@@ -618,6 +643,17 @@ export default function LiberacaoDetalhe() {
           )}
         </div>
       )}
+
+      {/* Informe: ordem do caminhão para o WhatsApp */}
+      {informe !== null && (() => {
+        const ativos = (lib.veiculos ?? []).filter((x: any) => x.ativo);
+        const v = (lib.veiculos ?? []).find((x: any) => x.id === informe);
+        if (!v) return null;
+        return (
+          <InformeModal v={v} lib={lib} posicao={Math.max(1, ativos.findIndex((x: any) => x.id === v.id) + 1)}
+            captacoes={referencias?.captacoes ?? []} salvar={salvarVeiculo(v.id)} onClose={() => setInforme(null)} />
+        );
+      })()}
 
       {/* Modal Veículo */}
       {veiculoModal !== null && (

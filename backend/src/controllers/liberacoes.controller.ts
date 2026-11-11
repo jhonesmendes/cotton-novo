@@ -197,18 +197,22 @@ export async function listar(req: AuthRequest, res: Response) {
     where.deadline = deadlineFilter;
   }
 
+  // Busca em todas as colunas da tela (campos denormalizados + relação, porque
+  // cadastros antigos podem ter o nome divergente). Placa/motorista só de veículo ativo.
   if (busca) {
+    const contem = { contains: busca.trim(), mode: 'insensitive' as const };
     where.OR = [
-      { instrucao: { contains: busca, mode: 'insensitive' } },
-      { veiculos: { some: { placa: { contains: busca, mode: 'insensitive' } } } },
-      { veiculos: { some: { motoristaNome: { contains: busca, mode: 'insensitive' } } } },
-      { cliente: { nome: { contains: busca, mode: 'insensitive' } } },
-      // campo denormalizado — cadastros antigos podem ter o nome aqui divergente da relação
-      { clienteNome: { contains: busca, mode: 'insensitive' } },
+      { instrucao: contem },
+      { clienteNome: contem }, { cliente: { nome: contem } },
+      { origemNome: contem }, { terminal: { nome: contem } },
+      { localColetaNome: contem }, { localColeta: { nome: contem } },
+      { destinoNome: contem }, { destino: { nome: contem } },
+      { localEntregaNome: contem }, { localEntrega: { nome: contem } },
+      { veiculos: { some: { ativo: true, OR: [{ placa: contem }, { motoristaNome: contem }] } } },
     ];
   }
 
-  const [total, items] = await Promise.all([
+  const [total, items, todasDoFiltro, programadoFiltro] = await Promise.all([
     prisma.liberacao.count({ where }),
     prisma.liberacao.findMany({
       where,
@@ -231,6 +235,12 @@ export async function listar(req: AuthRequest, res: Response) {
       },
       orderBy: { deadline: 'asc' },
     }),
+    // Totais de tudo o que o filtro traz (não só a página) — faixa no topo da lista.
+    prisma.liberacao.findMany({
+      where,
+      select: { totalFardos: true, pesoTotal: true, carregado: true, deadline: true, status: true },
+    }),
+    prisma.veiculo.aggregate({ where: { ativo: true, liberacao: where }, _sum: { qtdFardos: true } }),
   ]);
   const tolerancia = await toleranciaPesoFechamento();
 
@@ -261,7 +271,23 @@ export async function listar(req: AuthRequest, res: Response) {
     };
   });
 
-  return res.json({ data, total, page: parseInt(page), limit: take });
+  const totalFardos = todasDoFiltro.reduce((s, l) => s + l.totalFardos, 0);
+  const programado = programadoFiltro._sum.qtdFardos ?? 0;
+  const carregado = todasDoFiltro.reduce((s, l) => s + l.carregado, 0);
+  const totais = {
+    liberacoes: total,
+    totalFardos,
+    programado,
+    carregado,
+    saldoProgramar: totalFardos - programado,
+    saldoCarregar: totalFardos - carregado,
+    pesoTotal: todasDoFiltro.reduce((s, l) => s + (l.pesoTotal ?? 0), 0),
+    semPeso: todasDoFiltro.filter((l) => l.pesoTotal == null).length,
+    // Vencida = ativa, deadline passado e ainda com fardo a carregar.
+    vencidas: todasDoFiltro.filter((l) => l.status === StatusLiberacao.ATIVA && l.deadline < hoje && l.carregado < l.totalFardos).length,
+  };
+
+  return res.json({ data, total, totais, page: parseInt(page), limit: take });
 }
 
 export async function referencias(_req: AuthRequest, res: Response) {
@@ -278,6 +304,8 @@ export async function referencias(_req: AuthRequest, res: Response) {
     clientes: valores('clienteNome', 'clientes'), filiais: valores('filialNome', 'filiais'), destinos: valores('destinoNome', 'destinos'), origens: valores('origemNome', 'origens'), locaisColeta: valores('localColetaNome', 'locaisColeta'), locaisEntrega: valores('localEntregaNome', 'locaisEntrega'),
     // Todos os modelos cadastrados (não só os usados em veículos), para os sem uso poderem ser excluídos.
     modelosCarreta: [...new Set(modelos.map((item) => item.nomeDescricao?.trim()).filter(Boolean))].sort(),
+    // Nomes já digitados em "Captação" (sugestão no Informe).
+    captacoes: [...new Set(veiculos.map((item) => item.captacao?.trim()).filter((v): v is string => !!v))].sort(),
     // Opções cadastráveis (só ADMIN cria) + valores já gravados em veículos.
     formasPagamento: [...new Set([
       ...cadastradas.filter((item) => item.tipo === 'formasPagamento').map((item) => item.valor),

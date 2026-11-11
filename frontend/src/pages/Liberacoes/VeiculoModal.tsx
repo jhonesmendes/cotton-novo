@@ -37,8 +37,9 @@ export default function VeiculoModal({ liberacaoId, veiculoId, freteMotoristaPad
     freteMotorista: freteMotoristaPadrao ?? '', qtdFardos: '', pesoKg: '',
     motoristaNome: '', motoristaTelefone: '', motoristaCpf: '',
     status: 'AGUARDANDO_GR', statusRastreamento: 'PENDENTE', possuiIsca: null, numeroIsca: '',
-    formaPagamento: '', observacao: '',
+    formaPagamento: '', observacao: '', comprimento: '', altura: '', captacao: '',
   });
+  const captacoes: string[] = referencias?.captacoes ?? [];
   const formasPagamento: string[] = referencias?.formasPagamento ?? [];
 
   const { data: veiculoData, isFetchedAfterMount } = useQuery({
@@ -62,6 +63,9 @@ export default function VeiculoModal({ liberacaoId, veiculoId, freteMotoristaPad
       // Banco em toneladas; o campo é em kg (como vem da balança/NF).
       pesoKg: veiculoData.pesoCarregado != null ? toneladasParaKg(veiculoData.pesoCarregado) : '',
       formaPagamento: veiculoData.formaPagamento ?? '',
+      comprimento: veiculoData.comprimento ?? '',
+      altura: veiculoData.altura != null ? String(veiculoData.altura).replace('.', ',') : '',
+      captacao: veiculoData.captacao ?? '',
       modeloCarretaId: veiculoData.modeloCarretaId,
       nomeDescricao: veiculoData.modeloCarreta?.nomeDescricao ?? '',
     });
@@ -95,6 +99,11 @@ export default function VeiculoModal({ liberacaoId, veiculoId, freteMotoristaPad
   function handleSave() {
     if (!form.nomeDescricao?.trim()) {
       toast.error('Informe o modelo da carreta');
+      return;
+    }
+    const altura = String(form.altura ?? '').trim() ? Number(String(form.altura).replace(',', '.')) : null;
+    if (altura != null && (Number.isNaN(altura) || altura <= 0 || altura > 10)) {
+      toast.error('Altura em metros (ex.: 2,75)');
       return;
     }
     if (!form.formaPagamento?.trim()) {
@@ -138,6 +147,9 @@ export default function VeiculoModal({ liberacaoId, veiculoId, freteMotoristaPad
       possuiIsca: form.possuiIsca,
       numeroIsca: form.possuiIsca ? form.numeroIsca?.trim() || null : null,
       formaPagamento: form.formaPagamento?.trim(),
+      comprimento: form.comprimento?.trim() || null,
+      altura: form.altura === '' || form.altura == null ? null : Number(String(form.altura).replace(',', '.')),
+      captacao: form.captacao?.trim() || null,
       observacao: form.observacao?.trim() || undefined,
     };
   }
@@ -154,6 +166,9 @@ export default function VeiculoModal({ liberacaoId, veiculoId, freteMotoristaPad
           motoristaNome: res.data.motoristaNome || f.motoristaNome,
           motoristaTelefone: res.data.motoristaTelefone || f.motoristaTelefone,
           motoristaCpf: res.data.motoristaCpf || f.motoristaCpf,
+          // Dimensões da última viagem com essa placa.
+          comprimento: f.comprimento || res.data.comprimento || '',
+          altura: f.altura || (res.data.altura != null ? String(res.data.altura).replace('.', ',') : ''),
         }));
         toast.success('Dados do veículo preenchidos automaticamente!', { icon: '🚚' });
       }
@@ -254,6 +269,12 @@ export default function VeiculoModal({ liberacaoId, veiculoId, freteMotoristaPad
               {[...new Set([...(form.formaPagamento ? [form.formaPagamento] : []), ...formasPagamento])].map((f) => <option key={f} value={f}>{f}</option>)}
             </select>
             <p className="text-[11px] text-gray-500 mt-1">Só informativo — para conferir na emissão do documento no ERP.</p>
+          </div>
+          <div className="col-span-2 grid grid-cols-3 gap-4 rounded-lg border border-dashed border-gray-200 p-3">
+            <p className="col-span-3 -mb-2 text-[11px] font-semibold uppercase tracking-wide text-gray-400">Informe (ordem do caminhão)</p>
+            <Field label="Comprimento" value={form.comprimento} onChange={(v: string) => set('comprimento', v.toUpperCase())} placeholder="12.35X12.35" />
+            <Field label="Altura (m)" value={form.altura} onChange={(v: string) => set('altura', v)} placeholder="2,75" />
+            <Field label="Captação" value={form.captacao} onChange={(v: string) => set('captacao', v)} placeholder="Quem captou" suggestions={captacoes} />
           </div>
           <div className="col-span-2">
             <label className="block text-xs text-gray-500 mb-1">Observação</label>

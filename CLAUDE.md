@@ -125,6 +125,18 @@ AGUARDANDO_GR → TRANSITO_CARREGAMENTO → LOCAL → MANIFESTADO
   passam pelas regras novas; se algum veículo ativo sair de `FINALIZADO`, reabre.
 - **Forma de pagamento** do veículo: obrigatória ao cadastrar (veículos antigos sem ela só travam o fechamento); só informativa, sem controle de pago; opções em `referencias_cadastro`
   tipo `formasPagamento` (bloco em Revisão de Dados, só ADMIN cria/edita).
+- **Edição rápida** no detalhe (`pages/Liberacoes/EdicaoRapida.tsx`): rastreamento + isca,
+  carga (fardos, peso em kg, frete) e forma de pagamento abrem um popover e gravam só o campo
+  alterado via `PUT /veiculos/:id` (auditoria normal).
+- **Informe** (`pages/Liberacoes/Informe.tsx`): ordem do caminhão no formato "ORDENS COTTON"
+  do WhatsApp, com botão Copiar. Campos novos no veículo: `comprimento` (texto), `altura` (m),
+  `captacao` (nome livre, sugestões em `referencias.captacoes`) e `cadastradoPor` (quem lançou;
+  antigos preenchidos pela auditoria). VEÍCULO/MODELO saem do nome do modelo de carreta
+  ("RODOTREM SIDER" → RODOTREM / SIDER).
+- **Lista de liberações**: a busca procura em instrução, cliente, origem, coleta, destino,
+  entrega, placa e motorista; `GET /liberacoes` devolve `totais` de todo o filtro (não só a
+  página). Clicar num valor da tabela/card põe o texto na busca; placas viram chips coloridos
+  pela etapa e abrem o detalhe em `#veiculo-<id>`.
 - **Parâmetros do sistema**: tabela `configuracoes_sistema` (chave → valor); chaves
   aceitas e limites em `backend/src/services/parametros.ts`; `GET/PUT /api/parametros`.
 - **Relatórios** (`/relatorios`, `backend/src/controllers/relatorios.controller.ts`): agrupam por
