@@ -10,6 +10,8 @@ import ConfirmModal from '@/components/ConfirmModal';
 import TimelineStatus from '@/components/TimelineStatus';
 import { PlusIcon, PencilSquareIcon, TrashIcon, PhoneIcon, ChevronDownIcon, ChevronUpIcon, EyeIcon, EyeSlashIcon, ClockIcon, ArrowLeftIcon, ExclamationTriangleIcon, CheckCircleIcon, PauseCircleIcon, PlayCircleIcon, ArrowPathIcon, NoSymbolIcon } from '@heroicons/react/24/outline';
 import VeiculoModal from './VeiculoModal';
+import EtapasVeiculo from '@/components/EtapasVeiculo';
+import { useThemeStore } from '@/stores/theme.store';
 import InformeModal, { LinhaInforme } from './Informe';
 import { CargaRapida, FormaPagamentoRapida, RastreamentoIscaRapido } from './EdicaoRapida';
 import { urlListaLiberacoes } from './navegacao';
@@ -23,6 +25,8 @@ export default function LiberacaoDetalhe() {
   const podeEditarLiberacao = perfil !== 'OPERADOR';
   const podeVerHistorico = perfil !== 'CLIENTE';
   const isAdmin = perfil === 'ADMIN';
+  // Estilos novos trocam o select de status pela trilha de etapas clicável.
+  const trilhaEtapas = useThemeStore((s) => s.estilo) !== 'CLASSICO';
   const podeSuspender = perfil === 'ADMIN' || perfil === 'GESTOR_FILIAL';
   const podeInativarVeiculo = perfil === 'ADMIN' || perfil === 'OPERADOR' || perfil === 'GESTOR_FILIAL';
   // Suspender (motivo obrigatório) / reativar a liberação.
@@ -516,8 +520,8 @@ export default function LiberacaoDetalhe() {
 
                 {/* Status update */}
                 <div className="min-w-[140px]">
-                  <label className="block text-[10px] text-gray-500 mb-1">Status do veículo</label>
-                  <select
+                  <label className="block text-[10px] text-gray-500 mb-1">{trilhaEtapas ? 'Última alteração' : 'Status do veículo'}</label>
+                  {!trilhaEtapas && <select
                     value={v.status}
                     onChange={(e) => {
                       setSavingStatusId(v.id);
@@ -529,7 +533,7 @@ export default function LiberacaoDetalhe() {
                     {STATUS_OPTIONS.map((status, i) => (
                       <option key={status} value={status}>{i + 1}. {STATUS_LABELS[status]}</option>
                     ))}
-                  </select>
+                  </select>}
                   {v.ultimaAlteracao && (
                     <p
                       className="mt-1 flex items-center gap-1 text-[10px] text-gray-400"
@@ -573,6 +577,14 @@ export default function LiberacaoDetalhe() {
                     </button>
                   )}
                 </div>
+
+                {/* Trilha de etapas clicável (estilos novos): clique → confirma → muda o status */}
+                {trilhaEtapas && (
+                  <div className="basis-full pt-1">
+                    <EtapasVeiculo status={v.status} desabilitado={inativo} salvando={savingStatusId === v.id}
+                      onMudar={(status) => { setSavingStatusId(v.id); atualizarStatusVeiculo.mutate({ veiculoId: v.id, status }); }} />
+                  </div>
+                )}
               </fieldset>
 
               {/* Timeline Expandida */}

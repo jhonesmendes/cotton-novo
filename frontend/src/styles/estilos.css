@@ -199,3 +199,25 @@ tbody tr { transition: background-color .12s ease; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; }
 }
+
+/* ═══ Estrutura por estilo ═══════════════════════════════════════════════ */
+
+/* Controle: navegação no topo, barra escura de ponta a ponta. */
+.ui-topbar-nav { background-color: var(--sb-bg) !important; border-color: var(--sb-border) !important; backdrop-filter: none; }
+.ui-topbar-nav .ui-marca-nome { color: #fff; }
+.ui-topbar-nav .text-ui-text, .ui-topbar-nav .text-ui-text-muted { color: var(--sb-text); }
+.ui-topbar-nav button.text-ui-text-muted:hover { background-color: var(--sb-hover-bg); color: #fff; }
+.ui-topbar-nav .border-ui-border { border-color: rgb(255 255 255 / .14); }
+.ui-nav-topo.ui-nav-item-ativo::before { left: 10px; right: 10px; top: auto; bottom: -11px; width: auto; height: 3px; border-radius: 3px 3px 0 0; }
+.estilo-controle .ui-page { max-width: none; }
+
+/* Executivo: trilho de ícones com dica, conteúdo centralizado e mais estreito. */
+.ui-trilho-dica { background-color: rgb(var(--g-900)); color: rgb(var(--c-surface)); }
+.estilo-executivo .ui-nav-item-ativo::before { left: -8px; }
+.estilo-executivo .ui-page { max-width: 1240px; }
+
+/* Lavoura: cabeçalho da página em faixa na cor da marca. */
+.ui-faixa { background-color: rgb(var(--tema-800)); color: #fff; }
+.dark .ui-faixa { background-color: rgb(var(--tema-900)); }
+.ui-faixa .ui-btn-primary { background-color: #fff; color: rgb(var(--tema-800)); }
+.ui-faixa .ui-btn-primary:hover { background-color: rgb(var(--tema-50)); }

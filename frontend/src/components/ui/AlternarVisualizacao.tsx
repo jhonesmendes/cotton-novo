@@ -1,19 +1,22 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Squares2X2Icon, TableCellsIcon } from '@heroicons/react/24/outline';
 
 // Lista em tabela ou em cards — preferência do navegador por tela (chave), vale entre sessões.
 export type ModoVisualizacao = 'lista' | 'cards';
 
-function lerModo(chave: string): ModoVisualizacao {
+function lerModo(chave: string, padrao: ModoVisualizacao): ModoVisualizacao {
   try {
-    return localStorage.getItem(chave) === 'cards' ? 'cards' : 'lista';
+    const salvo = localStorage.getItem(chave);
+    return salvo === 'cards' || salvo === 'lista' ? salvo : padrao;
   } catch {
-    return 'lista';
+    return padrao;
   }
 }
 
-export function useModoVisualizacao(chave: string) {
-  const [modo, setModo] = useState<ModoVisualizacao>(() => lerModo(chave));
+export function useModoVisualizacao(chave: string, padrao: ModoVisualizacao = 'lista') {
+  const [modo, setModo] = useState<ModoVisualizacao>(() => lerModo(chave, padrao));
+  // A chave pode mudar (ex.: troca de estilo do painel): relê a preferência.
+  useEffect(() => { setModo(lerModo(chave, padrao)); }, [chave, padrao]);
   const trocarModo = (m: ModoVisualizacao) => {
     setModo(m);
     try {
