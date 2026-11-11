@@ -367,6 +367,9 @@ model Usuario {
   clienteId Int? @map("cliente_id")
   filialId  Int? @map("filial_id")
   ativo     Boolean       @default(true)
+  // Preferências de aparência (Minha conta): paleta VERDE/AZUL e modo CLARO/ESCURO (null = do sistema).
+  tema      String        @default("AZUL")
+  modo      String?
   lastLogin DateTime? @map("last_login")
   createdAt DateTime      @default(now()) @map("created_at")
   updatedAt DateTime      @updatedAt @map("updated_at")

@@ -54,7 +54,7 @@ export async function login(req: Request, res: Response) {
   return res.json({
     accessToken: signAccess(payload),
     refreshToken: signRefresh({ id: user.id }),
-    user: { id: user.id, nome: user.nome, email: user.email, perfil: user.perfil },
+    user: { id: user.id, nome: user.nome, email: user.email, perfil: user.perfil, tema: user.tema, modo: user.modo },
   });
 }
 
@@ -87,7 +87,7 @@ export async function refreshToken(req: Request, res: Response) {
   // Devolve o usuário atualizado — o frontend sincroniza perfil/nome na renovação.
   return res.json({
     accessToken: signAccess(payload),
-    user: { id: user.id, nome: user.nome, email: user.email, perfil: user.perfil },
+    user: { id: user.id, nome: user.nome, email: user.email, perfil: user.perfil, tema: user.tema, modo: user.modo },
   });
 }
 
@@ -155,8 +155,30 @@ export async function resetPassword(req: Request, res: Response) {
 export async function me(req: AuthRequest, res: Response) {
   const user = await prisma.usuario.findUnique({
     where: { id: req.user!.id },
-    select: { id: true, nome: true, email: true, perfil: true, ativo: true, lastLogin: true },
+    select: { id: true, nome: true, email: true, perfil: true, ativo: true, lastLogin: true, tema: true, modo: true },
   });
   if (!user) throw new AppError('Usuário não encontrado', 404);
   return res.json(user);
+}
+
+// Minha conta: preferências de aparência (salvas no usuário).
+export async function salvarPreferencias(req: AuthRequest, res: Response) {
+  const dados = z.object({
+    tema: z.enum(['VERDE', 'AZUL']).optional(),
+    modo: z.enum(['CLARO', 'ESCURO']).nullable().optional(),
+  }).parse(req.body);
+  const user = await prisma.usuario.update({ where: { id: req.user!.id }, data: dados, select: { tema: true, modo: true } });
+  return res.json(user);
+}
+
+// Minha conta: trocar a própria senha (exige a atual).
+export async function trocarSenha(req: AuthRequest, res: Response) {
+  const { atual, nova } = z.object({
+    atual: z.string().min(1, 'Informe a senha atual'),
+    nova: z.string().min(8, 'A nova senha precisa de pelo menos 8 caracteres').regex(/[A-Za-z]/, 'A nova senha precisa de letra').regex(/\d/, 'A nova senha precisa de número'),
+  }).parse(req.body);
+  const user = await prisma.usuario.findUnique({ where: { id: req.user!.id } });
+  if (!user || !(await bcrypt.compare(atual, user.senhaHash))) throw new AppError('Senha atual incorreta', 400, 'SENHA_INCORRETA');
+  await prisma.usuario.update({ where: { id: user.id }, data: { senhaHash: await bcrypt.hash(nova, 12) } });
+  return res.json({ ok: true });
 }

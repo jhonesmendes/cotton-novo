@@ -7,6 +7,7 @@ import api from '@/services/api';
 import { Trash2, Edit2, Plus, Check, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ConfirmModal from '@/components/ConfirmModal';
+import AbasConfiguracoes from '@/pages/Configuracoes/Abas';
 
 interface Usuario {
   id: number;
@@ -155,6 +156,7 @@ export default function UsuariosPage() {
 
   return (
     <div className="ui-page space-y-6">
+      <AbasConfiguracoes />
       {/* HEADER */}
       <div className="flex items-center justify-between rounded-ui-lg border border-ui-border bg-ui-surface p-5 shadow-sm">
         <div>

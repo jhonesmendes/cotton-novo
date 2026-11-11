@@ -19,6 +19,7 @@ import AcessosClientePage from '@/pages/AcessosCliente';
 import PosicaoPublica from '@/pages/Posicao/Publica';
 import PosicaoVisitante from '@/pages/Posicao/Visitante';
 import ConvitePage from '@/pages/Convite';
+import EmailConfigPage from '@/pages/Configuracoes/Email';
 
 import { telaInicial } from '@/utils/perfis';
 
@@ -102,6 +103,7 @@ export default function App() {
           <Route path="cadastros/modelos" element={<ModelosPage />} />
           <Route path="configuracoes" element={<Navigate to="/configuracoes/usuarios" replace />} />
           <Route path="configuracoes/usuarios" element={<RequireAdmin><UsuariosPage /></RequireAdmin>} />
+          <Route path="configuracoes/email" element={<RequireAdmin><EmailConfigPage /></RequireAdmin>} />
           <Route path="configuracoes/acessos-cliente" element={<RequireAdmin><AcessosClientePage /></RequireAdmin>} />
           <Route path="auditoria" element={<RequireAdmin><AuditoriaPage /></RequireAdmin>} />
         </Route>

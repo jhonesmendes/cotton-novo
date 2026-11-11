@@ -6,6 +6,8 @@ interface User {
   nome: string;
   email: string;
   perfil: string;
+  tema?: 'VERDE' | 'AZUL';
+  modo?: 'CLARO' | 'ESCURO' | null;
 }
 
 interface AuthState {

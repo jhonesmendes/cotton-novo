@@ -153,6 +153,11 @@ AGUARDANDO_GR → TRANSITO_CARREGAMENTO → LOCAL → MANIFESTADO
   alguém abre o painel **sem filtro** (não há cron) — por isso usa `prismaBase`, para não encher a
   auditoria; a comparação "vs. semana passada" aparece com 8+ dias de retrato. Meta da taxa de
   cumprimento = parâmetro `meta_cumprimento`.
+- **Tema por usuário** (Minha conta, clique no nome no rodapé do menu): paleta `VERDE`/`AZUL`
+  e modo `CLARO`/`ESCURO` em `Usuario.tema`/`Usuario.modo` (`PATCH /auth/me/preferencias`). As
+  cores principais e a escala `indigo` do Tailwind viram variáveis CSS (`--ui-primary*`,
+  `--tema-*` em `styles/globals.css`): Azul = cores originais; `.tema-verde` troca a escala.
+  Minha conta também tem "Trocar senha" (`POST /auth/me/senha`, exige a atual).
 - **Parâmetros do sistema**: tabela `configuracoes_sistema` (chave → valor); chaves
   aceitas e limites em `backend/src/services/parametros.ts`; `GET/PUT /api/parametros`.
 - **Relatórios** (`/relatorios`, `backend/src/controllers/relatorios.controller.ts`): agrupam por
@@ -195,8 +200,11 @@ AGUARDANDO_GR → TRANSITO_CARREGAMENTO → LOCAL → MANIFESTADO
   atual pra contas compartilhadas por várias pessoas; uma invalidação
   imediata de verdade exigiria guardar um carimbo (`passwordChangedAt`) ou
   uma tabela de sessões — não implementado ainda.
-- **SMTP** (recuperação de senha por email) — sem tela de configuração,
-  só variável de ambiente. Sem `SMTP_HOST`, o backend não envia o email, só
+- **SMTP** (recuperação de senha e convites de Visitante): configurável na tela
+  Configurações › E-mail (SMTP), só ADMIN — essa configuração (tabela `configuracoes_sistema`,
+  chaves `smtp_*`; a senha cifrada com `ENCRYPTION_KEY` e gravada fora da auditoria) vale mais
+  que as variáveis abaixo, que ficam como alternativa. Trocar a `ENCRYPTION_KEY` invalida a
+  senha salva (é só digitar de novo). Sem nenhum dos dois, o backend não envia o email, só
   loga o conteúdo (com o link) no console — útil em dev sem SMTP real.
 
   | Variável | Descrição |

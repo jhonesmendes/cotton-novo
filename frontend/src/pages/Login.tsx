@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAuthStore } from '@/stores/auth.store';
 import { telaInicial } from '@/utils/perfis';
+import { aplicarPreferencias } from '@/components/MinhaConta';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
 
@@ -29,6 +30,7 @@ export default function LoginPage() {
     try {
       const res = await api.post('/auth/login', data);
       setAuth(res.data.accessToken, res.data.refreshToken, res.data.user);
+      aplicarPreferencias(res.data.user?.tema, res.data.user?.modo);
       navigate(telaInicial(res.data.user?.perfil));
     } catch (err: any) {
       toast.error(err?.response?.data?.error?.message || 'Email ou senha inválidos');

@@ -2,6 +2,23 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─── Tema do usuário (Minha conta) ──────────────────────────────────────
+   Azul = as cores originais do sistema (indigo). Verde = paleta da Fibra Forte.
+   Valores em canais RGB para o Tailwind aplicar opacidade (bg-ui-primary/40). */
+:root {
+  --tema-50: 238 242 255; --tema-100: 224 231 255; --tema-200: 199 210 254; --tema-300: 165 180 252;
+  --tema-400: 129 140 248; --tema-500: 99 102 241; --tema-600: 79 70 229; --tema-700: 67 56 202;
+  --tema-800: 55 48 163; --tema-900: 49 46 129; --tema-950: 30 27 75;
+  --ui-primary: 79 70 229; --ui-primary-hover: 67 56 202; --ui-primary-active: 55 48 163;
+}
+:root.tema-verde {
+  --tema-50: 236 253 245; --tema-100: 209 250 229; --tema-200: 167 243 208; --tema-300: 110 231 183;
+  --tema-400: 52 211 153; --tema-500: 16 185 129; --tema-600: 5 150 105; --tema-700: 4 120 87;
+  --tema-800: 6 95 70; --tema-900: 6 78 59; --tema-950: 2 44 34;
+  /* Botão principal um tom mais escuro: texto branco com contraste AA. */
+  --ui-primary: 4 120 87; --ui-primary-hover: 6 95 70; --ui-primary-active: 6 78 59;
+}
+
 @layer base {
   body {
     @apply bg-ui-background text-ui-text font-sans antialiased selection:bg-ui-primary selection:text-white;
@@ -105,7 +122,7 @@
 .dark .bg-yellow-50, .dark .bg-yellow-100 { background-color: rgba(250, 204, 21, .15); }
 .dark .bg-green-50, .dark .bg-green-100 { background-color: rgba(74, 222, 128, .13); }
 .dark .bg-blue-50, .dark .bg-blue-100 { background-color: rgba(96, 165, 250, .15); }
-.dark .bg-indigo-50, .dark .bg-indigo-100 { background-color: rgba(129, 140, 248, .18); }
+.dark .bg-indigo-50, .dark .bg-indigo-100 { background-color: rgb(var(--tema-400) / .18); }
 .dark .bg-purple-100 { background-color: rgba(192, 132, 252, .18); }
 
 .dark .text-red-600, .dark .text-red-700, .dark .text-red-800 { color: #f87171; }
@@ -114,7 +131,7 @@
 .dark .text-yellow-600, .dark .text-yellow-700 { color: #facc15; }
 .dark .text-green-600, .dark .text-green-700, .dark .text-green-800 { color: #4ade80; }
 .dark .text-blue-600, .dark .text-blue-700, .dark .text-blue-800 { color: #60a5fa; }
-.dark .text-indigo-600, .dark .text-indigo-700 { color: #a5b4fc; }
+.dark .text-indigo-600, .dark .text-indigo-700 { color: rgb(var(--tema-300)); }
 .dark .text-purple-800 { color: #c084fc; }
 
 .dark .border-red-200, .dark .border-red-300 { border-color: rgba(248, 113, 113, .35); }
@@ -123,7 +140,7 @@
 .dark .border-yellow-200 { border-color: rgba(250, 204, 21, .35); }
 .dark .border-green-200, .dark .border-green-300, .dark .border-green-400 { border-color: rgba(74, 222, 128, .35); }
 .dark .border-blue-300 { border-color: rgba(96, 165, 250, .35); }
-.dark .border-indigo-200, .dark .border-indigo-300 { border-color: rgba(129, 140, 248, .35); }
+.dark .border-indigo-200, .dark .border-indigo-300 { border-color: rgb(var(--tema-400) / .35); }
 
 /* badges: keep semantic hue, adapt for dark backgrounds */
 .dark .badge-vencido, .dark .badge-hoje {

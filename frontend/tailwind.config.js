@@ -10,9 +10,10 @@ export default {
       },
       colors: {
         ui: {
-          primary: '#4f46e5',
-          'primary-hover': '#4338ca',
-          'primary-active': '#3730a3',
+          // Cor principal vem do tema do usuário (Verde/Azul) — ver styles/globals.css.
+          primary: 'rgb(var(--ui-primary) / <alpha-value>)',
+          'primary-hover': 'rgb(var(--ui-primary-hover) / <alpha-value>)',
+          'primary-active': 'rgb(var(--ui-primary-active) / <alpha-value>)',
           secondary: '#0f766e',
           background: '#f6f7f9',
           surface: '#ffffff',
@@ -24,6 +25,8 @@ export default {
           disabled: '#94a3b8',
           success: '#15803d', warning: '#b45309', danger: '#dc2626', info: '#2563eb',
         },
+        // A escala "indigo" usada nas telas (destaques, chips, menu ativo) segue o tema.
+        indigo: Object.fromEntries([50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950].map((n) => [n, `rgb(var(--tema-${n}) / <alpha-value>)`])),
         urgency: {
           vencido: '#ef4444',
           hoje: '#ef4444',

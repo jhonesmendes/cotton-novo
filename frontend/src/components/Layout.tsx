@@ -6,6 +6,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useQuery } from '@tanstack/react-query';
 import BuscaGlobal from './BuscaGlobal';
+import MinhaConta, { aplicarPreferencias, salvarPreferencias } from './MinhaConta';
 import clsx from 'clsx';
 import { useAuthStore } from '@/stores/auth.store';
 import { useThemeStore } from '@/stores/theme.store';
@@ -44,14 +45,15 @@ function itensDoPerfil(perfil?: string) {
 
 const pageTitles: Record<string, string> = {
   '/dashboard': 'Dashboard', '/liberacoes': 'Liberações', '/alertas': 'Alertas', '/gr': 'GR — Gerenciadora de Risco',
-  '/configuracoes': 'Configurações', '/configuracoes/usuarios': 'Configurações', '/configuracoes/acessos-cliente': 'Acesso do cliente',
+  '/configuracoes': 'Configurações', '/configuracoes/usuarios': 'Configurações', '/configuracoes/acessos-cliente': 'Acesso do cliente', '/configuracoes/email': 'Configurações',
   '/cadastros': 'Revisão de Dados', '/cadastros/modelos': 'Revisão de Dados',
   '/auditoria': 'Auditoria', '/relatorios': 'Relatórios',
 };
 
-type SidebarContentProps = { onNavigate?: () => void; onLogout: () => void; userName?: string; perfil?: string };
+type SidebarContentProps = { onNavigate?: () => void; onLogout: () => void; onMinhaConta: () => void; userName?: string; perfil?: string };
 
-function SidebarContent({ onNavigate, onLogout, userName, perfil }: SidebarContentProps) {
+function SidebarContent({ onNavigate, onLogout, onMinhaConta, userName, perfil }: SidebarContentProps) {
+  const location = useLocation();
   const itemClass = (isActive: boolean) => clsx(
     'flex items-center gap-3 rounded-ui-md px-3 py-2 text-sm font-medium transition-colors',
     isActive ? 'bg-indigo-50 text-indigo-700 font-semibold' : 'text-ui-text-muted hover:bg-ui-muted hover:text-ui-text',
@@ -70,8 +72,9 @@ function SidebarContent({ onNavigate, onLogout, userName, perfil }: SidebarConte
         <div key={g.titulo} className="space-y-0.5">
           <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-ui-text-muted">{g.titulo}</p>
           {g.itens.map(({ to, label, icon: Icon }) => (
-            // `end` no Configurações para não ficar ativo junto com Acesso do cliente.
-            <NavLink key={to} to={to} end={to === '/configuracoes'} onClick={onNavigate} className={({ isActive }) => itemClass(isActive)}>
+            // Configurações: ativo nas abas dele, não em Acesso do cliente.
+            <NavLink key={to} to={to} onClick={onNavigate}
+              className={({ isActive }) => itemClass(to === '/configuracoes' ? /^\/configuracoes(\/(usuarios|email))?$/.test(location.pathname) : isActive)}>
               <Icon className="h-4 w-4" />{label}
             </NavLink>
           ))}
@@ -79,10 +82,14 @@ function SidebarContent({ onNavigate, onLogout, userName, perfil }: SidebarConte
       ))}
     </nav>
     <div className="mt-auto border-t border-ui-border px-3 py-3">
-      <div className="mb-1 flex items-center gap-2 px-1">
+      <button type="button" onClick={() => { onNavigate?.(); onMinhaConta(); }} title="Minha conta: tema e senha"
+        className="mb-1 flex w-full items-center gap-2 rounded-ui-md px-1 py-1 text-left hover:bg-ui-muted">
         <div className="flex h-7 w-7 items-center justify-center rounded-full bg-indigo-50 text-xs font-bold text-indigo-700">{userName?.charAt(0).toUpperCase() || 'A'}</div>
-        <p className="truncate text-xs text-ui-text-muted">{userName || 'Administrador'}</p>
-      </div>
+        <div className="min-w-0">
+          <p className="truncate text-xs text-ui-text">{userName || 'Administrador'}</p>
+          <p className="text-[10px] text-ui-text-muted">Minha conta</p>
+        </div>
+      </button>
       <button type="button" onClick={onLogout} className="flex w-full items-center gap-3 rounded-ui-md px-2 py-2 text-sm font-medium text-ui-text-muted transition-colors hover:bg-ui-muted hover:text-ui-text">
         <ArrowRightOnRectangleIcon className="h-4 w-4" />Sair do Sistema
       </button>
@@ -99,6 +106,12 @@ export default function Layout() {
   const currentTitle = pageTitles[location.pathname] || 'Gestão de Cargas';
   const ehGr = user?.perfil === 'GR';
   const [buscaAberta, setBuscaAberta] = useState(false);
+  const [minhaConta, setMinhaConta] = useState(false);
+  // Botão sol/lua do topo também grava no usuário.
+  const alternarModo = () => {
+    toggle();
+    salvarPreferencias({ modo: useThemeStore.getState().theme === 'dark' ? 'ESCURO' : 'CLARO' }).catch(() => undefined);
+  };
 
   // Busca global: Ctrl+K / ⌘K.
   useEffect(() => {
@@ -132,6 +145,8 @@ export default function Layout() {
     api.get('/auth/me').then(({ data }) => {
       const { token, refreshToken, user: atual, setAuth } = useAuthStore.getState();
       if (!token || !refreshToken || !atual) return;
+      // Tema/modo salvos no usuário valem em qualquer computador.
+      aplicarPreferencias(data.tema, data.modo);
       if (atual.perfil !== data.perfil || atual.nome !== data.nome || atual.email !== data.email) {
         setAuth(token, refreshToken, { ...atual, nome: data.nome, email: data.email, perfil: data.perfil });
       }
@@ -140,13 +155,13 @@ export default function Layout() {
 
   return <div className="min-h-screen bg-ui-background font-sans text-ui-text selection:bg-ui-primary selection:text-white">
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-56 flex-col border-r border-ui-border bg-ui-surface py-5 md:flex">
-      <SidebarContent onLogout={handleLogout} userName={user?.nome} perfil={user?.perfil} />
+      <SidebarContent onLogout={handleLogout} onMinhaConta={() => setMinhaConta(true)} userName={user?.nome} perfil={user?.perfil} />
     </aside>
     {mobileOpen && <div className="fixed inset-0 z-50 md:hidden" role="dialog" aria-modal="true" aria-label="Menu de navegação">
       <button type="button" aria-label="Fechar menu" className="absolute inset-0 bg-slate-950/45" onClick={() => setMobileOpen(false)} />
       <aside className="relative flex h-full w-72 flex-col bg-ui-surface py-5 shadow-2xl">
         <button type="button" aria-label="Fechar menu" onClick={() => setMobileOpen(false)} className="absolute right-3 top-3 rounded-ui-sm p-2 text-ui-text-muted hover:bg-ui-muted"><XMarkIcon className="h-5 w-5" /></button>
-        <SidebarContent onNavigate={() => setMobileOpen(false)} onLogout={handleLogout} userName={user?.nome} perfil={user?.perfil} />
+        <SidebarContent onNavigate={() => setMobileOpen(false)} onLogout={handleLogout} onMinhaConta={() => setMinhaConta(true)} userName={user?.nome} perfil={user?.perfil} />
       </aside>
     </div>}
     <div className="min-h-screen md:pl-56">
@@ -174,7 +189,7 @@ export default function Layout() {
               )}
             </button>
           )}
-          <button type="button" onClick={toggle} aria-label={theme === 'dark' ? 'Ativar tema claro' : 'Ativar tema escuro'}
+          <button type="button" onClick={alternarModo} aria-label={theme === 'dark' ? 'Ativar tema claro' : 'Ativar tema escuro'}
             className="rounded-ui-sm p-2 text-ui-text-muted hover:bg-ui-muted hover:text-ui-text">
             {theme === 'dark' ? <SunIcon className="h-5 w-5" /> : <MoonIcon className="h-5 w-5" />}
           </button>
@@ -184,6 +199,7 @@ export default function Layout() {
       </header>
       <main className="min-h-[calc(100vh-3.5rem)]"><Outlet /></main>
       {buscaAberta && <BuscaGlobal onClose={() => setBuscaAberta(false)} />}
+      {minhaConta && <MinhaConta onClose={() => setMinhaConta(false)} />}
     </div>
   </div>;
 }
