@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useEffect } from 'react';
 import { salvarFiltrosLista } from './navegacao';
+import { abrirLinha } from '@/utils/abrirLinha';
 import api from '@/services/api';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import { formatDate, formatPeso } from '@/utils/format';
@@ -178,6 +179,7 @@ function CardLiberacao({ l, onBuscar }: { l: any; onBuscar: Buscar }) {
 }
 
 export default function LiberacoesPage() {
+  const navigate = useNavigate();
   const podeCriar = useAuthStore((s) => s.user?.perfil) !== 'OPERADOR';
   // Filtros ficam na URL: ao abrir uma liberação e voltar, a lista volta
   // exatamente como estava (busca, filial, status e página).
@@ -299,7 +301,8 @@ export default function LiberacoesPage() {
               </thead>
               <tbody className="divide-y divide-ui-border-subtle">
                 {(data?.data ?? []).map((l: any) => (
-                  <tr key={l.id} className={`transition-colors ${destacarAmarelo(l) ? 'bg-amber-50 hover:bg-amber-100' : 'hover:bg-ui-muted/60'}`}>
+                  <tr key={l.id} onClick={(e) => abrirLinha(e, `/liberacoes/${l.id}`, navigate)}
+                    className={`cursor-pointer transition-colors ${destacarAmarelo(l) ? 'bg-amber-50 hover:bg-amber-100' : 'hover:bg-ui-muted/60'}`}>
                     <td className="px-4 py-3 font-medium text-ui-primary">
                       <Link to={`/liberacoes/${l.id}`} className="hover:underline">{l.instrucao}</Link>
                       <div className="mt-1"><PlacasChips l={l} max={3} /></div>

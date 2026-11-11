@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowPathIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import api from '@/services/api';
+import { abrirLinha } from '@/utils/abrirLinha';
 import { formatDate, formatDateTime } from '@/utils/format';
 import { STATUS_LABELS, SM_LABELS, VeiculoStatus, StatusSM } from '@/utils/status';
 import { Cartao, Kpi, LinhaDoTempo, Modo, PendenciasPorCliente, SITUACOES, SituacaoPrazo, Vazio, VolumePorFilial, rotuloSituacao } from './Blocos';
@@ -182,12 +183,14 @@ export default function DashboardPage() {
 
 function descreverAtividade(a: any): string {
   if (a.tabela === 'Veiculo' && a.acao === 'INSERT') return 'veículo lançado';
+  // Exclusão definitiva (antes da inativação existir) não tem "depois".
+  if (a.acao === 'DELETE') return a.tabela === 'Veiculo' ? 'veículo excluído' : 'registro excluído';
   const partes: string[] = [];
-  if (a.campos.includes('status')) {
+  if (a.campos.includes('status') && a.depois.status) {
     const r = (s: string) => (a.tabela === 'Veiculo' ? STATUS_LABELS[s as VeiculoStatus] ?? s : s);
     partes.push(`${a.tabela === 'Liberacao' ? 'liberação ' : ''}${r(a.antes.status)} → ${r(a.depois.status)}`);
   }
-  if (a.campos.includes('statusSm')) partes.push(`SM ${SM_LABELS[a.depois.statusSm as StatusSM] ?? a.depois.statusSm}`);
+  if (a.campos.includes('statusSm') && a.depois.statusSm) partes.push(`SM ${SM_LABELS[a.depois.statusSm as StatusSM] ?? a.depois.statusSm}`);
   if (a.campos.includes('dataAgendamento')) partes.push(a.depois.dataAgendamento ? `agendado ${formatDateTime(a.depois.dataAgendamento)}` : 'agendamento removido');
   if (a.campos.includes('ativo')) partes.push(a.depois.ativo ? 'reativado' : 'inativado');
   return partes.join(' · ') || a.campos.join(', ');
@@ -213,6 +216,7 @@ function Atividade({ itens }: { itens: any[] }) {
 }
 
 function TabelaCargas({ cargas }: { cargas: any[] }) {
+  const navigate = useNavigate();
   if (!cargas.length) return <Vazio />;
   return (
     <div className="max-h-[420px] overflow-auto">
@@ -233,7 +237,7 @@ function TabelaCargas({ cargas }: { cargas: any[] }) {
           {cargas.map((c) => {
             const s = SITUACOES.find((x) => x.chave === (c.situacao as SituacaoPrazo))!;
             return (
-              <tr key={c.id} className="hover:bg-ui-muted/60">
+              <tr key={c.id} onClick={(e) => abrirLinha(e, `/liberacoes/${c.id}`, navigate)} className="cursor-pointer hover:bg-ui-muted/60">
                 <td className="px-3 py-2 font-medium"><Link to={`/liberacoes/${c.id}`} className="text-ui-primary hover:underline">{c.instrucao}</Link></td>
                 <td className="px-3 py-2 text-xs">{c.cliente}</td>
                 <td className="px-3 py-2 text-xs text-ui-text-muted">{c.filial}</td>
