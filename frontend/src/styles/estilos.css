@@ -166,7 +166,7 @@ tbody tr { transition: background-color .12s ease; }
   content: ''; position: absolute; left: -12px; top: 6px; bottom: 6px; width: 3px;
   border-radius: 0 3px 3px 0; background-color: var(--sb-ativo-marca);
 }
-.ui-sidebar .ui-sidebar-rodape { border-color: var(--sb-border); }
+.ui-sidebar .ui-sidebar-rodape, .ui-sidebar .ui-sidebar-marca { border-color: var(--sb-border); }
 .ui-sidebar .ui-sidebar-rodape button { color: var(--sb-text); }
 .ui-sidebar .ui-sidebar-rodape button:hover { background-color: var(--sb-hover-bg); color: var(--sb-hover-text); }
 .ui-sidebar .ui-sidebar-rodape .ui-usuario-nome { color: var(--sb-hover-text); }

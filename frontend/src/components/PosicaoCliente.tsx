@@ -26,7 +26,7 @@ export default function PosicaoCliente({ dados, rodapeExtra }: { dados: DadosPos
   return (
     <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
       <header className="flex flex-wrap items-center gap-4">
-        <img src="/logo-fibra.jpeg" alt="Fibra Forte" className="h-12 w-12 rounded-ui-sm object-contain" />
+        <span className="flex h-12 items-center rounded-ui-md bg-white px-2"><img src="/logo-fibra-forte.png" alt="Fibra Forte" className="h-9 w-auto" /></span>
         <div className="flex-1">
           <h1 className="font-display text-xl font-bold text-ui-text">Posição de caminhões</h1>
           <p className="text-sm text-ui-text-muted">{dados.cliente?.nome}</p>

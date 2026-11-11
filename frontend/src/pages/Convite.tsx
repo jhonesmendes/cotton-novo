@@ -34,7 +34,7 @@ export default function ConvitePage() {
     <div className="flex min-h-screen items-center justify-center bg-ui-background p-4">
       <div className="ui-card w-full max-w-md p-6">
         <div className="mb-5 flex items-center gap-3">
-          <img src="/logo-fibra.jpeg" alt="Fibra Forte" className="h-10 w-10 rounded-ui-sm object-contain" />
+          <span className="flex h-10 items-center rounded-ui-md bg-white px-1.5"><img src="/logo-fibra-forte.png" alt="Fibra Forte" className="h-8 w-auto" /></span>
           <div>
             <h1 className="font-display text-lg font-bold text-ui-text">Criar acesso</h1>
             <p className="text-xs text-ui-text-muted">Acompanhamento de cargas — Cotton Fibra Forte</p>

@@ -44,7 +44,7 @@ export default function LoginPage() {
       {/* Brand panel */}
       <div className="hidden lg:flex lg:w-[440px] flex-shrink-0 flex-col justify-between bg-ui-primary p-12 text-white [background-image:radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.08),transparent_40%),radial-gradient(circle_at_80%_80%,rgba(255,255,255,0.06),transparent_40%)]">
         <div className="flex items-center gap-2.5">
-          <img src="/logo-fibra.jpeg" alt="Fibra Forte" className="h-9 w-9 rounded-ui-sm object-contain bg-white p-0.5" />
+          <span className="flex h-10 items-center rounded-ui-md bg-white px-1.5"><img src="/logo-fibra-forte.png" alt="Fibra Forte" className="h-8 w-auto" /></span>
           <span className="font-display text-sm font-semibold">Cotton Fibra Forte</span>
         </div>
 

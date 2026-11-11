@@ -88,14 +88,17 @@ function SidebarContent({ onNavigate, onLogout, onMinhaConta, userName, perfil, 
   );
 
   return <>
-    <div className={clsx('flex items-center gap-2.5 pb-5 pt-1', compacto ? 'justify-center' : 'px-4')}>
-      <img src="/logo-fibra.jpeg" alt="Fibra Forte" className="h-9 w-9 rounded-ui-sm object-contain" />
-      <div className={compacto ? 'sr-only' : ''}>
-        <span className="ui-marca-nome font-display text-sm font-semibold">Cotton Fibra</span>
-        <p className="ui-marca-sub text-[10px] font-medium uppercase tracking-wide">Gestão de Cargas</p>
+    {/* Marca: mesma altura do cabeçalho do topo (h-14), as linhas divisórias ficam alinhadas. */}
+    <div className={clsx('ui-sidebar-marca flex h-14 shrink-0 items-center gap-3 border-b', compacto ? 'justify-center px-2' : 'px-4')}>
+      <span className="flex h-10 shrink-0 items-center rounded-ui-md bg-white px-1.5 shadow-sm">
+        <img src="/logo-fibra-forte.png" alt="Fibra Forte" className="h-8 w-auto" />
+      </span>
+      <div className={compacto ? 'sr-only' : 'min-w-0 leading-tight'}>
+        <span className="ui-marca-nome block font-display text-[15px] font-bold">Cotton</span>
+        <span className="ui-marca-sub block text-[10px] font-medium uppercase tracking-wide">Gestão de cargas</span>
       </div>
     </div>
-    <nav className={clsx('flex-1 space-y-4', compacto ? 'flex flex-col items-center px-2' : 'px-3')} aria-label="Navegação principal">
+    <nav className={clsx('flex-1 space-y-4 pt-5', compacto ? 'flex flex-col items-center px-2' : 'px-3')} aria-label="Navegação principal">
       {itensDoPerfil(perfil).map((g) => (
         <div key={g.titulo} className={clsx('space-y-0.5', compacto && 'flex flex-col items-center border-t border-white/0 pt-2 first:pt-0')}>
           <p className={clsx('ui-nav-grupo pb-1 text-[10px] font-semibold uppercase tracking-wider', compacto ? 'sr-only' : 'px-3')}>{g.titulo}</p>
@@ -191,13 +194,13 @@ export default function Layout() {
 
   return <div className="min-h-screen bg-ui-background font-sans text-ui-text selection:bg-ui-primary selection:text-white">
     {!navTopo && (
-      <aside className={clsx('ui-sidebar fixed inset-y-0 left-0 z-40 hidden flex-col border-r py-5 md:flex', trilho ? 'w-[72px]' : 'w-56')}>
+      <aside className={clsx('ui-sidebar fixed inset-y-0 left-0 z-40 hidden flex-col border-r pb-3 md:flex', trilho ? 'w-[72px]' : 'w-56')}>
         <SidebarContent onLogout={handleLogout} onMinhaConta={() => setMinhaConta(true)} userName={user?.nome} perfil={user?.perfil} compacto={trilho} />
       </aside>
     )}
     {mobileOpen && <div className="fixed inset-0 z-50 md:hidden" role="dialog" aria-modal="true" aria-label="Menu de navegação">
       <button type="button" aria-label="Fechar menu" className="absolute inset-0 bg-black/45" onClick={() => setMobileOpen(false)} />
-      <aside className="ui-sidebar relative flex h-full w-72 flex-col py-5 shadow-2xl">
+      <aside className="ui-sidebar relative flex h-full w-72 flex-col pb-3 shadow-2xl">
         <button type="button" aria-label="Fechar menu" onClick={() => setMobileOpen(false)} className="absolute right-3 top-3 rounded-ui-sm p-2 text-ui-text-muted hover:bg-ui-muted"><XMarkIcon className="h-5 w-5" /></button>
         <SidebarContent onNavigate={() => setMobileOpen(false)} onLogout={handleLogout} onMinhaConta={() => setMinhaConta(true)} userName={user?.nome} perfil={user?.perfil} />
       </aside>
@@ -208,8 +211,10 @@ export default function Layout() {
           <button type="button" aria-label="Abrir menu" onClick={() => setMobileOpen(true)} className={clsx('rounded-ui-sm p-2 text-ui-text-muted hover:bg-ui-muted', navTopo ? 'lg:hidden' : 'md:hidden')}><Bars3Icon className="h-6 w-6" /></button>
           {navTopo ? (
             <>
-              <img src="/logo-fibra.jpeg" alt="Fibra Forte" className="h-8 w-8 rounded-ui-sm object-contain" />
-              <span className="ui-marca-nome mr-3 hidden font-display text-sm font-bold xl:inline">Cotton Fibra</span>
+              <span className="flex h-9 shrink-0 items-center rounded-ui-md bg-white px-1.5">
+                <img src="/logo-fibra-forte.png" alt="Fibra Forte" className="h-7 w-auto" />
+              </span>
+              <span className="ui-marca-nome mr-3 hidden font-display text-[15px] font-bold xl:inline">Cotton</span>
               <NavTopo perfil={user?.perfil} />
             </>
           ) : (
