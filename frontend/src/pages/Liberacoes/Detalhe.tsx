@@ -577,7 +577,7 @@ export default function LiberacaoDetalhe() {
 
               {/* Timeline Expandida */}
               {expandedTimeline === v.id && (
-                <div className="px-5 pb-5 pt-2 bg-gradient-to-b from-gray-50 to-white border-t border-gray-100">
+                <div className="px-5 pb-5 pt-2 bg-ui-surface border-t border-gray-100">
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">
                     Progresso · Veículo {v.placa}
                   </p>
