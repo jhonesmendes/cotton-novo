@@ -198,9 +198,8 @@ export default function LiberacoesPage() {
                 {(data?.data ?? []).map((l: any) => (
                   <tr key={l.id} onClick={(e) => abrirLinha(e, `/liberacoes/${l.id}`, navigate)}
                     className={`cursor-pointer transition-colors ${destacarAmarelo(l) ? 'bg-amber-50 hover:bg-amber-100' : 'hover:bg-ui-muted/60'}`}>
-                    <td className="min-w-[230px] px-4 py-3 font-medium text-ui-primary">
+                    <td className="min-w-[180px] px-4 py-3 font-medium text-ui-primary">
                       <Link to={`/liberacoes/${l.id}`} className="hover:underline">{l.instrucao}</Link>
-                      <div className="mt-1"><PlacasChips l={l} max={3} /></div>
                     </td>
                     <td className="min-w-[120px] px-4 py-3 text-xs"><Filtravel texto={l.clienteNome ?? l.cliente?.nome} onBuscar={setBusca} /></td>
                     <td className="min-w-[130px] px-4 py-3 text-xs text-gray-500"><Filtravel texto={l.origemNome ?? l.terminal?.nome} onBuscar={setBusca} /></td>

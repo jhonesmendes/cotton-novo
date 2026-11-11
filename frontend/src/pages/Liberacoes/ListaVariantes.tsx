@@ -6,7 +6,7 @@ import BarraProgresso from '@/components/BarraProgresso';
 import { formatDate } from '@/utils/format';
 import { abrirLinha } from '@/utils/abrirLinha';
 import { SITUACAO_LABELS, STATUS_LABELS, STATUS_OPTIONS, SituacaoLiberacao, VeiculoStatus } from '@/utils/status';
-import { AvisoFechamento, Buscar, DiasDeadline, Filtravel, corPlaca } from './ListaComum';
+import { AvisoFechamento, Buscar, DiasDeadline, Filtravel, PlacasChips, corPlaca } from './ListaComum';
 
 // Variações da lista de liberações por estilo do painel:
 //  - Controle  → GradeControle: uma linha por instrução, faixa de situação, expande veículos na linha;
@@ -147,6 +147,8 @@ export function CardsLavoura({ itens, onBuscar }: { itens: any[]; onBuscar: Busc
             </div>
 
             <BarraProgresso total={l.totalFardos} programado={l.programado} carregado={l.carregado} tamanho="lg" />
+
+            <PlacasChips l={l} max={6} />
 
             <div className="flex flex-wrap items-center gap-1.5">
               <TruckIcon className="h-4 w-4 text-gray-400" />
