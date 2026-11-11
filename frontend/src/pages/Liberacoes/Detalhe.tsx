@@ -437,7 +437,14 @@ export default function LiberacaoDetalhe() {
             // Finalizado com dado faltando: borda amarela + lista do que falta.
             const comPendencia = !inativo && v.status === 'FINALIZADO' && v.pendencias?.length > 0;
             return (
-            <div key={v.id} id={`veiculo-${v.id}`} className={`transition-colors ${veiculoDestacado === v.id ? 'ring-2 ring-inset ring-indigo-400 bg-indigo-50/50' : ''} ${inativo ? 'bg-gray-50' : comPendencia ? 'ui-linha-pendencia bg-amber-50/60 border-l-4 border-amber-400' : 'hover:bg-gray-50'}`}>
+            <div key={v.id} id={`veiculo-${v.id}`}
+              // Duplo clique na linha abre "Editar Veículo" (menos em campos/botões e em veículo inativo).
+              onDoubleClick={(e) => {
+                if (inativo || (e.target as HTMLElement).closest('a, button, input, select, textarea, label, [role="button"]')) return;
+                window.getSelection()?.removeAllRanges();
+                setVeiculoModal(v.id);
+              }}
+              className={`transition-colors ${veiculoDestacado === v.id ? 'ring-2 ring-inset ring-indigo-400 bg-indigo-50/50' : ''} ${inativo ? 'bg-gray-50' : comPendencia ? 'ui-linha-pendencia bg-amber-50/60 border-l-4 border-amber-400' : 'hover:bg-gray-50'}`}>
               {inativo && (
                 <div className="px-5 pt-3 flex items-center gap-2 flex-wrap text-xs text-gray-500">
                   <span className="inline-flex items-center gap-1 rounded-full bg-gray-200 px-2 py-0.5 font-bold text-gray-600"><NoSymbolIcon className="w-3 h-3" />INATIVO</span>

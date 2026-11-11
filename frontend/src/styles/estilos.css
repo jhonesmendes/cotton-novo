@@ -275,3 +275,12 @@ tbody tr { transition: background-color .12s ease; }
 .dark .hover\:bg-indigo-50:hover { background-color: rgb(var(--tema-400) / .16); }
 /* Linha de veículo com pendência: tinta âmbar leve + texto normal legível. */
 .dark .ui-linha-pendencia { background-color: rgb(251 191 36 / .07); }
+
+/* Lista de opções dos selects: sempre na superfície do tema, com texto legível
+   (no escuro, um select destacado em amarelo/verde deixava a lista creme com texto claro). */
+.dark select { color-scheme: dark; }
+select option, select optgroup {
+  background-color: rgb(var(--c-surface));
+  color: rgb(var(--g-900));
+}
+select option:disabled { color: rgb(var(--g-400)); }
