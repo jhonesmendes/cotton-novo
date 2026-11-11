@@ -38,8 +38,9 @@ const criarSchema = z.object({
   // null = não respondido; false = "Não possui isca"; true = possui (com número).
   possuiIsca: z.boolean().nullable().optional(),
   numeroIsca: z.string().optional().nullable(),
-  // Informativo (conferência no ERP); opções em Revisão de Dados.
-  formaPagamento: z.string().trim().max(100).nullable().optional(),
+  // Informativo (conferência no ERP); opções em Revisão de Dados. Obrigatório ao
+  // cadastrar; veículos antigos sem ela só travam o fechamento da instrução.
+  formaPagamento: z.string().trim().min(1, 'Informe a forma de pagamento').max(100),
   dataAgendamento: z.string().datetime({ offset: true }).optional().nullable(),
   dataCarregamento: z.string().datetime({ offset: true }).optional().nullable(),
   dataDescarga: z.string().datetime({ offset: true }).optional().nullable(),
@@ -304,6 +305,7 @@ export async function criar(req: AuthRequest, res: Response) {
 export async function atualizar(req: AuthRequest, res: Response) {
   const { id } = req.params;
   const data = normalizarIsca(criarSchema.partial().parse(req.body));
+  if (req.body.formaPagamento === null) throw new AppError('Informe a forma de pagamento', 400, 'FORMA_PAGAMENTO_OBRIGATORIA');
   const atual = await prisma.veiculo.findUnique({ where: { id: parseInt(id) } });
   if (!atual) throw new AppError('Veículo não encontrado', 404);
   if (!atual.ativo) throw new AppError('Veículo inativo não pode ser alterado. Peça a um administrador para reativá-lo.', 400, 'VEICULO_INATIVO');

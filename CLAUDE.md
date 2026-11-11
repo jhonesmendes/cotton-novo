@@ -123,7 +123,7 @@ AGUARDANDO_GR → TRANSITO_CARREGAMENTO → LOCAL → MANIFESTADO
   (`POST /liberacoes/:id/finalizar`, motivo obrigatório; grava `fechamentoManual`,
   `pendenciasFechamento`, `fardosPendentesFechamento`, quem e quando). Já concluídas não
   passam pelas regras novas; se algum veículo ativo sair de `FINALIZADO`, reabre.
-- **Forma de pagamento** do veículo: só informativa; opções em `referencias_cadastro`
+- **Forma de pagamento** do veículo: obrigatória ao cadastrar (veículos antigos sem ela só travam o fechamento); só informativa, sem controle de pago; opções em `referencias_cadastro`
   tipo `formasPagamento` (bloco em Revisão de Dados, só ADMIN cria/edita).
 - **Parâmetros do sistema**: tabela `configuracoes_sistema` (chave → valor); chaves
   aceitas e limites em `backend/src/services/parametros.ts`; `GET/PUT /api/parametros`.

@@ -97,6 +97,10 @@ export default function VeiculoModal({ liberacaoId, veiculoId, freteMotoristaPad
       toast.error('Informe o modelo da carreta');
       return;
     }
+    if (!form.formaPagamento?.trim()) {
+      toast.error('Informe a forma de pagamento combinada');
+      return;
+    }
     if (form.possuiIsca === true && !form.numeroIsca?.trim()) {
       toast.error('Informe o número da isca (ou marque "Não possui isca")');
       return;
@@ -133,7 +137,7 @@ export default function VeiculoModal({ liberacaoId, veiculoId, freteMotoristaPad
       statusRastreamento: form.statusRastreamento,
       possuiIsca: form.possuiIsca,
       numeroIsca: form.possuiIsca ? form.numeroIsca?.trim() || null : null,
-      formaPagamento: form.formaPagamento?.trim() || null,
+      formaPagamento: form.formaPagamento?.trim(),
       observacao: form.observacao?.trim() || undefined,
     };
   }
@@ -243,10 +247,10 @@ export default function VeiculoModal({ liberacaoId, veiculoId, freteMotoristaPad
             </div>
           </div>
           <div>
-            <label className="block text-xs text-gray-500 mb-1">Forma de pagamento combinada</label>
+            <label className="block text-xs text-gray-500 mb-1">Forma de pagamento combinada*</label>
             <select value={form.formaPagamento ?? ''} onChange={(e) => set('formaPagamento', e.target.value)}
-              className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm">
-              <option value="">Não informada</option>
+              className={`w-full border rounded px-2 py-1.5 text-sm ${form.formaPagamento ? 'border-gray-200' : 'border-amber-300 bg-amber-50'}`}>
+              <option value="">Selecione...</option>
               {[...new Set([...(form.formaPagamento ? [form.formaPagamento] : []), ...formasPagamento])].map((f) => <option key={f} value={f}>{f}</option>)}
             </select>
             <p className="text-[11px] text-gray-500 mt-1">Só informativo — para conferir na emissão do documento no ERP.</p>
