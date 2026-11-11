@@ -54,7 +54,7 @@ export async function login(req: Request, res: Response) {
   return res.json({
     accessToken: signAccess(payload),
     refreshToken: signRefresh({ id: user.id }),
-    user: { id: user.id, nome: user.nome, email: user.email, perfil: user.perfil, tema: user.tema, modo: user.modo },
+    user: { id: user.id, nome: user.nome, email: user.email, perfil: user.perfil, tema: user.tema, modo: user.modo, estilo: user.estilo },
   });
 }
 
@@ -87,7 +87,7 @@ export async function refreshToken(req: Request, res: Response) {
   // Devolve o usuário atualizado — o frontend sincroniza perfil/nome na renovação.
   return res.json({
     accessToken: signAccess(payload),
-    user: { id: user.id, nome: user.nome, email: user.email, perfil: user.perfil, tema: user.tema, modo: user.modo },
+    user: { id: user.id, nome: user.nome, email: user.email, perfil: user.perfil, tema: user.tema, modo: user.modo, estilo: user.estilo },
   });
 }
 
@@ -155,7 +155,7 @@ export async function resetPassword(req: Request, res: Response) {
 export async function me(req: AuthRequest, res: Response) {
   const user = await prisma.usuario.findUnique({
     where: { id: req.user!.id },
-    select: { id: true, nome: true, email: true, perfil: true, ativo: true, lastLogin: true, tema: true, modo: true },
+    select: { id: true, nome: true, email: true, perfil: true, ativo: true, lastLogin: true, tema: true, modo: true, estilo: true },
   });
   if (!user) throw new AppError('Usuário não encontrado', 404);
   return res.json(user);
@@ -166,8 +166,9 @@ export async function salvarPreferencias(req: AuthRequest, res: Response) {
   const dados = z.object({
     tema: z.enum(['VERDE', 'AZUL']).optional(),
     modo: z.enum(['CLARO', 'ESCURO']).nullable().optional(),
+    estilo: z.enum(['CLASSICO', 'CONTROLE', 'LAVOURA', 'EXECUTIVO']).optional(),
   }).parse(req.body);
-  const user = await prisma.usuario.update({ where: { id: req.user!.id }, data: dados, select: { tema: true, modo: true } });
+  const user = await prisma.usuario.update({ where: { id: req.user!.id }, data: dados, select: { tema: true, modo: true, estilo: true } });
   return res.json(user);
 }
 

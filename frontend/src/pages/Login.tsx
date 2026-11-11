@@ -30,7 +30,7 @@ export default function LoginPage() {
     try {
       const res = await api.post('/auth/login', data);
       setAuth(res.data.accessToken, res.data.refreshToken, res.data.user);
-      aplicarPreferencias(res.data.user?.tema, res.data.user?.modo);
+      aplicarPreferencias(res.data.user?.tema, res.data.user?.modo, res.data.user?.estilo);
       navigate(telaInicial(res.data.user?.perfil));
     } catch (err: any) {
       toast.error(err?.response?.data?.error?.message || 'Email ou senha inválidos');

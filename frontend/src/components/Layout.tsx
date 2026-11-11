@@ -54,23 +54,24 @@ type SidebarContentProps = { onNavigate?: () => void; onLogout: () => void; onMi
 
 function SidebarContent({ onNavigate, onLogout, onMinhaConta, userName, perfil }: SidebarContentProps) {
   const location = useLocation();
+  // Cores do menu vêm do estilo do usuário (styles/estilos.css, --sb-*).
   const itemClass = (isActive: boolean) => clsx(
-    'flex items-center gap-3 rounded-ui-md px-3 py-2 text-sm font-medium transition-colors',
-    isActive ? 'bg-indigo-50 text-indigo-700 font-semibold' : 'text-ui-text-muted hover:bg-ui-muted hover:text-ui-text',
+    'ui-nav-item flex items-center gap-3 rounded-ui-md px-3 py-2 text-sm font-medium transition-colors',
+    isActive && 'ui-nav-item-ativo',
   );
 
   return <>
     <div className="flex items-center gap-2.5 px-4 pb-5 pt-1">
       <img src="/logo-fibra.jpeg" alt="Fibra Forte" className="h-9 w-9 rounded-ui-sm object-contain" />
       <div>
-        <span className="font-display text-sm font-semibold text-ui-text">Cotton Fibra</span>
-        <p className="text-[10px] font-medium uppercase tracking-wide text-ui-text-muted">Gestão de Cargas</p>
+        <span className="ui-marca-nome font-display text-sm font-semibold">Cotton Fibra</span>
+        <p className="ui-marca-sub text-[10px] font-medium uppercase tracking-wide">Gestão de Cargas</p>
       </div>
     </div>
     <nav className="flex-1 space-y-4 px-3" aria-label="Navegação principal">
       {itensDoPerfil(perfil).map((g) => (
         <div key={g.titulo} className="space-y-0.5">
-          <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-ui-text-muted">{g.titulo}</p>
+          <p className="ui-nav-grupo px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider">{g.titulo}</p>
           {g.itens.map(({ to, label, icon: Icon }) => (
             // Configurações: ativo nas abas dele, não em Acesso do cliente.
             <NavLink key={to} to={to} onClick={onNavigate}
@@ -81,13 +82,13 @@ function SidebarContent({ onNavigate, onLogout, onMinhaConta, userName, perfil }
         </div>
       ))}
     </nav>
-    <div className="mt-auto border-t border-ui-border px-3 py-3">
+    <div className="ui-sidebar-rodape mt-auto border-t px-3 py-3">
       <button type="button" onClick={() => { onNavigate?.(); onMinhaConta(); }} title="Minha conta: tema e senha"
-        className="mb-1 flex w-full items-center gap-2 rounded-ui-md px-1 py-1 text-left hover:bg-ui-muted">
+        className="mb-1 flex w-full items-center gap-2 rounded-ui-md px-1 py-1 text-left">
         <div className="flex h-7 w-7 items-center justify-center rounded-full bg-indigo-50 text-xs font-bold text-indigo-700">{userName?.charAt(0).toUpperCase() || 'A'}</div>
         <div className="min-w-0">
-          <p className="truncate text-xs text-ui-text">{userName || 'Administrador'}</p>
-          <p className="text-[10px] text-ui-text-muted">Minha conta</p>
+          <p className="ui-usuario-nome truncate text-xs">{userName || 'Administrador'}</p>
+          <p className="ui-marca-sub text-[10px]">Minha conta</p>
         </div>
       </button>
       <button type="button" onClick={onLogout} className="flex w-full items-center gap-3 rounded-ui-md px-2 py-2 text-sm font-medium text-ui-text-muted transition-colors hover:bg-ui-muted hover:text-ui-text">
@@ -146,7 +147,7 @@ export default function Layout() {
       const { token, refreshToken, user: atual, setAuth } = useAuthStore.getState();
       if (!token || !refreshToken || !atual) return;
       // Tema/modo salvos no usuário valem em qualquer computador.
-      aplicarPreferencias(data.tema, data.modo);
+      aplicarPreferencias(data.tema, data.modo, data.estilo);
       if (atual.perfil !== data.perfil || atual.nome !== data.nome || atual.email !== data.email) {
         setAuth(token, refreshToken, { ...atual, nome: data.nome, email: data.email, perfil: data.perfil });
       }
@@ -154,18 +155,18 @@ export default function Layout() {
   }, []);
 
   return <div className="min-h-screen bg-ui-background font-sans text-ui-text selection:bg-ui-primary selection:text-white">
-    <aside className="fixed inset-y-0 left-0 z-40 hidden w-56 flex-col border-r border-ui-border bg-ui-surface py-5 md:flex">
+    <aside className="ui-sidebar fixed inset-y-0 left-0 z-40 hidden w-56 flex-col border-r py-5 md:flex">
       <SidebarContent onLogout={handleLogout} onMinhaConta={() => setMinhaConta(true)} userName={user?.nome} perfil={user?.perfil} />
     </aside>
     {mobileOpen && <div className="fixed inset-0 z-50 md:hidden" role="dialog" aria-modal="true" aria-label="Menu de navegação">
       <button type="button" aria-label="Fechar menu" className="absolute inset-0 bg-slate-950/45" onClick={() => setMobileOpen(false)} />
-      <aside className="relative flex h-full w-72 flex-col bg-ui-surface py-5 shadow-2xl">
+      <aside className="ui-sidebar relative flex h-full w-72 flex-col py-5 shadow-2xl">
         <button type="button" aria-label="Fechar menu" onClick={() => setMobileOpen(false)} className="absolute right-3 top-3 rounded-ui-sm p-2 text-ui-text-muted hover:bg-ui-muted"><XMarkIcon className="h-5 w-5" /></button>
         <SidebarContent onNavigate={() => setMobileOpen(false)} onLogout={handleLogout} onMinhaConta={() => setMinhaConta(true)} userName={user?.nome} perfil={user?.perfil} />
       </aside>
     </div>}
     <div className="min-h-screen md:pl-56">
-      <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-ui-border bg-white/90 px-4 backdrop-blur md:px-7">
+      <header className="ui-topbar sticky top-0 z-30 flex h-14 items-center justify-between border-b border-ui-border bg-white/90 px-4 backdrop-blur md:px-7">
         <div className="flex items-center gap-3">
           <button type="button" aria-label="Abrir menu" onClick={() => setMobileOpen(true)} className="rounded-ui-sm p-2 text-ui-text-muted hover:bg-ui-muted md:hidden"><Bars3Icon className="h-6 w-6" /></button>
           <div><p className="font-display text-sm font-semibold text-ui-text">{currentTitle}</p></div>

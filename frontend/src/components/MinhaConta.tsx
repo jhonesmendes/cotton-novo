@@ -3,22 +3,31 @@ import toast from 'react-hot-toast';
 import { CheckIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import api from '@/services/api';
 import { useAuthStore } from '@/stores/auth.store';
-import { Paleta, useThemeStore } from '@/stores/theme.store';
+import { Estilo, Paleta, useThemeStore } from '@/stores/theme.store';
 
 // Aplica as preferências salvas no usuário (chamado no login e ao abrir o sistema).
-export function aplicarPreferencias(tema?: string | null, modo?: string | null) {
+export function aplicarPreferencias(tema?: string | null, modo?: string | null, estilo?: string | null) {
   const store = useThemeStore.getState();
   store.setPaleta(tema === 'VERDE' ? 'VERDE' : 'AZUL');
+  store.setEstilo((['CONTROLE', 'LAVOURA', 'EXECUTIVO'].includes(estilo ?? '') ? estilo : 'CLASSICO') as Estilo);
   if (modo === 'ESCURO') store.setTheme('dark');
   else if (modo === 'CLARO') store.setTheme('light');
 }
 
 // Grava no usuário (vale em qualquer computador) e no cache local.
-export async function salvarPreferencias(prefs: { tema?: Paleta; modo?: 'CLARO' | 'ESCURO' }) {
+export async function salvarPreferencias(prefs: { tema?: Paleta; modo?: 'CLARO' | 'ESCURO'; estilo?: Estilo }) {
   await api.patch('/auth/me/preferencias', prefs);
   const { token, refreshToken, user, setAuth } = useAuthStore.getState();
   if (token && refreshToken && user) setAuth(token, refreshToken, { ...user, ...prefs });
 }
+
+// Miniatura de cada estilo: fundo, menu, card e texto (cores fixas só para a prévia).
+const ESTILOS: { valor: Estilo; rotulo: string; descricao: string; fonte: string; menu: string; fundo: string; card: string; raio: number }[] = [
+  { valor: 'CLASSICO', rotulo: 'Clássico', descricao: 'O visual atual', fonte: "'IBM Plex Sans'", menu: '#ffffff', fundo: '#f6f7f9', card: '#ffffff', raio: 6 },
+  { valor: 'CONTROLE', rotulo: 'Controle', descricao: 'Denso, para varrer muitas linhas', fonte: "'Barlow Semi Condensed'", menu: '#0d141b', fundo: '#ecf0f4', card: '#ffffff', raio: 2 },
+  { valor: 'LAVOURA', rotulo: 'Lavoura', descricao: 'Menu na cor da marca, com respiro', fonte: "'Plus Jakarta Sans'", menu: 'MARCA', fundo: '#f4f6f7', card: '#ffffff', raio: 10 },
+  { valor: 'EXECUTIVO', rotulo: 'Executivo', descricao: 'Neutro, títulos e números grandes', fonte: "'Sora'", menu: '#ffffff', fundo: '#fafafa', card: '#ffffff', raio: 4 },
+];
 
 const PALETAS: { valor: Paleta; rotulo: string; amostras: string[] }[] = [
   { valor: 'VERDE', rotulo: 'Verde', amostras: ['#047857', '#10b981', '#d1fae5'] },
@@ -27,13 +36,17 @@ const PALETAS: { valor: Paleta; rotulo: string; amostras: string[] }[] = [
 
 export default function MinhaConta({ onClose }: { onClose: () => void }) {
   const user = useAuthStore((s) => s.user);
-  const { paleta, theme, setPaleta, setTheme } = useThemeStore();
+  const { paleta, theme, estilo, setPaleta, setTheme, setEstilo } = useThemeStore();
   const [senha, setSenha] = useState({ atual: '', nova: '', confirmar: '' });
   const [salvandoSenha, setSalvandoSenha] = useState(false);
 
   async function escolherPaleta(p: Paleta) {
     setPaleta(p);
     try { await salvarPreferencias({ tema: p }); } catch { toast.error('Não foi possível salvar o tema'); }
+  }
+  async function escolherEstilo(e: Estilo) {
+    setEstilo(e);
+    try { await salvarPreferencias({ estilo: e }); } catch { toast.error('Não foi possível salvar o estilo'); }
   }
   async function escolherModo(escuro: boolean) {
     setTheme(escuro ? 'dark' : 'light');
@@ -58,7 +71,7 @@ export default function MinhaConta({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4" onMouseDown={onClose}>
-      <div className="w-full max-w-md rounded-2xl bg-ui-surface shadow-2xl" onMouseDown={(e) => e.stopPropagation()}>
+      <div className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-ui-surface shadow-2xl" onMouseDown={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between border-b border-ui-border px-6 py-4">
           <div>
             <h2 className="font-semibold text-ui-text">Minha conta</h2>
@@ -69,7 +82,33 @@ export default function MinhaConta({ onClose }: { onClose: () => void }) {
 
         <div className="space-y-6 p-6">
           <section>
-            <h3 className="mb-2 text-sm font-semibold text-ui-text">Tema</h3>
+            <h3 className="mb-2 text-sm font-semibold text-ui-text">Estilo do painel</h3>
+            <div className="grid grid-cols-2 gap-3">
+              {ESTILOS.map((e) => {
+                const marca = paleta === 'VERDE' ? '#064e3b' : '#312e81';
+                return (
+                  <button key={e.valor} type="button" onClick={() => escolherEstilo(e.valor)} aria-pressed={estilo === e.valor}
+                    className={`rounded-xl border p-2 text-left ${estilo === e.valor ? 'border-ui-primary ring-2 ring-ui-primary/30' : 'border-ui-border hover:bg-ui-muted'}`}>
+                    {/* Miniatura: menu + fundo + dois cards */}
+                    <div className="flex h-14 overflow-hidden border border-black/10" style={{ background: e.fundo, borderRadius: e.raio }}>
+                      <div className="w-5" style={{ background: e.menu === 'MARCA' ? marca : e.menu, borderRight: e.menu === '#ffffff' ? '1px solid #e5e7eb' : 'none' }} />
+                      <div className="flex flex-1 flex-col gap-1 p-1.5">
+                        <div className="h-2 w-10 rounded-sm" style={{ background: paleta === 'VERDE' ? '#047857' : '#4f46e5' }} />
+                        <div className="flex flex-1 gap-1">
+                          {[0, 1].map((i) => <div key={i} className="flex-1 border border-black/5" style={{ background: e.card, borderRadius: Math.max(1, e.raio - 2) }} />)}
+                        </div>
+                      </div>
+                    </div>
+                    <span className="mt-1.5 block text-sm font-semibold text-ui-text" style={{ fontFamily: e.fonte }}>{e.rotulo}</span>
+                    <span className="block text-[11px] leading-tight text-ui-text-muted">{e.descricao}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
+          <section>
+            <h3 className="mb-2 text-sm font-semibold text-ui-text">Cor</h3>
             <div className="grid grid-cols-2 gap-3">
               {PALETAS.map((p) => (
                 <button key={p.valor} type="button" onClick={() => escolherPaleta(p.valor)}

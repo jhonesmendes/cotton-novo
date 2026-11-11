@@ -76,43 +76,8 @@
   color-scheme: dark;
 }
 
-.dark body {
-  background-color: #0f172a;
-  color: #f1f5f9;
-}
-
-/* base tokens */
-.dark .bg-ui-background { background-color: #0f172a; }
-.dark .bg-ui-surface, .dark .bg-white { background-color: #1e293b; }
-.dark .bg-white\/90 { background-color: rgba(30, 41, 59, .9); }
-.dark .bg-white\/80 { background-color: rgba(30, 41, 59, .8); }
-.dark .bg-ui-muted, .dark .bg-gray-50, .dark .bg-gray-100 { background-color: #0f172a; }
-.dark .border-ui-border, .dark .border-ui-border-subtle,
-.dark .border-gray-100, .dark .border-gray-200, .dark .border-gray-300,
-.dark .border, .dark .border-b, .dark .border-t, .dark .border-l, .dark .border-r,
-.dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]),
-.dark .divide-y > :not([hidden]) ~ :not([hidden]) {
-  border-color: #334155;
-}
-.dark .text-ui-text, .dark .text-gray-900, .dark .text-gray-800,
-.dark .text-slate-900, .dark .text-slate-800 { color: #f1f5f9; }
-.dark .text-ui-text-muted, .dark .text-gray-700, .dark .text-gray-600,
-.dark .text-slate-700, .dark .text-slate-600 { color: #cbd5e1; }
-.dark .text-gray-500, .dark .text-gray-400,
-.dark .text-slate-500, .dark .text-slate-400 { color: #94a3b8; }
-.dark .border-slate-200, .dark .border-slate-300, .dark .border-slate-200\/70 { border-color: #334155; }
-.dark .placeholder\:text-ui-text-muted::placeholder { color: #64748b; }
-.dark .shadow-sm, .dark .shadow-md, .dark .shadow-lg, .dark .shadow-premium { box-shadow: none; }
-
-/* form fields that don't carry an explicit bg-white class */
-.dark input:not([type='checkbox']):not([type='radio']),
-.dark select,
-.dark textarea {
-  background-color: #1e293b;
-  border-color: #334155;
-  color: #f1f5f9;
-}
-.dark .hover\:bg-gray-50:hover, .dark .hover\:bg-ui-muted:hover, .dark .hover\:bg-ui-muted\/60:hover { background-color: #243043; }
+/* Superfícies, cinzas, bordas e campos seguem os tokens de styles/estilos.css
+   (claro e escuro); aqui ficam só as cores semânticas adaptadas ao escuro. */
 
 /* semantic pastel colors (badges, alert boxes, icon chips) */
 .dark .bg-red-50    { background-color: rgba(248, 113, 113, .12); }
@@ -174,11 +139,9 @@
   --series-5: #e87ba4; --series-6: #008300; --series-7: #6250d6; --series-8: #e34948;
   --series-outros: #a3a3a3;
   --status-good: #0ca30c; --status-warning: #fab219; --status-serious: #ec835a; --status-critical: #d03b3b;
-  --viz-grid: #e5e7eb; --viz-axis: #6b7280; --viz-surface: #ffffff;
 }
 .dark {
   --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70; --series-4: #c98500;
   --series-5: #d55181; --series-6: #008300; --series-7: #9085e9; --series-8: #e66767;
   --series-outros: #64748b;
-  --viz-grid: #334155; --viz-axis: #94a3b8; --viz-surface: #1e293b;
 }

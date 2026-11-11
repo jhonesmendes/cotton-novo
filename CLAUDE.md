@@ -153,10 +153,18 @@ AGUARDANDO_GR → TRANSITO_CARREGAMENTO → LOCAL → MANIFESTADO
   alguém abre o painel **sem filtro** (não há cron) — por isso usa `prismaBase`, para não encher a
   auditoria; a comparação "vs. semana passada" aparece com 8+ dias de retrato. Meta da taxa de
   cumprimento = parâmetro `meta_cumprimento`.
-- **Tema por usuário** (Minha conta, clique no nome no rodapé do menu): paleta `VERDE`/`AZUL`
-  e modo `CLARO`/`ESCURO` em `Usuario.tema`/`Usuario.modo` (`PATCH /auth/me/preferencias`). As
-  cores principais e a escala `indigo` do Tailwind viram variáveis CSS (`--ui-primary*`,
-  `--tema-*` em `styles/globals.css`): Azul = cores originais; `.tema-verde` troca a escala.
+- **Aparência por usuário** (Minha conta, clique no nome no rodapé do menu), salva em
+  `Usuario.estilo`/`tema`/`modo` (`PATCH /auth/me/preferencias`), três eixos independentes:
+  - **Estilo** `CLASSICO`/`CONTROLE`/`LAVOURA`/`EXECUTIVO` → classe `estilo-*` no `<html>`; tokens
+    em `frontend/src/styles/estilos.css` (fundo, superfície, escala `gray` semântica, fontes,
+    cantos, sombras, menu lateral `--sb-*`, densidade). O `tailwind.config.js` lê tudo de
+    variáveis: `gray`/`slate` 50–900, `ui-*`, `rounded`/`rounded-lg|xl|2xl`, `shadow-*`, fontes.
+    Classes literais (`bg-white`, `text-gray-500`, `border-gray-200`…) já seguem o estilo e o
+    modo — não precisa de `dark:` em componente novo.
+  - **Paleta** `VERDE`/`AZUL` → `--ui-primary*` e a escala `indigo` (`--tema-*`, em globals.css).
+  - **Modo** claro/escuro → classe `dark`.
+  Ao mexer no `tailwind.config.js`, reinicie o container do frontend: o Vite em dev guarda o
+  config antigo em cache.
   Minha conta também tem "Trocar senha" (`POST /auth/me/senha`, exige a atual).
 - **Parâmetros do sistema**: tabela `configuracoes_sistema` (chave → valor); chaves
   aceitas e limites em `backend/src/services/parametros.ts`; `GET/PUT /api/parametros`.

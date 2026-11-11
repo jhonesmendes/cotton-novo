@@ -1,0 +1,201 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Estilos do painel (Minha conta): Clássico, Controle, Lavoura, Executivo.
+   Cada estilo × modo (claro/escuro) define os tokens abaixo; a paleta
+   (Verde/Azul, --tema-*) é independente e vale em todos.
+
+   Tokens (canais RGB, para o Tailwind aplicar opacidade):
+     --c-canvas  fundo da página      --c-surface  cards, modais, campos
+     --c-hover   linha/item em foco   --g-50…900   escala de cinza semântica
+                                                   (no escuro inverte)
+   Forma: --r-* (rounded-*), --ru-* (rounded-ui-*), --sh-* (shadow-*).
+   Tipo: --font-sans / --font-display, --fs-root (densidade).
+   Menu lateral: --sb-*.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ─── Clássico (o visual original) ───────────────────────────────────────── */
+:root {
+  --font-sans: 'IBM Plex Sans'; --font-display: 'Space Grotesk'; --fs-root: 16px;
+  --c-canvas: 246 247 249; --c-surface: 255 255 255; --c-hover: 248 250 252;
+  --g-50: 249 250 251; --g-100: 243 244 246; --g-200: 229 231 235; --g-300: 209 213 219; --g-400: 156 163 175;
+  --g-500: 107 114 128; --g-600: 75 85 99; --g-700: 55 65 81; --g-800: 31 41 55; --g-900: 17 24 39;
+  --r-sm: .25rem; --r-lg: .5rem; --r-xl: .75rem; --r-2xl: 1rem;
+  --ru-sm: 6px; --ru-md: 10px; --ru-lg: 14px; --ru-xl: 18px;
+  --sh-sm: 0 1px 2px rgba(15, 23, 42, .04); --sh-md: 0 4px 12px rgba(15, 23, 42, .08); --sh-lg: 0 12px 28px rgba(15, 23, 42, .12);
+  --sb-bg: rgb(var(--c-surface)); --sb-border: rgb(var(--g-200)); --sb-text: rgb(var(--g-500)); --sb-titulo: rgb(var(--g-400));
+  --sb-hover-bg: rgb(var(--g-50)); --sb-hover-text: rgb(var(--g-900));
+  --sb-ativo-bg: rgb(var(--tema-50)); --sb-ativo-text: rgb(var(--tema-700)); --sb-ativo-marca: transparent;
+}
+:root.dark {
+  --c-canvas: 15 23 42; --c-surface: 30 41 59; --c-hover: 36 48 67;
+  --g-50: 15 23 42; --g-100: 22 32 52; --g-200: 51 65 85; --g-300: 61 77 99; --g-400: 148 163 184;
+  --g-500: 148 163 184; --g-600: 203 213 225; --g-700: 203 213 225; --g-800: 241 245 249; --g-900: 241 245 249;
+  --sh-sm: none; --sh-md: none; --sh-lg: 0 20px 40px rgba(0, 0, 0, .45);
+  --sb-ativo-bg: rgb(var(--tema-400) / .18); --sb-ativo-text: rgb(var(--tema-300));
+}
+
+/* ─── Controle: torre de despacho — denso, feito para varrer linhas ────────
+   Barlow (vernáculo de sinalização rodoviária), cantos retos, sem sombra,
+   menu escuro com barra na cor da paleta. */
+:root.estilo-controle {
+  --font-sans: 'Barlow Semi Condensed'; --font-display: 'Barlow'; --fs-root: 15px;
+  --c-canvas: 236 240 244; --c-surface: 255 255 255; --c-hover: 241 245 249;
+  --g-50: 246 248 250; --g-100: 238 242 246; --g-200: 216 223 230; --g-300: 192 201 211; --g-400: 140 152 165;
+  --g-500: 98 111 125; --g-600: 71 84 98; --g-700: 51 63 76; --g-800: 30 40 51; --g-900: 14 22 30;
+  --r-sm: 2px; --r-lg: 4px; --r-xl: 5px; --r-2xl: 6px;
+  --ru-sm: 2px; --ru-md: 4px; --ru-lg: 5px; --ru-xl: 6px;
+  --sh-sm: none; --sh-md: 0 1px 2px rgba(14, 22, 30, .08); --sh-lg: 0 16px 32px rgba(14, 22, 30, .28);
+  --sb-bg: #0d141b; --sb-border: #1c2630; --sb-text: #a4b2bf; --sb-titulo: #5f7182;
+  --sb-hover-bg: rgba(255, 255, 255, .05); --sb-hover-text: #fff;
+  --sb-ativo-bg: rgba(255, 255, 255, .08); --sb-ativo-text: #fff; --sb-ativo-marca: rgb(var(--tema-400));
+}
+:root.estilo-controle.dark {
+  --c-canvas: 10 16 22; --c-surface: 17 25 33; --c-hover: 24 34 44;
+  --g-50: 14 21 28; --g-100: 20 29 38; --g-200: 36 48 60; --g-300: 48 62 76; --g-400: 108 124 140;
+  --g-500: 136 151 166; --g-600: 172 184 196; --g-700: 198 207 216; --g-800: 226 231 236; --g-900: 242 245 248;
+  --sh-md: none; --sh-lg: 0 20px 40px rgba(0, 0, 0, .55);
+  --sb-bg: #070c11; --sb-border: #16202a;
+}
+
+/* ─── Lavoura: a marca na frente — arejado, menu na cor da paleta ──────── */
+:root.estilo-lavoura {
+  --font-sans: 'Plus Jakarta Sans'; --font-display: 'Plus Jakarta Sans'; --fs-root: 16px;
+  --c-canvas: 244 246 247; --c-surface: 255 255 255; --c-hover: 243 246 248;
+  --g-50: 248 249 250; --g-100: 241 243 245; --g-200: 226 230 234; --g-300: 206 211 217; --g-400: 152 160 170;
+  --g-500: 104 113 125; --g-600: 74 83 96; --g-700: 54 62 74; --g-800: 33 39 49; --g-900: 20 24 31;
+  --r-sm: .375rem; --r-lg: .625rem; --r-xl: .875rem; --r-2xl: 1.25rem;
+  --ru-sm: 8px; --ru-md: 12px; --ru-lg: 18px; --ru-xl: 22px;
+  --sh-sm: 0 1px 2px rgba(16, 24, 40, .04), 0 1px 3px rgba(16, 24, 40, .06);
+  --sh-md: 0 8px 20px -6px rgba(16, 24, 40, .12); --sh-lg: 0 24px 48px -12px rgba(16, 24, 40, .28);
+  --sb-bg: rgb(var(--tema-900)); --sb-border: transparent; --sb-text: rgb(var(--tema-100) / .78); --sb-titulo: rgb(var(--tema-300) / .7);
+  --sb-hover-bg: rgb(255 255 255 / .08); --sb-hover-text: #fff;
+  --sb-ativo-bg: rgb(var(--tema-600)); --sb-ativo-text: #fff; --sb-ativo-marca: transparent;
+}
+:root.estilo-lavoura.dark {
+  --c-canvas: 16 19 22; --c-surface: 24 28 32; --c-hover: 31 36 41;
+  --g-50: 20 24 28; --g-100: 27 32 37; --g-200: 42 48 55; --g-300: 56 63 71; --g-400: 112 121 131;
+  --g-500: 140 149 159; --g-600: 176 184 192; --g-700: 203 209 216; --g-800: 228 232 236; --g-900: 243 245 247;
+  --sh-sm: none; --sh-md: none; --sh-lg: 0 24px 48px rgba(0, 0, 0, .5);
+  --sb-bg: rgb(var(--tema-950));
+}
+
+/* ─── Executivo: relatório — neutro, alto contraste, títulos e números grandes */
+:root.estilo-executivo {
+  --font-sans: 'Source Sans 3'; --font-display: 'Sora'; --fs-root: 16px;
+  --c-canvas: 250 250 250; --c-surface: 255 255 255; --c-hover: 245 245 246;
+  --g-50: 250 250 250; --g-100: 244 244 245; --g-200: 228 228 231; --g-300: 212 212 216; --g-400: 161 161 170;
+  --g-500: 113 113 122; --g-600: 82 82 91; --g-700: 63 63 70; --g-800: 39 39 42; --g-900: 24 24 27;
+  --r-sm: .25rem; --r-lg: .375rem; --r-xl: .5rem; --r-2xl: .625rem;
+  --ru-sm: 4px; --ru-md: 6px; --ru-lg: 8px; --ru-xl: 10px;
+  --sh-sm: none; --sh-md: 0 1px 2px rgba(0, 0, 0, .05); --sh-lg: 0 24px 48px -12px rgba(0, 0, 0, .3);
+  --sb-bg: rgb(var(--c-surface)); --sb-border: rgb(var(--g-200)); --sb-text: rgb(var(--g-600)); --sb-titulo: rgb(var(--g-400));
+  --sb-hover-bg: rgb(var(--g-100)); --sb-hover-text: rgb(var(--g-900));
+  --sb-ativo-bg: rgb(var(--g-100)); --sb-ativo-text: rgb(var(--g-900)); --sb-ativo-marca: rgb(var(--tema-600));
+}
+:root.estilo-executivo.dark {
+  --c-canvas: 22 22 25; --c-surface: 30 30 34; --c-hover: 38 38 43;
+  --g-50: 27 27 31; --g-100: 34 34 38; --g-200: 48 48 54; --g-300: 63 63 70; --g-400: 113 113 122;
+  --g-500: 145 145 154; --g-600: 180 180 188; --g-700: 205 205 211; --g-800: 230 230 234; --g-900: 244 244 246;
+  --sh-md: none; --sh-lg: 0 24px 48px rgba(0, 0, 0, .55);
+  --sb-ativo-marca: rgb(var(--tema-400));
+}
+
+/* ═══ Aplicação dos tokens ════════════════════════════════════════════════ */
+html { font-size: var(--fs-root); }
+body { background-color: rgb(var(--c-canvas)); color: rgb(var(--g-900)); }
+
+/* Classes literais espalhadas pelas telas passam a seguir o estilo/modo. */
+.bg-white { background-color: rgb(var(--c-surface)); }
+.bg-white\/90 { background-color: rgb(var(--c-surface) / .9); }
+.bg-white\/80 { background-color: rgb(var(--c-surface) / .8); }
+.hover\:bg-gray-50:hover, .hover\:bg-ui-muted:hover, .hover\:bg-ui-muted\/60:hover, .hover\:bg-ui-muted\/50:hover,
+.hover\:bg-gray-100:hover { background-color: rgb(var(--c-hover)); }
+
+/* Gráficos acompanham a superfície do estilo. */
+:root { --viz-surface: rgb(var(--c-surface)); --viz-grid: rgb(var(--g-200)); --viz-axis: rgb(var(--g-500)); }
+
+/* ─── Campos: hover, foco, desabilitado, erro (todos os estilos) ───────── */
+:where(input:not([type='checkbox']):not([type='radio']):not([type='range']), select, textarea) {
+  background-color: rgb(var(--c-surface));
+  color: rgb(var(--g-900));
+  transition: border-color .15s ease, box-shadow .15s ease, background-color .15s ease;
+}
+input:not([type='checkbox']):not([type='radio']):hover:not(:disabled):not(:focus),
+select:hover:not(:disabled):not(:focus),
+textarea:hover:not(:disabled):not(:focus) {
+  border-color: rgb(var(--g-400));
+}
+input:not([type='checkbox']):not([type='radio']):focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: none;
+  border-color: rgb(var(--tema-500));
+  box-shadow: 0 0 0 3px rgb(var(--tema-500) / .22);
+}
+input:disabled, select:disabled, textarea:disabled {
+  cursor: not-allowed;
+  background-color: rgb(var(--g-100));
+  color: rgb(var(--g-500));
+}
+input[aria-invalid='true'], select[aria-invalid='true'], textarea[aria-invalid='true'],
+input.border-red-500, select.border-red-500 {
+  border-color: rgb(220 38 38);
+  box-shadow: 0 0 0 3px rgb(220 38 38 / .15);
+}
+input::placeholder, textarea::placeholder { color: rgb(var(--g-400)); }
+input[type='checkbox'], input[type='radio'] { accent-color: rgb(var(--ui-primary)); }
+
+/* Foco por teclado sempre visível (botões, links, itens clicáveis). */
+button:focus-visible, a:focus-visible, [role='button']:focus-visible, summary:focus-visible {
+  outline: 2px solid rgb(var(--tema-500));
+  outline-offset: 2px;
+}
+button { transition: background-color .15s ease, border-color .15s ease, color .15s ease, box-shadow .15s ease; }
+
+/* ─── Tabelas: números alinhados e linha em destaque ─────────────────── */
+td, th { font-variant-numeric: tabular-nums; }
+tbody tr { transition: background-color .12s ease; }
+
+/* ─── Menu lateral ─────────────────────────────────────────────────────── */
+.ui-sidebar { background-color: var(--sb-bg); border-color: var(--sb-border); }
+.ui-sidebar .ui-marca-nome { color: var(--sb-hover-text); }
+.ui-sidebar .ui-marca-sub, .ui-nav-grupo { color: var(--sb-titulo); }
+.ui-nav-item { color: var(--sb-text); position: relative; }
+.ui-nav-item:hover { background-color: var(--sb-hover-bg); color: var(--sb-hover-text); }
+.ui-nav-item-ativo, .ui-nav-item-ativo:hover { background-color: var(--sb-ativo-bg); color: var(--sb-ativo-text); font-weight: 600; }
+.ui-nav-item-ativo::before {
+  content: ''; position: absolute; left: -12px; top: 6px; bottom: 6px; width: 3px;
+  border-radius: 0 3px 3px 0; background-color: var(--sb-ativo-marca);
+}
+.ui-sidebar .ui-sidebar-rodape { border-color: var(--sb-border); }
+.ui-sidebar .ui-sidebar-rodape button { color: var(--sb-text); }
+.ui-sidebar .ui-sidebar-rodape button:hover { background-color: var(--sb-hover-bg); color: var(--sb-hover-text); }
+.ui-sidebar .ui-sidebar-rodape .ui-usuario-nome { color: var(--sb-hover-text); }
+
+/* ═══ Ajustes por estilo ═════════════════════════════════════════════════ */
+
+/* Controle: tabelas compactas, cabeçalho de tabela sólido, títulos condensados. */
+.estilo-controle td { padding-top: .45rem; padding-bottom: .45rem; }
+.estilo-controle th { padding-top: .5rem; padding-bottom: .5rem; letter-spacing: .04em; }
+.estilo-controle thead { background-color: rgb(var(--g-100)); }
+/* Zebrado com especificidade zero: linhas destacadas (amarelo, hover) continuam valendo. */
+:where(.estilo-controle tbody tr:nth-child(even)) { background-color: rgb(var(--g-50)); }
+.estilo-controle h1 { font-weight: 700; letter-spacing: -.01em; }
+.estilo-controle .ui-card { border-color: rgb(var(--g-200)); }
+
+/* Lavoura: cabeçalho do topo levemente tingido pela paleta; cards com mais ar. */
+.estilo-lavoura .ui-topbar { background-color: rgb(var(--c-surface) / .85); }
+.estilo-lavoura .ui-card { border-color: transparent; box-shadow: var(--sh-sm); }
+.estilo-lavoura.dark .ui-card { border-color: rgb(var(--g-200)); }
+.estilo-lavoura h1 { font-weight: 800; letter-spacing: -.02em; }
+.estilo-lavoura th { font-weight: 700; }
+
+/* Executivo: títulos e números grandes, sem enfeite. */
+.estilo-executivo h1 { font-size: 1.875rem; line-height: 2.25rem; font-weight: 600; letter-spacing: -.025em; }
+.estilo-executivo h2 { letter-spacing: -.015em; }
+.estilo-executivo .font-display.text-3xl { font-size: 2.5rem; line-height: 1.1; font-weight: 600; letter-spacing: -.03em; }
+.estilo-executivo thead { background-color: transparent; border-bottom: 1.5px solid rgb(var(--g-900)); }
+.estilo-executivo th { color: rgb(var(--g-900)); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}

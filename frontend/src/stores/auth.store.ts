@@ -8,6 +8,7 @@ interface User {
   perfil: string;
   tema?: 'VERDE' | 'AZUL';
   modo?: 'CLARO' | 'ESCURO' | null;
+  estilo?: 'CLASSICO' | 'CONTROLE' | 'LAVOURA' | 'EXECUTIVO';
 }
 
 interface AuthState {

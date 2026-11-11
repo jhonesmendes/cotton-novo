@@ -4,6 +4,7 @@ import { MutationCache, QueryClient, QueryClientProvider } from '@tanstack/react
 import { Toaster } from 'react-hot-toast';
 import App from './App';
 import './styles/globals.css';
+import './styles/estilos.css';
 
 const queryClient: QueryClient = new QueryClient({
   defaultOptions: {

@@ -43,13 +43,13 @@ function StatusLiberacao({ l }: { l: any }) {
 function AvisoFechamento({ l }: { l: any }) {
   if (fechadaManual(l))
     return (
-      <p className="mt-1 text-[11px] font-medium text-amber-700">
+      <p className="mt-1 max-w-[190px] whitespace-normal text-[11px] font-medium text-amber-700">
         {l.fardosPendentesFechamento ? `${l.fardosPendentesFechamento} fardos pendentes · ` : ''}fechada manualmente
       </p>
     );
   if (l.aguardandoFechamento)
     return (
-      <p className="mt-1 text-[11px] font-medium text-amber-700">
+      <p className="mt-1 max-w-[190px] whitespace-normal text-[11px] font-medium text-amber-700">
         {l.totalPendencias} pendência(s) de dados · veículos finalizados
       </p>
     );
@@ -282,14 +282,14 @@ export default function LiberacoesPage() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-ui-muted text-xs uppercase text-ui-text-muted">
+              <thead className="whitespace-nowrap bg-ui-muted text-xs uppercase text-ui-text-muted">
                 <tr>
                   <th className="px-4 py-3 text-left">Instrução</th>
                   <th className="px-4 py-3 text-left">Cliente</th>
                   <th className="px-4 py-3 text-left">Origem</th>
-                  <th className="px-4 py-3 text-left">Local de Coleta</th>
+                  <th className="px-4 py-3 text-left">Coleta</th>
                   <th className="px-4 py-3 text-left">Destino</th>
-                  <th className="px-4 py-3 text-left">Local de Entrega</th>
+                  <th className="px-4 py-3 text-left">Entrega</th>
                   <th className="px-4 py-3 text-right">Total</th>
                   <th className="px-4 py-3 text-right" title="Fardos ainda sem caminhão">A programar</th>
                   <th className="px-4 py-3 text-right" title="Fardos ainda não carregados (antes de MANIFESTADO)">A carregar</th>
@@ -303,15 +303,15 @@ export default function LiberacoesPage() {
                 {(data?.data ?? []).map((l: any) => (
                   <tr key={l.id} onClick={(e) => abrirLinha(e, `/liberacoes/${l.id}`, navigate)}
                     className={`cursor-pointer transition-colors ${destacarAmarelo(l) ? 'bg-amber-50 hover:bg-amber-100' : 'hover:bg-ui-muted/60'}`}>
-                    <td className="px-4 py-3 font-medium text-ui-primary">
+                    <td className="min-w-[230px] px-4 py-3 font-medium text-ui-primary">
                       <Link to={`/liberacoes/${l.id}`} className="hover:underline">{l.instrucao}</Link>
                       <div className="mt-1"><PlacasChips l={l} max={3} /></div>
                     </td>
-                    <td className="px-4 py-3 text-xs"><Filtravel texto={l.clienteNome ?? l.cliente?.nome} onBuscar={setBusca} /></td>
-                    <td className="px-4 py-3 text-xs text-gray-500"><Filtravel texto={l.origemNome ?? l.terminal?.nome} onBuscar={setBusca} /></td>
-                    <td className="px-4 py-3 text-xs text-gray-500"><Filtravel texto={l.localColetaNome ?? l.localColeta?.nome} onBuscar={setBusca} /></td>
-                    <td className="px-4 py-3 text-xs text-gray-500"><Filtravel texto={l.destinoNome ?? l.destino?.nome} onBuscar={setBusca} /></td>
-                    <td className="px-4 py-3 text-xs text-gray-500"><Filtravel texto={l.localEntregaNome ?? l.localEntrega?.nome} onBuscar={setBusca} /></td>
+                    <td className="min-w-[120px] px-4 py-3 text-xs"><Filtravel texto={l.clienteNome ?? l.cliente?.nome} onBuscar={setBusca} /></td>
+                    <td className="min-w-[130px] px-4 py-3 text-xs text-gray-500"><Filtravel texto={l.origemNome ?? l.terminal?.nome} onBuscar={setBusca} /></td>
+                    <td className="min-w-[130px] px-4 py-3 text-xs text-gray-500"><Filtravel texto={l.localColetaNome ?? l.localColeta?.nome} onBuscar={setBusca} /></td>
+                    <td className="min-w-[130px] px-4 py-3 text-xs text-gray-500"><Filtravel texto={l.destinoNome ?? l.destino?.nome} onBuscar={setBusca} /></td>
+                    <td className="min-w-[130px] px-4 py-3 text-xs text-gray-500"><Filtravel texto={l.localEntregaNome ?? l.localEntrega?.nome} onBuscar={setBusca} /></td>
                     <td className="px-4 py-3 text-right">{l.totalFardos}</td>
                     <td className="px-4 py-3 text-right font-semibold">{l.saldo}</td>
                     <td className="px-4 py-3 text-right">{l.saldoCarregar}</td>
