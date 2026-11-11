@@ -191,7 +191,6 @@ export default function LiberacoesPage() {
                   <th className="px-4 py-3 text-right">Deadline</th>
                   <th className="px-4 py-3 text-right">Dias</th>
                   <th className="px-4 py-3 text-left">Status</th>
-                  <th className="px-4 py-3 text-center">Ação</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-ui-border-subtle">
@@ -215,9 +214,6 @@ export default function LiberacoesPage() {
                     <td className="px-4 py-3 whitespace-nowrap">
                       <StatusLiberacao l={l} />
                       <AvisoFechamento l={l} />
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <Link to={`/liberacoes/${l.id}`} className="text-xs text-blue-600 hover:underline">Ver</Link>
                     </td>
                   </tr>
                 ))}
