@@ -11,6 +11,7 @@ import TimelineStatus from '@/components/TimelineStatus';
 import { PlusIcon, PencilSquareIcon, TrashIcon, PhoneIcon, ChevronDownIcon, ChevronUpIcon, EyeIcon, EyeSlashIcon, ClockIcon, ArrowLeftIcon, ExclamationTriangleIcon, CheckCircleIcon, PauseCircleIcon, PlayCircleIcon, ArrowPathIcon, NoSymbolIcon } from '@heroicons/react/24/outline';
 import VeiculoModal from './VeiculoModal';
 import EtapasVeiculo from '@/components/EtapasVeiculo';
+import BarraProgresso from '@/components/BarraProgresso';
 import { useThemeStore } from '@/stores/theme.store';
 import InformeModal, { LinhaInforme } from './Informe';
 import { CargaRapida, FormaPagamentoRapida, RastreamentoIscaRapido } from './EdicaoRapida';
@@ -281,26 +282,25 @@ export default function LiberacaoDetalhe() {
             value: <>{lib.totalFardos}{lib.pesoTotal != null && <span className="ml-2 text-xs text-gray-500">{formatPeso(lib.pesoTotal)}</span>}</>,
           },
           {
-            label: 'Programado',
-            hint: 'Fardos com caminhão (veículos ativos, qualquer etapa)',
-            value: <>{lib.programado}</>,
-          },
-          {
-            label: 'Carregado',
-            hint: 'Fardos de veículos a partir de MANIFESTADO',
-            value: <>{lib.carregado}{toneladas > 0 && <span className="ml-2 text-xs text-gray-500">{formatPeso(toneladas)}</span>}</>
-          },
-          {
-            label: 'Saldo',
+            label: 'Programação',
+            hint: 'Programado = fardos que já têm caminhão (veículos ativos, qualquer etapa)',
             value: (
-              <span className="block space-y-0.5">
-                <span className={`block ${lib.saldo > 0 ? 'text-orange-600 font-bold' : 'text-green-600'}`}>
-                  {lib.saldo} a programar
-                  {lib.saldo > 0 && lib.pesoMedioFardoKg != null && (
-                    <span className="ml-1 text-xs font-normal text-gray-500">~{formatPeso((lib.saldo * lib.pesoMedioFardoKg) / 1000)}</span>
-                  )}
-                </span>
-                <span className={`block text-xs ${lib.saldoCarregar > 0 ? 'text-orange-600' : 'text-green-600'}`}>{lib.saldoCarregar} a carregar</span>
+              <span className="block space-y-1">
+                <LinhaNumero rotulo="Programado" valor={lib.programado}
+                  extra={(() => { const n = (lib.veiculos ?? []).filter((v: any) => v.ativo).length; return `${n} ${n === 1 ? 'caminhão' : 'caminhões'}`; })()} />
+                <LinhaNumero rotulo="Falta programar" valor={lib.saldo} alerta={lib.saldo > 0}
+                  extra={lib.saldo > 0 && lib.pesoMedioFardoKg != null ? `~${formatPeso((lib.saldo * lib.pesoMedioFardoKg) / 1000)}` : undefined} />
+              </span>
+            ),
+          },
+          {
+            label: 'Carregamento',
+            hint: 'Carregado = fardos de veículos a partir de MANIFESTADO',
+            value: (
+              <span className="block space-y-1">
+                <LinhaNumero rotulo="Carregado" valor={lib.carregado} extra={toneladas > 0 ? formatPeso(toneladas) : undefined} />
+                <LinhaNumero rotulo="Falta carregar" valor={lib.saldoCarregar} alerta={lib.saldoCarregar > 0} />
+                <span className="block pt-1"><BarraProgresso total={lib.totalFardos} programado={lib.programado} carregado={lib.carregado} tamanho="sm" legenda={false} /></span>
               </span>
             ),
           },
@@ -790,6 +790,21 @@ export default function LiberacaoDetalhe() {
         onCancel={() => setConfirmDelete(null)}
       />
     </div>
+  );
+}
+
+// Número com rótulo na mesma linha (cards de Programação e Carregamento).
+function LinhaNumero({ rotulo, valor, alerta, extra }: { rotulo: string; valor: number; alerta?: boolean; extra?: string }) {
+  return (
+    <span className="flex items-baseline justify-between gap-3">
+      <span className="text-xs font-normal text-gray-500">{rotulo}</span>
+      <span className="text-right">
+        {extra && <span className="mr-2 text-xs font-normal text-gray-500">{extra}</span>}
+        <span className={`text-base font-bold ${alerta ? 'text-orange-600' : valor === 0 && rotulo.startsWith('Falta') ? 'text-green-600' : 'text-gray-900'}`}>
+          {valor.toLocaleString('pt-BR')}
+        </span>
+      </span>
+    </span>
   );
 }
 
