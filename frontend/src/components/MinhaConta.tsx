@@ -9,7 +9,7 @@ import { Estilo, Paleta, useThemeStore } from '@/stores/theme.store';
 export function aplicarPreferencias(tema?: string | null, modo?: string | null, estilo?: string | null) {
   const store = useThemeStore.getState();
   store.setPaleta(tema === 'VERDE' ? 'VERDE' : 'AZUL');
-  store.setEstilo((['CONTROLE', 'LAVOURA', 'EXECUTIVO'].includes(estilo ?? '') ? estilo : 'CLASSICO') as Estilo);
+  store.setEstilo((['CONTROLE', 'LAVOURA', 'EXECUTIVO', 'SAFRA'].includes(estilo ?? '') ? estilo : 'CLASSICO') as Estilo);
   if (modo === 'ESCURO') store.setTheme('dark');
   else if (modo === 'CLARO') store.setTheme('light');
 }
@@ -27,6 +27,7 @@ const ESTILOS: { valor: Estilo; rotulo: string; descricao: string; fonte: string
   { valor: 'CONTROLE', rotulo: 'Controle', descricao: 'Denso, para varrer muitas linhas', fonte: "'Barlow Semi Condensed'", menu: '#0d141b', fundo: '#ecf0f4', card: '#ffffff', raio: 2 },
   { valor: 'LAVOURA', rotulo: 'Lavoura', descricao: 'Menu na cor da marca, com respiro', fonte: "'Plus Jakarta Sans'", menu: 'MARCA', fundo: '#f4f6f7', card: '#ffffff', raio: 10 },
   { valor: 'EXECUTIVO', rotulo: 'Executivo', descricao: 'Neutro, títulos e números grandes', fonte: "'Sora'", menu: '#ffffff', fundo: '#fafafa', card: '#ffffff', raio: 4 },
+  { valor: 'SAFRA', rotulo: 'Safra', descricao: 'Escuro, destaque verde-limão, painel ao vivo', fonte: "'Space Grotesk'", menu: '#0d1410', fundo: '#0b100d', card: '#151d18', raio: 8 },
 ];
 
 const PALETAS: { valor: Paleta; rotulo: string; amostras: string[] }[] = [
@@ -93,9 +94,9 @@ export default function MinhaConta({ onClose }: { onClose: () => void }) {
                     <div className="flex h-14 overflow-hidden border border-black/10" style={{ background: e.fundo, borderRadius: e.raio }}>
                       <div className="w-5" style={{ background: e.menu === 'MARCA' ? marca : e.menu, borderRight: e.menu === '#ffffff' ? '1px solid #e5e7eb' : 'none' }} />
                       <div className="flex flex-1 flex-col gap-1 p-1.5">
-                        <div className="h-2 w-10 rounded-sm" style={{ background: paleta === 'VERDE' ? '#047857' : '#4f46e5' }} />
+                        <div className="h-2 w-10 rounded-sm" style={{ background: e.valor === 'SAFRA' ? '#c6f24e' : paleta === 'VERDE' ? '#047857' : '#4f46e5' }} />
                         <div className="flex flex-1 gap-1">
-                          {[0, 1].map((i) => <div key={i} className="flex-1 border border-black/5" style={{ background: e.card, borderRadius: Math.max(1, e.raio - 2) }} />)}
+                          {[0, 1].map((i) => <div key={i} className={`flex-1 border ${e.valor === 'SAFRA' ? 'border-white/10' : 'border-black/5'}`} style={{ background: e.card, borderRadius: Math.max(1, e.raio - 2) }} />)}
                         </div>
                       </div>
                     </div>
@@ -107,6 +108,11 @@ export default function MinhaConta({ onClose }: { onClose: () => void }) {
             </div>
           </section>
 
+          {estilo === 'SAFRA' ? (
+            <p className="rounded-lg border border-ui-border px-3 py-2 text-xs text-ui-text-muted">
+              O Safra tem cor e modo próprios (escuro com destaque verde-limão). Para usar Verde/Azul ou o modo claro, escolha outro estilo.
+            </p>
+          ) : (
           <section>
             <h3 className="mb-2 text-sm font-semibold text-ui-text">Cor</h3>
             <div className="grid grid-cols-2 gap-3">
@@ -129,6 +135,7 @@ export default function MinhaConta({ onClose }: { onClose: () => void }) {
             </div>
             <p className="mt-1 text-[11px] text-ui-text-muted">Fica salvo no seu usuário — vale em qualquer computador.</p>
           </section>
+          )}
 
           <section>
             <h3 className="mb-2 text-sm font-semibold text-ui-text">Trocar senha</h3>

@@ -235,10 +235,13 @@ export default function Layout() {
               )}
             </button>
           )}
-          <button type="button" onClick={alternarModo} aria-label={theme === 'dark' ? 'Ativar tema claro' : 'Ativar tema escuro'}
-            className="rounded-ui-sm p-2 text-ui-text-muted hover:bg-ui-muted hover:text-ui-text">
-            {theme === 'dark' ? <SunIcon className="h-5 w-5" /> : <MoonIcon className="h-5 w-5" />}
-          </button>
+          {/* Safra é só escuro: sem alternância claro/escuro. */}
+          {estilo !== 'SAFRA' && (
+            <button type="button" onClick={alternarModo} aria-label={theme === 'dark' ? 'Ativar tema claro' : 'Ativar tema escuro'}
+              className="rounded-ui-sm p-2 text-ui-text-muted hover:bg-ui-muted hover:text-ui-text">
+              {theme === 'dark' ? <SunIcon className="h-5 w-5" /> : <MoonIcon className="h-5 w-5" />}
+            </button>
+          )}
           {navTopo ? (
             <button type="button" onClick={() => setMinhaConta(true)} title="Minha conta: estilo, cor e senha"
               className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-50 text-xs font-bold text-indigo-700">{user?.nome?.charAt(0).toUpperCase() || 'A'}</button>

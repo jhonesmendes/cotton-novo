@@ -155,7 +155,12 @@ AGUARDANDO_GR → TRANSITO_CARREGAMENTO → LOCAL → MANIFESTADO
   cumprimento = parâmetro `meta_cumprimento`.
 - **Aparência por usuário** (Minha conta, clique no nome no rodapé do menu), salva em
   `Usuario.estilo`/`tema`/`modo` (`PATCH /auth/me/preferencias`), três eixos independentes:
-  - **Estilo** `CLASSICO`/`CONTROLE`/`LAVOURA`/`EXECUTIVO` → classe `estilo-*` no `<html>`; tokens
+  - **Estilo** `CLASSICO`/`CONTROLE`/`LAVOURA`/`EXECUTIVO`/`SAFRA` → classe `estilo-*` no `<html>`.
+    Além da pele, mudam estrutura: navegação (Controle = barra no topo, Executivo = trilho de
+    ícones, Lavoura = faixa no cabeçalho), lista de liberações (`ListaVariantes.tsx`), status do
+    veículo como trilha clicável (`EtapasVeiculo`) e, no **Safra** (sempre escuro, destaque
+    verde-limão, cores de gráfico próprias validadas), o Dashboard inteiro (`Dashboard/Safra.tsx`).
+    Tokens
     em `frontend/src/styles/estilos.css` (fundo, superfície, escala `gray` semântica, fontes,
     cantos, sombras, menu lateral `--sb-*`, densidade). O `tailwind.config.js` lê tudo de
     variáveis: `gray`/`slate` 50–900, `ui-*`, `rounded`/`rounded-lg|xl|2xl`, `shadow-*`, fontes.

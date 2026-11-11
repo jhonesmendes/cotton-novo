@@ -166,7 +166,7 @@ export async function salvarPreferencias(req: AuthRequest, res: Response) {
   const dados = z.object({
     tema: z.enum(['VERDE', 'AZUL']).optional(),
     modo: z.enum(['CLARO', 'ESCURO']).nullable().optional(),
-    estilo: z.enum(['CLASSICO', 'CONTROLE', 'LAVOURA', 'EXECUTIVO']).optional(),
+    estilo: z.enum(['CLASSICO', 'CONTROLE', 'LAVOURA', 'EXECUTIVO', 'SAFRA']).optional(),
   }).parse(req.body);
   const user = await prisma.usuario.update({ where: { id: req.user!.id }, data: dados, select: { tema: true, modo: true, estilo: true } });
   return res.json(user);

@@ -5,14 +5,16 @@ import { ArrowPathIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import api from '@/services/api';
 import { abrirLinha } from '@/utils/abrirLinha';
 import { formatDate, formatDateTime } from '@/utils/format';
-import { STATUS_LABELS, SM_LABELS, RASTREAMENTO_LABELS, VeiculoStatus, StatusSM, StatusRastreamento } from '@/utils/status';
-import { labelCampo } from '@/utils/auditoria';
+import { descreverAtividade } from './atividade';
+import { AtividadeSafra, BarrasClientesSafra, CabecalhoSafra, CardSafra, KpiSafra, LinhaDoTempoSafra, RoscaFiliaisSafra, SeloAoVivo } from './Safra';
+import { useThemeStore } from '@/stores/theme.store';
 import { Cartao, Kpi, LinhaDoTempo, Modo, PendenciasPorCliente, SITUACOES, SituacaoPrazo, Vazio, VolumePorFilial, rotuloSituacao } from './Blocos';
 
 // Dashboard interativo: clicar num cliente, filial, dia ou situação filtra o painel
 // inteiro; os filtros se somam e ficam na URL (dá para mandar o link já filtrado).
 const FILTROS = ['clienteId', 'origemId', 'dia', 'situacao', 'de', 'ate'] as const;
 const ATUALIZACAO_S = 60;
+const num = (v: number) => v.toLocaleString('pt-BR');
 
 const isoDia = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
@@ -35,6 +37,7 @@ function atalhosPeriodo() {
 
 export default function DashboardPage() {
   const navigate = useNavigate();
+  const estilo = useThemeStore((s) => s.estilo);
   const [sp, setSp] = useSearchParams();
   const filtros = Object.fromEntries(FILTROS.map((f) => [f, sp.get(f) ?? ''])) as Record<(typeof FILTROS)[number], string>;
   const modo: Modo = sp.get('modo') === 'cargas' ? 'cargas' : 'fardos';
@@ -90,8 +93,33 @@ export default function DashboardPage() {
 
   const hojeExtenso = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
 
+  // Estilo Safra: outro layout do painel (Safra.tsx), mesmos dados e filtros.
+  const safra = estilo === 'SAFRA';
+  const cargasLista: any[] = data?.cargas ?? [];
+  const vencendo = cargasLista.filter((c) => c.situacao === 'CRITICO' || c.situacao === 'ATENCAO').length;
+  const embarcados = cargasLista.reduce((s, c) => s + Math.min(c.carregado, c.totalFardos), 0);
+  const noPrazoPct = cargasLista.length ? Math.round((cargasLista.filter((c) => c.situacao !== 'VENCIDO').length / cargasLista.length) * 100) : 0;
+  const seletorModo = (
+    <div className="flex rounded-lg border border-ui-border p-0.5 text-xs">
+      {(['fardos', 'cargas'] as Modo[]).map((m) => (
+        <button key={m} type="button" onClick={() => setSp((a) => { a.set('modo', m); return a; }, { replace: true })}
+          className={`rounded-md px-3 py-1 capitalize ${modo === m ? 'bg-ui-primary text-white' : 'text-ui-text-muted'}`}>{m}</button>
+      ))}
+    </div>
+  );
+  const botaoAtualizar = (
+    <button type="button" onClick={() => refetch()} className="flex items-center gap-1 rounded-lg border border-ui-border px-2.5 py-1.5 text-xs text-ui-text-muted hover:bg-ui-muted"
+      title="Atualiza sozinho a cada 1 minuto">
+      <ArrowPathIcon className={`h-3.5 w-3.5 ${isFetching ? 'animate-spin' : ''}`} />
+      {`0:${String(faltam).padStart(2, '0')}`}
+    </button>
+  );
+
   return (
     <div className="ui-page space-y-6">
+      {safra ? (
+        <CabecalhoSafra vencidas={data?.kpis?.vencidas ?? 0} vencendo={vencendo} acoes={botaoAtualizar} />
+      ) : (
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="font-display text-2xl font-bold text-ui-text">Dashboard</h1>
@@ -111,6 +139,7 @@ export default function DashboardPage() {
           </button>
         </div>
       </div>
+      )}
 
       {/* Filtros: período (pelo deadline) + filtros ativos vindos dos cliques */}
       <div className="ui-card flex flex-wrap items-center gap-2 p-3 text-xs">
@@ -137,7 +166,45 @@ export default function DashboardPage() {
         {chips.length > 0 && <button type="button" onClick={limpar} className="font-semibold text-ui-primary hover:underline">Limpar</button>}
       </div>
 
-      {isLoading || !data ? <div className="p-10 text-center text-ui-text-muted">Carregando...</div> : (
+      {isLoading || !data ? <div className="p-10 text-center text-ui-text-muted">Carregando...</div> : safra ? (
+        <>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <KpiSafra titulo="Cargas ativas" tom="ciano" valor={data.kpis.cargasAtivas} historico={serie('cargasAtivas')} comparacao={comparar('cargasAtivas', true)}
+              detalhe={comparar('cargasAtivas', true) ? 'vs. semana passada' : `${num(data.kpis.fardosPendentes)} fardos a carregar`} onClick={abrirLiberacoes} />
+            <KpiSafra titulo="Em risco (≤ 3 dias)" tom="risco" valor={data.kpis.emRisco} historico={serie('emRisco')} comparacao={comparar('emRisco', false)}
+              detalhe={<><strong className="text-[#e0574e]">{data.kpis.vencidas} vencidas</strong> · {vencendo} vencendo</>} onClick={abrirLiberacoes} />
+            <KpiSafra titulo="Fardos pendentes" tom="ambar" valor={data.kpis.fardosPendentes} historico={serie('fardosPendentes')} comparacao={comparar('fardosPendentes', false)}
+              detalhe={`${num(embarcados)} já embarcados`} onClick={abrirLiberacoes} />
+            <KpiSafra titulo="Taxa de cumprimento" tom="limao" valor={data.kpis.taxaCumprimento} sufixo="%" historico={serie('taxaCumprimento')} comparacao={comparar('taxaCumprimento', true)}
+              detalhe={`${noPrazoPct}% das cargas no prazo`} meta={data.kpis.meta} onClick={abrirLiberacoes} />
+          </div>
+
+          <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[1.15fr_1fr]">
+            <CardSafra titulo="Pendências por cliente" descricao="Clique em uma barra para filtrar o painel" acao={seletorModo}>
+              <BarrasClientesSafra dados={data.pendenciasPorCliente} modo={modo} selecionado={Number(filtros.clienteId) || undefined}
+                onSelecionar={(id) => alterar('clienteId', String(id))} />
+            </CardSafra>
+            <CardSafra titulo="Volume ativo por filial" descricao={`${num(data.volumePorFilial.reduce((s: number, f: any) => s + f.total, 0))} fardos em operação`}>
+              <RoscaFiliaisSafra dados={data.volumePorFilial} modo={modo} selecionado={Number(filtros.origemId) || undefined}
+                onSelecionar={(id) => alterar('origemId', String(id))} />
+            </CardSafra>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.6fr_1fr]">
+            <CardSafra titulo="Linha do tempo de deadlines" descricao="Vencidas + próximas 3 semanas · clique em um dia para ver as cargas">
+              <LinhaDoTempoSafra dados={data.linhaDoTempo} modo={modo} dia={filtros.dia || undefined} situacao={filtros.situacao || undefined}
+                onDia={(d) => alterar('dia', d)} onSituacao={(s) => alterar('situacao', s)} />
+            </CardSafra>
+            <CardSafra titulo="Atividade ao vivo" descricao="Últimas mudanças nas cargas do filtro" acao={<SeloAoVivo />}>
+              <AtividadeSafra itens={data.atividade} />
+            </CardSafra>
+          </div>
+
+          <CardSafra titulo="Cargas do filtro" descricao={`${data.cargas.length} liberação(ões) · ordenadas pelo deadline mais próximo`}>
+            <TabelaCargas cargas={data.cargas} />
+          </CardSafra>
+        </>
+      ) : (
         <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <Kpi titulo="Cargas ativas" valor={data.kpis.cargasAtivas} historico={serie('cargasAtivas')} comparacao={comparar('cargasAtivas', true)} onClick={abrirLiberacoes} />
@@ -174,28 +241,6 @@ export default function DashboardPage() {
       )}
     </div>
   );
-}
-
-function descreverAtividade(a: any): string {
-  if (a.tabela === 'Veiculo' && a.acao === 'INSERT') return 'veículo lançado';
-  // Exclusão definitiva (antes da inativação existir) não tem "depois".
-  if (a.acao === 'DELETE') return a.tabela === 'Veiculo' ? 'veículo excluído' : 'registro excluído';
-  const partes: string[] = [];
-  if (a.campos.includes('status') && a.depois.status) {
-    const r = (s: string) => (a.tabela === 'Veiculo' ? STATUS_LABELS[s as VeiculoStatus] ?? s : s);
-    partes.push(`${a.tabela === 'Liberacao' ? 'liberação ' : ''}${r(a.antes.status)} → ${r(a.depois.status)}`);
-  }
-  if (a.campos.includes('statusSm') && a.depois.statusSm) partes.push(`SM ${SM_LABELS[a.depois.statusSm as StatusSM] ?? a.depois.statusSm}`);
-  if (a.campos.includes('dataAgendamento')) partes.push(a.depois.dataAgendamento ? `agendado ${formatDateTime(a.depois.dataAgendamento)}` : 'agendamento removido');
-  if (a.campos.includes('ativo')) partes.push(a.depois.ativo ? 'reativado' : 'inativado');
-  if (a.campos.includes('statusRastreamento') && a.depois.statusRastreamento) {
-    partes.push(`rastreamento ${RASTREAMENTO_LABELS[a.depois.statusRastreamento as StatusRastreamento] ?? a.depois.statusRastreamento}`);
-  }
-  if (a.campos.includes('possuiIsca') || a.campos.includes('numeroIsca')) {
-    partes.push(a.depois.possuiIsca === false ? 'sem isca' : a.depois.numeroIsca ? `isca ${a.depois.numeroIsca}` : 'isca alterada');
-  }
-  // Demais campos: nome legível (o mesmo do histórico de alterações).
-  return partes.join(' · ') || a.campos.map(labelCampo).join(', ');
 }
 
 function Atividade({ itens }: { itens: any[] }) {

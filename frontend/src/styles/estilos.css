@@ -284,3 +284,39 @@ select option, select optgroup {
   color: rgb(var(--g-900));
 }
 select option:disabled { color: rgb(var(--g-400)); }
+
+/* ═══ Safra: painel escuro de operação ao vivo — verde quase preto, destaque
+   verde-limão (só interface: botões, item ativo, anel de meta). Sempre escuro
+   (a classe `dark` é forçada pelo store). Cores de gráfico validadas para
+   daltonismo sobre a superfície #131a16. ═══════════════════════════════════ */
+:root.estilo-safra, :root.estilo-safra.dark {
+  --font-sans: 'Plus Jakarta Sans'; --font-display: 'Space Grotesk'; --fs-root: 15.5px;
+  --c-canvas: 11 16 13; --c-surface: 19 26 22; --c-hover: 26 35 30;
+  --g-50: 16 22 19; --g-100: 22 30 26; --g-200: 36 47 41; --g-300: 50 63 56; --g-400: 107 122 114;
+  --g-500: 140 155 147; --g-600: 172 184 177; --g-700: 200 209 204; --g-800: 226 232 228; --g-900: 242 246 243;
+  --r-sm: .375rem; --r-lg: .625rem; --r-xl: .875rem; --r-2xl: 1rem;
+  --ru-sm: 8px; --ru-md: 10px; --ru-lg: 14px; --ru-xl: 18px;
+  --sh-sm: none; --sh-md: none; --sh-lg: 0 24px 48px rgba(0, 0, 0, .6);
+  /* destaque verde-limão no lugar da paleta Verde/Azul */
+  --tema-50: 247 254 231; --tema-100: 236 252 203; --tema-200: 217 249 157; --tema-300: 198 242 78; --tema-400: 181 227 58;
+  --tema-500: 163 209 47; --tema-600: 132 178 30; --tema-700: 101 140 20; --tema-800: 77 106 18; --tema-900: 54 75 16; --tema-950: 26 38 6;
+  --ui-primary: 198 242 78; --ui-primary-hover: 181 227 58; --ui-primary-active: 163 209 47;
+  --sb-bg: #0d1410; --sb-border: #1b2620; --sb-text: #9fb0a6; --sb-titulo: #5c6f64;
+  --sb-hover-bg: rgba(255, 255, 255, .05); --sb-hover-text: #f2f6f3;
+  --sb-ativo-bg: rgba(198, 242, 78, .12); --sb-ativo-text: #c6f24e; --sb-ativo-marca: #c6f24e;
+  --series-1: #72a510; --series-2: #1b9db1; --series-3: #b27a16; --series-4: #8f6fdf;
+  --series-5: #dc5a4f; --series-6: #3f7fd0; --series-7: #2e9a6b; --series-8: #a3a3a3; --series-outros: #4f5d55;
+  --status-critical: #e0574e; --status-serious: #d99a2b; --status-warning: #1ea2b6; --status-good: #2f9e6e;
+}
+/* Grade sutil no fundo, como uma prancheta. */
+.estilo-safra body {
+  background-image:
+    linear-gradient(rgb(255 255 255 / .022) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(255 255 255 / .022) 1px, transparent 1px);
+  background-size: 36px 36px;
+}
+.estilo-safra .ui-card { border-color: rgb(255 255 255 / .07); }
+.estilo-safra .ui-topbar { background-color: rgb(var(--c-canvas) / .85); }
+/* Botão/realce na cor limão pedem texto escuro (branco no limão não se lê). */
+.estilo-safra .ui-btn-primary, .estilo-safra .bg-ui-primary, .estilo-safra .bg-ui-primary * { color: #0c140f; }
+.estilo-safra h1 { font-weight: 700; letter-spacing: -.02em; }

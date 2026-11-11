@@ -369,7 +369,7 @@ model Usuario {
   ativo     Boolean       @default(true)
   // Preferências de aparência (Minha conta): paleta VERDE/AZUL e modo CLARO/ESCURO (null = do sistema).
   tema      String        @default("AZUL")
-  // Estilo visual do painel: CLASSICO / CONTROLE / LAVOURA / EXECUTIVO.
+  // Estilo visual do painel: CLASSICO / CONTROLE / LAVOURA / EXECUTIVO / SAFRA.
   estilo    String        @default("CLASSICO")
   modo      String?
   lastLogin DateTime? @map("last_login")
