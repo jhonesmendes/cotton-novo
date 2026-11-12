@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticate, requireRole } from '../middleware/auth';
+import { authenticate, requireRole, exigirPermissao } from '../middleware/auth';
 import {
   listar,
   buscarPorId,
@@ -22,22 +22,23 @@ export const liberacoesRouter = Router();
 
 liberacoesRouter.use(authenticate);
 
-liberacoesRouter.get('/', listar);
+liberacoesRouter.get('/', exigirPermissao('LIBERACOES', 'ver'), listar);
 liberacoesRouter.get('/referencias/lista', referencias);
-liberacoesRouter.patch('/referencias', atualizarReferencia);
-liberacoesRouter.post('/referencias', criarReferencia);
-liberacoesRouter.get('/referencias/uso', usoReferencia);
-liberacoesRouter.delete('/referencias', requireRole('ADMIN'), excluirReferencia);
-liberacoesRouter.get('/viagens/exportar', exportarViagens);
-liberacoesRouter.get('/:id', buscarPorId);
+liberacoesRouter.patch('/referencias', exigirPermissao('CADASTROS', 'alterar'), atualizarReferencia);
+liberacoesRouter.post('/referencias', exigirPermissao('CADASTROS', 'incluir'), criarReferencia);
+liberacoesRouter.get('/referencias/uso', exigirPermissao('CADASTROS', 'ver'), usoReferencia);
+liberacoesRouter.delete('/referencias', exigirPermissao('CADASTROS', 'excluir'), excluirReferencia);
+liberacoesRouter.get('/viagens/exportar', exigirPermissao('CADASTROS', 'ver'), exportarViagens);
+liberacoesRouter.get('/:id', exigirPermissao('LIBERACOES', 'ver'), buscarPorId);
 // Operador edita cargas (veículos, status) nas outras rotas, mas não
 // cria/edita a Liberação em si.
-liberacoesRouter.post('/', requireRole('ADMIN', 'GESTOR_FILIAL'), criar);
-liberacoesRouter.put('/:id', requireRole('ADMIN', 'GESTOR_FILIAL'), atualizar);
+liberacoesRouter.post('/', exigirPermissao('LIBERACOES', 'incluir'), criar);
+liberacoesRouter.put('/:id', exigirPermissao('LIBERACOES', 'alterar'), atualizar);
 // Troca direta de status passa por cima da regra de conclusão (saldo de fardos) — só ADMIN.
 liberacoesRouter.patch('/:id/status', requireRole('ADMIN'), atualizarStatus);
 liberacoesRouter.post('/:id/finalizar', requireRole('ADMIN'), finalizarManual);
 // Suspender/reativar: quem pode editar a liberação (motivo obrigatório para suspender).
-liberacoesRouter.post('/:id/suspender', requireRole('ADMIN', 'GESTOR_FILIAL'), suspender);
-liberacoesRouter.post('/:id/reativar', requireRole('ADMIN', 'GESTOR_FILIAL'), reativarSuspensa);
-liberacoesRouter.delete('/:id', deletar);
+liberacoesRouter.post('/:id/suspender', exigirPermissao('LIBERACOES', 'alterar'), suspender);
+liberacoesRouter.post('/:id/reativar', exigirPermissao('LIBERACOES', 'alterar'), reativarSuspensa);
+// Excluir = cancelar a liberação (antes ficava aberto a qualquer usuário logado).
+liberacoesRouter.delete('/:id', exigirPermissao('LIBERACOES', 'excluir'), deletar);

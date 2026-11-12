@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticate } from '../middleware/auth';
+import { authenticate, exigirPermissao } from '../middleware/auth';
 import {
   listar,
   buscarPorId,
@@ -16,6 +16,6 @@ terminaisRouter.use(authenticate);
 terminaisRouter.get('/', listar);
 terminaisRouter.get('/simples/lista', listarSimples);
 terminaisRouter.get('/:id', buscarPorId);
-terminaisRouter.post('/', criar);
-terminaisRouter.put('/:id', atualizar);
-terminaisRouter.delete('/:id', deletar);
+terminaisRouter.post('/', exigirPermissao('CADASTROS', 'incluir'), criar);
+terminaisRouter.put('/:id', exigirPermissao('CADASTROS', 'alterar'), atualizar);
+terminaisRouter.delete('/:id', exigirPermissao('CADASTROS', 'excluir'), deletar);

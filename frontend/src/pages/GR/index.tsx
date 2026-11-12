@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import api from '@/services/api';
 import PageHeader from '@/components/ui/PageHeader';
 import { useAuthStore } from '@/stores/auth.store';
+import { usePode } from '@/utils/permissoes';
 import { formatCpf, formatDateTime, formatTelefone } from '@/utils/format';
 import { RASTREAMENTO_LABELS, RASTREAMENTO_OPTIONS, SM_LABELS, SM_OPTIONS, STATUS_LABELS, STATUS_OPTIONS, StatusSM, VeiculoStatus } from '@/utils/status';
 import { RastreamentoIscaRapido } from '../Liberacoes/EdicaoRapida';
@@ -22,6 +23,7 @@ const CORES_SM: Record<StatusSM, string> = {
 export default function GrPage() {
   const perfil = useAuthStore((s) => s.user?.perfil);
   const ehGr = perfil === 'GR';
+  const podeAlterar = usePode()('GR', 'alterar');
   const qc = useQueryClient();
   const [sp, setSp] = useSearchParams();
   const f = {
@@ -155,14 +157,14 @@ export default function GrPage() {
                     </td>
                     <td className="px-3 py-3 text-xs">{STATUS_LABELS[v.status as VeiculoStatus] ?? v.status}</td>
                     <td className="px-3 py-3">
-                      <select value={v.statusSm} disabled={salvandoId === v.id}
+                      <select value={v.statusSm} disabled={salvandoId === v.id || !podeAlterar}
                         onChange={(e) => salvar(v.id)({ statusSm: e.target.value }).catch(() => undefined)}
                         className={`rounded border px-2 py-1 text-xs font-semibold ${CORES_SM[v.statusSm as StatusSM]}`}>
                         {SM_OPTIONS.map((s) => <option key={s} value={s}>{SM_LABELS[s]}</option>)}
                       </select>
                     </td>
                     <td className="px-3 py-3">
-                      <RastreamentoIscaRapido v={v} salvar={salvar(v.id)} desabilitado={salvandoId === v.id} />
+                      <RastreamentoIscaRapido v={v} salvar={salvar(v.id)} desabilitado={salvandoId === v.id || !podeAlterar} />
                     </td>
                     <td className="px-3 py-3 text-xs text-ui-text-muted">{v.dataAgendamento ? formatDateTime(v.dataAgendamento) : '—'}</td>
                     <td className="px-3 py-3 text-xs text-ui-text-muted">

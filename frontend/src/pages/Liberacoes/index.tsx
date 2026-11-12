@@ -9,8 +9,8 @@ import { PlusIcon } from '@heroicons/react/24/outline';
 import { formatDate } from '@/utils/format';
 import PageHeader from '@/components/ui/PageHeader';
 import AlternarVisualizacao, { useModoVisualizacao } from '@/components/ui/AlternarVisualizacao';
-import { useAuthStore } from '@/stores/auth.store';
 import { useThemeStore } from '@/stores/theme.store';
+import { usePode } from '@/utils/permissoes';
 import { CardsLavoura, GradeControle, TabelaExecutiva } from './ListaVariantes';
 import { AvisoFechamento, Buscar, DiasDeadline, FaixaTotais, Filtravel, PlacasChips, StatusLiberacao, destacarAmarelo } from './ListaComum';
 
@@ -66,7 +66,7 @@ function CardLiberacao({ l, onBuscar }: { l: any; onBuscar: Buscar }) {
 
 export default function LiberacoesPage() {
   const navigate = useNavigate();
-  const podeCriar = useAuthStore((s) => s.user?.perfil) !== 'OPERADOR';
+  const podeCriar = usePode()('LIBERACOES', 'incluir');
   // Filtros ficam na URL: ao abrir uma liberação e voltar, a lista volta
   // exatamente como estava (busca, filial, status e página).
   const [searchParams, setSearchParams] = useSearchParams();

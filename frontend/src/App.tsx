@@ -20,8 +20,11 @@ import PosicaoPublica from '@/pages/Posicao/Publica';
 import PosicaoVisitante from '@/pages/Posicao/Visitante';
 import ConvitePage from '@/pages/Convite';
 import EmailConfigPage from '@/pages/Configuracoes/Email';
+import PermissoesPage from '@/pages/Configuracoes/Permissoes';
 
 import { telaInicial } from '@/utils/perfis';
+import { Acao, Tela, usePode } from '@/utils/permissoes';
+import { primeiraTela } from '@/components/Layout';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const token = useAuthStore((s) => s.token);
@@ -38,12 +41,6 @@ function PerfilComLayout({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-function RequireGr({ children }: { children: React.ReactNode }) {
-  const perfil = useAuthStore((s) => s.user?.perfil);
-  if (!['ADMIN', 'GESTOR_FILIAL', 'OPERADOR', 'GR'].includes(perfil ?? '')) return <Navigate to="/dashboard" replace />;
-  return <>{children}</>;
-}
-
 function RequireVisitante({ children }: { children: React.ReactNode }) {
   const perfil = useAuthStore((s) => s.user?.perfil);
   if (perfil !== 'VISITANTE') return <Navigate to={telaInicial(perfil)} replace />;
@@ -55,10 +52,16 @@ function Inicio() {
   return <Navigate to={telaInicial(perfil)} replace />;
 }
 
-// Operador só edita cargas nas outras telas (veículos, status) — não cria/edita a Liberação em si.
-function RequireLiberacaoWrite({ children }: { children: React.ReactNode }) {
+// Tela/ação liberada pelas permissões do perfil (Configurações › Permissões); senão
+// manda para a primeira tela que o perfil pode abrir.
+function RequireTela({ tela, acao = 'ver', children }: { tela: Tela; acao?: Acao; children: React.ReactNode }) {
   const perfil = useAuthStore((s) => s.user?.perfil);
-  if (perfil === 'OPERADOR') return <Navigate to="/liberacoes" replace />;
+  const pode = usePode();
+  if (pode.carregando) return null;
+  if (!pode(tela, acao)) {
+    const destino = primeiraTela(perfil, (t) => pode(t));
+    return <Navigate to={destino === window.location.pathname ? '/login' : destino} replace />;
+  }
   return <>{children}</>;
 }
 
@@ -91,19 +94,20 @@ export default function App() {
           }
         >
           <Route index element={<Inicio />} />
-          <Route path="gr" element={<RequireGr><GrPage /></RequireGr>} />
-          <Route path="dashboard" element={<DashboardPage />} />
-          <Route path="liberacoes" element={<LiberacoesPage />} />
-          <Route path="liberacoes/nova" element={<RequireLiberacaoWrite><LiberacaoForm /></RequireLiberacaoWrite>} />
-          <Route path="liberacoes/:id" element={<LiberacaoDetalhe />} />
-          <Route path="liberacoes/:id/editar" element={<RequireLiberacaoWrite><LiberacaoForm /></RequireLiberacaoWrite>} />
-          <Route path="alertas" element={<AlertasPage />} />
-          <Route path="relatorios" element={<RelatoriosPage />} />
-          <Route path="cadastros" element={<CadastrosPage />} />
-          <Route path="cadastros/modelos" element={<ModelosPage />} />
+          <Route path="gr" element={<RequireTela tela="GR"><GrPage /></RequireTela>} />
+          <Route path="dashboard" element={<RequireTela tela="DASHBOARD"><DashboardPage /></RequireTela>} />
+          <Route path="liberacoes" element={<RequireTela tela="LIBERACOES"><LiberacoesPage /></RequireTela>} />
+          <Route path="liberacoes/nova" element={<RequireTela tela="LIBERACOES" acao="incluir"><LiberacaoForm /></RequireTela>} />
+          <Route path="liberacoes/:id" element={<RequireTela tela="LIBERACOES"><LiberacaoDetalhe /></RequireTela>} />
+          <Route path="liberacoes/:id/editar" element={<RequireTela tela="LIBERACOES" acao="alterar"><LiberacaoForm /></RequireTela>} />
+          <Route path="alertas" element={<RequireTela tela="ALERTAS"><AlertasPage /></RequireTela>} />
+          <Route path="relatorios" element={<RequireTela tela="RELATORIOS"><RelatoriosPage /></RequireTela>} />
+          <Route path="cadastros" element={<RequireTela tela="CADASTROS"><CadastrosPage /></RequireTela>} />
+          <Route path="cadastros/modelos" element={<RequireTela tela="CADASTROS"><ModelosPage /></RequireTela>} />
           <Route path="configuracoes" element={<Navigate to="/configuracoes/usuarios" replace />} />
           <Route path="configuracoes/usuarios" element={<RequireAdmin><UsuariosPage /></RequireAdmin>} />
           <Route path="configuracoes/email" element={<RequireAdmin><EmailConfigPage /></RequireAdmin>} />
+          <Route path="configuracoes/permissoes" element={<RequireAdmin><PermissoesPage /></RequireAdmin>} />
           <Route path="configuracoes/acessos-cliente" element={<RequireAdmin><AcessosClientePage /></RequireAdmin>} />
           <Route path="auditoria" element={<RequireAdmin><AuditoriaPage /></RequireAdmin>} />
         </Route>

@@ -70,10 +70,12 @@ interface Props {
   posicao: number;
   captacoes: string[];
   salvar: (campos: Record<string, unknown>) => Promise<unknown>;
+  // Sem permissão de alterar veículo: só vê e copia o texto.
+  somenteLeitura?: boolean;
   onClose: () => void;
 }
 
-export default function InformeModal({ v, lib, posicao, captacoes, salvar, onClose }: Props) {
+export default function InformeModal({ v, lib, posicao, captacoes, salvar, somenteLeitura, onClose }: Props) {
   const [dados, setDados] = useState<DadosInforme>({
     comprimento: v.comprimento ?? '',
     altura: v.altura != null ? String(v.altura).replace('.', ',') : '',
@@ -116,7 +118,7 @@ export default function InformeModal({ v, lib, posicao, captacoes, salvar, onClo
           <button onClick={onClose}><XMarkIcon className="h-5 w-5 text-gray-400" /></button>
         </div>
         <div className="space-y-4 p-6">
-          <div className="grid grid-cols-3 gap-3">
+          <fieldset disabled={somenteLeitura} className="grid grid-cols-3 gap-3">
             <label className="block text-xs text-gray-500">Comprimento
               <input value={dados.comprimento} onChange={(e) => set('comprimento', e.target.value.toUpperCase())} placeholder="12.35X12.35"
                 className="mt-1 w-full rounded border border-gray-200 px-2 py-1.5 text-sm" />
@@ -130,7 +132,7 @@ export default function InformeModal({ v, lib, posicao, captacoes, salvar, onClo
                 className="mt-1 w-full rounded border border-gray-200 px-2 py-1.5 text-sm" />
               <datalist id="sugestoes-captacao">{captacoes.map((c) => <option key={c} value={c} />)}</datalist>
             </label>
-          </div>
+          </fieldset>
           <pre className="max-h-[320px] overflow-y-auto whitespace-pre-wrap rounded-lg border bg-gray-50 p-3 font-mono text-xs text-gray-800">{texto}</pre>
         </div>
         <div className="flex justify-end gap-3 px-6 pb-5">
@@ -138,10 +140,10 @@ export default function InformeModal({ v, lib, posicao, captacoes, salvar, onClo
             {copiado ? <CheckIcon className="h-4 w-4 text-green-600" /> : <ClipboardDocumentIcon className="h-4 w-4" />}
             {copiado ? 'Copiado' : 'Copiar dados'}
           </button>
-          <button onClick={gravar} disabled={salvando}
+          {!somenteLeitura && <button onClick={gravar} disabled={salvando}
             className="rounded-lg bg-ui-primary px-4 py-2 text-sm font-medium text-white hover:bg-ui-primary-hover disabled:opacity-60">
             {salvando ? 'Salvando...' : 'Salvar'}
-          </button>
+          </button>}
         </div>
       </div>
     </div>

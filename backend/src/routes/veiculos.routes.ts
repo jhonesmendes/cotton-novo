@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticate, requireRole } from '../middleware/auth';
+import { authenticate, requireRole, exigirPermissao } from '../middleware/auth';
 import {
   listar,
   buscarPorId,
@@ -15,12 +15,12 @@ export const veiculosRouter = Router();
 
 veiculosRouter.use(authenticate);
 
-veiculosRouter.get('/', listar);
-veiculosRouter.get('/placa/:placa', buscarPorPlaca);
-veiculosRouter.get('/motorista/cpf/:cpf', buscarMotoristaPorCpf);
-veiculosRouter.get('/:id', buscarPorId);
-veiculosRouter.post('/', criar);
-veiculosRouter.put('/:id', atualizar);
+veiculosRouter.get('/', exigirPermissao('VEICULOS', 'ver'), listar);
+veiculosRouter.get('/placa/:placa', exigirPermissao('VEICULOS', 'ver'), buscarPorPlaca);
+veiculosRouter.get('/motorista/cpf/:cpf', exigirPermissao('VEICULOS', 'ver'), buscarMotoristaPorCpf);
+veiculosRouter.get('/:id', exigirPermissao('VEICULOS', 'ver'), buscarPorId);
+veiculosRouter.post('/', exigirPermissao('VEICULOS', 'incluir'), criar);
+veiculosRouter.put('/:id', exigirPermissao('VEICULOS', 'alterar'), atualizar);
 // Excluir = inativar com motivo (não apaga). Perfis só-leitura não inativam.
-veiculosRouter.delete('/:id', requireRole('ADMIN', 'OPERADOR', 'GESTOR_FILIAL'), deletar);
+veiculosRouter.delete('/:id', exigirPermissao('VEICULOS', 'excluir'), deletar);
 veiculosRouter.post('/:id/reativar', requireRole('ADMIN'), reativar);

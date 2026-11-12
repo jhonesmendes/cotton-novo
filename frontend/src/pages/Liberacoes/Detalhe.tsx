@@ -15,6 +15,7 @@ import BarraProgresso from '@/components/BarraProgresso';
 import Dica from '@/components/Dica';
 import { TermoCarga } from '@/utils/glossario';
 import { useThemeStore } from '@/stores/theme.store';
+import { usePode } from '@/utils/permissoes';
 import InformeModal, { LinhaInforme } from './Informe';
 import { CargaRapida, FormaPagamentoRapida, RastreamentoIscaRapido } from './EdicaoRapida';
 import { urlListaLiberacoes } from './navegacao';
@@ -25,13 +26,18 @@ import { ACAO_LABELS, RegistroAuditoria, labelCampo, labelTabela } from '@/utils
 export default function LiberacaoDetalhe() {
   const { id } = useParams<{ id: string }>();
   const perfil = useAuthStore((s) => s.user?.perfil);
-  const podeEditarLiberacao = perfil !== 'OPERADOR';
-  const podeVerHistorico = perfil !== 'CLIENTE';
+  // Permissões editáveis em Configurações › Permissões (o backend também confere).
+  const pode = usePode();
+  const podeEditarLiberacao = pode('LIBERACOES', 'alterar');
+  const podeExcluirLiberacao = pode('LIBERACOES', 'excluir');
+  const podeVerHistorico = pode('HISTORICO');
+  const podeIncluirVeiculo = pode('VEICULOS', 'incluir');
+  const podeAlterarVeiculo = pode('VEICULOS', 'alterar');
   const isAdmin = perfil === 'ADMIN';
   // Estilos novos trocam o select de status pela trilha de etapas clicável.
   const trilhaEtapas = useThemeStore((s) => s.estilo) !== 'CLASSICO';
-  const podeSuspender = perfil === 'ADMIN' || perfil === 'GESTOR_FILIAL';
-  const podeInativarVeiculo = perfil === 'ADMIN' || perfil === 'OPERADOR' || perfil === 'GESTOR_FILIAL';
+  const podeSuspender = pode('LIBERACOES', 'alterar');
+  const podeInativarVeiculo = pode('VEICULOS', 'excluir');
   // Suspender (motivo obrigatório) / reativar a liberação.
   const [suspensao, setSuspensao] = useState<{ motivo: string } | null>(null);
   // Inativar (excluir) / reativar veículo — sempre com motivo.
@@ -267,12 +273,14 @@ export default function LiberacaoDetalhe() {
               Editar
             </Link>
           )}
-          <button
-            onClick={() => setConfirmDelete({ type: 'liberacao' })}
-            className="flex items-center gap-2 border border-red-200 text-red-600 px-4 py-2 rounded-lg text-sm hover:bg-red-50 transition-colors">
-            <TrashIcon className="w-4 h-4" />
-            Excluir
-          </button>
+          {podeExcluirLiberacao && (
+            <button
+              onClick={() => setConfirmDelete({ type: 'liberacao' })}
+              className="flex items-center gap-2 border border-red-200 text-red-600 px-4 py-2 rounded-lg text-sm hover:bg-red-50 transition-colors">
+              <TrashIcon className="w-4 h-4" />
+              Excluir
+            </button>
+          )}
         </div>
       </div>
 
@@ -421,11 +429,13 @@ export default function LiberacaoDetalhe() {
               {(lib.veiculos ?? []).some((v: any) => !v.ativo) && ` · ${(lib.veiculos ?? []).filter((v: any) => !v.ativo).length} inativo(s)`}
             </p>
           </div>
-          <button onClick={() => setVeiculoModal('novo')}
-            className="flex items-center gap-2 bg-ui-primary text-white px-3 py-1.5 rounded-lg text-sm hover:bg-ui-primary-hover transition-colors font-medium">
-            <PlusIcon className="w-4 h-4" />
-            Adicionar Veículo
-          </button>
+          {podeIncluirVeiculo && (
+            <button onClick={() => setVeiculoModal('novo')}
+              className="flex items-center gap-2 bg-ui-primary text-white px-3 py-1.5 rounded-lg text-sm hover:bg-ui-primary-hover transition-colors font-medium">
+              <PlusIcon className="w-4 h-4" />
+              Adicionar Veículo
+            </button>
+          )}
         </div>
 
         <div className="divide-y divide-gray-100">
@@ -436,13 +446,15 @@ export default function LiberacaoDetalhe() {
           )}
           {(lib.veiculos ?? []).map((v: any) => {
             const inativo = !v.ativo;
+            // Sem permissão de alterar veículo: tudo na linha fica só leitura.
+            const bloqueado = inativo || !podeAlterarVeiculo;
             // Finalizado com dado faltando: borda amarela + lista do que falta.
             const comPendencia = !inativo && v.status === 'FINALIZADO' && v.pendencias?.length > 0;
             return (
             <div key={v.id} id={`veiculo-${v.id}`}
               // Duplo clique na linha abre "Editar Veículo" (menos em campos/botões e em veículo inativo).
               onDoubleClick={(e) => {
-                if (inativo || (e.target as HTMLElement).closest('a, button, input, select, textarea, label, [role="button"]')) return;
+                if (bloqueado || (e.target as HTMLElement).closest('a, button, input, select, textarea, label, [role="button"]')) return;
                 window.getSelection()?.removeAllRanges();
                 setVeiculoModal(v.id);
               }}
@@ -469,7 +481,7 @@ export default function LiberacaoDetalhe() {
                 <div className="min-w-[110px]">
                   <p className="font-mono font-bold text-gray-900 text-base tracking-wider">{v.placa}</p>
                   <p className="text-[10px] text-gray-400 mt-0.5 uppercase">{v.modeloCarreta?.nomeDescricao}</p>
-                  <FormaPagamentoRapida v={v} opcoes={referencias?.formasPagamento ?? []} salvar={salvarVeiculo(v.id)} desabilitado={inativo} />
+                  <FormaPagamentoRapida v={v} opcoes={referencias?.formasPagamento ?? []} salvar={salvarVeiculo(v.id)} desabilitado={bloqueado} />
                   <div className="mt-1 flex items-center gap-2">
                     <button type="button" onClick={() => setInforme(v.id)}
                       className="rounded border border-indigo-200 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-700 hover:bg-indigo-50">
@@ -493,7 +505,7 @@ export default function LiberacaoDetalhe() {
                 </div>
 
                 {/* Rastreamento + Isca — clique altera */}
-                <RastreamentoIscaRapido v={v} salvar={salvarVeiculo(v.id)} desabilitado={inativo} />
+                <RastreamentoIscaRapido v={v} salvar={salvarVeiculo(v.id)} desabilitado={bloqueado} />
 
                 {/* SM - Monitoramento do Veículo */}
                 <div className="min-w-[120px]">
@@ -504,7 +516,7 @@ export default function LiberacaoDetalhe() {
                       setSavingSmId(v.id);
                       atualizarSmVeiculo.mutate({ veiculoId: v.id, statusSm: e.target.value });
                     }}
-                    disabled={savingSmId === v.id}
+                    disabled={savingSmId === v.id || !podeAlterarVeiculo}
                     className="w-full border border-gray-200 rounded px-2 py-1 text-xs bg-white"
                   >
                     {SM_OPTIONS.map((sm) => (
@@ -517,7 +529,7 @@ export default function LiberacaoDetalhe() {
                 <AgendamentoVeiculo
                   key={`${v.id}-${v.dataAgendamento ?? ''}`}
                   dataAgendamento={v.dataAgendamento}
-                  salvando={salvandoAgendamentoId === v.id}
+                  salvando={salvandoAgendamentoId === v.id || !podeAlterarVeiculo}
                   onSalvar={(dataAgendamento) => {
                     setSalvandoAgendamentoId(v.id);
                     atualizarAgendamentoVeiculo.mutate({ veiculoId: v.id, dataAgendamento });
@@ -525,7 +537,7 @@ export default function LiberacaoDetalhe() {
                 />
 
                 {/* Fardos + Peso + Frete — clique altera */}
-                <CargaRapida v={v} salvar={salvarVeiculo(v.id)} desabilitado={inativo} ocultarValores={ocultarValores} pesoMedioFardoKg={lib.pesoMedioFardoKg} />
+                <CargaRapida v={v} salvar={salvarVeiculo(v.id)} desabilitado={bloqueado} ocultarValores={ocultarValores} pesoMedioFardoKg={lib.pesoMedioFardoKg} />
 
                 {/* Status update */}
                 <div className="min-w-[140px]">
@@ -536,7 +548,7 @@ export default function LiberacaoDetalhe() {
                       setSavingStatusId(v.id);
                       atualizarStatusVeiculo.mutate({ veiculoId: v.id, status: e.target.value });
                     }}
-                    disabled={savingStatusId === v.id}
+                    disabled={savingStatusId === v.id || !podeAlterarVeiculo}
                     className="w-full border border-gray-200 rounded px-2 py-1 text-xs bg-white"
                   >
                     {STATUS_OPTIONS.map((status, i) => (
@@ -569,13 +581,15 @@ export default function LiberacaoDetalhe() {
                       : <ChevronDownIcon className="w-3.5 h-3.5" />
                     }
                   </button>
-                  <button
-                    onClick={() => setVeiculoModal(v.id)}
-                    className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                    title="Editar"
-                  >
-                    <PencilSquareIcon className="w-4 h-4" />
-                  </button>
+                  {podeAlterarVeiculo && (
+                    <button
+                      onClick={() => setVeiculoModal(v.id)}
+                      className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                      title="Editar"
+                    >
+                      <PencilSquareIcon className="w-4 h-4" />
+                    </button>
+                  )}
                   {podeInativarVeiculo && (
                     <button
                       onClick={() => setInativacao({ veiculo: v, acao: 'inativar', motivo: '' })}
@@ -590,7 +604,7 @@ export default function LiberacaoDetalhe() {
                 {/* Trilha de etapas clicável (estilos novos): clique → confirma → muda o status */}
                 {trilhaEtapas && (
                   <div className="basis-full pt-1">
-                    <EtapasVeiculo status={v.status} desabilitado={inativo} salvando={savingStatusId === v.id}
+                    <EtapasVeiculo status={v.status} desabilitado={bloqueado} salvando={savingStatusId === v.id}
                       onMudar={(status) => { setSavingStatusId(v.id); atualizarStatusVeiculo.mutate({ veiculoId: v.id, status }); }} />
                   </div>
                 )}
@@ -672,7 +686,7 @@ export default function LiberacaoDetalhe() {
         if (!v) return null;
         return (
           <InformeModal v={v} lib={lib} posicao={Math.max(1, ativos.findIndex((x: any) => x.id === v.id) + 1)}
-            captacoes={referencias?.captacoes ?? []} salvar={salvarVeiculo(v.id)} onClose={() => setInforme(null)} />
+            captacoes={referencias?.captacoes ?? []} salvar={salvarVeiculo(v.id)} somenteLeitura={!podeAlterarVeiculo || !v.ativo} onClose={() => setInforme(null)} />
         );
       })()}
 

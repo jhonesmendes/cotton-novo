@@ -4,6 +4,7 @@ import { AppError } from './errorHandler';
 import { PerfilUsuario } from '../types/prisma-types';
 import { executarComContexto } from '../services/auditoria-contexto';
 import prisma from '../database/prisma';
+import { Acao, Tela, pode } from '../services/permissoes';
 
 export interface AuthRequest extends Request {
   user?: {
@@ -16,8 +17,8 @@ export interface AuthRequest extends Request {
 }
 
 const ROTAS_PERFIL_RESTRITO: Partial<Record<string, string[]>> = {
-  GR: ['/api/gr', '/api/auth'],
-  VISITANTE: ['/api/posicao-cliente', '/api/auth'],
+  GR: ['/api/gr', '/api/auth', '/api/permissoes/minhas'],
+  VISITANTE: ['/api/posicao-cliente', '/api/auth', '/api/permissoes/minhas'],
 };
 
 export async function authenticate(req: AuthRequest, _res: Response, next: NextFunction) {
@@ -75,6 +76,20 @@ export function requireRole(...roles: PerfilUsuario[]) {
     }
     if (!roles.includes(req.user.perfil)) {
       throw new AppError('Acesso negado', 403, 'FORBIDDEN');
+    }
+    next();
+  };
+}
+
+// Permissão editável por perfil × tela × ação (Configurações › Permissões).
+// Use nas rotas no lugar de requireRole sempre que a regra for "quem pode ver/incluir/
+// alterar/excluir nesta tela". Regras fixas de negócio (ex.: só ADMIN fecha instrução
+// com pendência) continuam com requireRole.
+export function exigirPermissao(tela: Tela, acao: Acao) {
+  return async (req: AuthRequest, _res: Response, next: NextFunction) => {
+    if (!req.user) throw new AppError('Não autenticado', 401, 'UNAUTHORIZED');
+    if (!(await pode(req.user.perfil, tela, acao))) {
+      throw new AppError('Seu perfil não tem permissão para esta ação', 403, 'FORBIDDEN');
     }
     next();
   };

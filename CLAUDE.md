@@ -197,6 +197,16 @@ AGUARDANDO_GR → TRANSITO_CARREGAMENTO → LOCAL → MANIFESTADO
   `StatusAlerta`, `PerfilUsuario` (ADMIN/OPERADOR/GESTOR_FILIAL/VISUALIZADOR/CLIENTE),
   `StatusLiberacao`, `TipoAcesso`. `PerfilUsuario` ganhou `GR` e `VISITANTE` (nov/2026).
 
+## Cache e versões
+
+- `frontend/nginx.conf` (produção): página do app e `versao.json` sem cache; `/assets/*`
+  (nomes com hash) com cache longo; `/api` com `no-store`.
+- O build grava `dist/versao.json` e embute a mesma versão no app (`__VERSAO_APP__`,
+  `vite.config.ts`). `components/AvisoNovaVersao.tsx` confere a cada minuto: aba visível
+  mostra "Saiu uma versão nova", aba em segundo plano recarrega sozinha.
+- `utils/sincronizarAbas.ts`: salvar algo numa aba atualiza os dados nas outras
+  (BroadcastChannel); login/logout e estilo acompanham entre abas (evento `storage`).
+
 ## Variáveis de ambiente
 
 - **Com Docker** (padrão): tudo vem do `.env` da raiz (`POSTGRES_USER`,
@@ -262,8 +272,13 @@ AGUARDANDO_GR → TRANSITO_CARREGAMENTO → LOCAL → MANIFESTADO
 
 - Nomes de domínio (rotas, enums, campos) em português — manter esse padrão em código
   novo.
-- Perfis de usuário controlam acesso; checar `PerfilUsuario` e o middleware `auth.ts`
-  antes de expor novos endpoints.
+- **Permissões editáveis** (Configurações › Permissões, só ADMIN): perfil × tela × ação
+  (`ver`/`incluir`/`alterar`/`excluir`) em `permissoes_perfil`; catálogo de telas e padrão
+  (que reproduz o comportamento anterior) em `backend/src/services/permissoes.ts`. Rota nova:
+  use `exigirPermissao('TELA', 'acao')` (middleware `auth.ts`); `requireRole` só para regra
+  fixa (telas de administração e regras de negócio só-ADMIN). ADMIN tem sempre tudo; GR e
+  VISITANTE são fixos. No frontend, `usePode()` (`utils/permissoes.ts`) esconde menu/botões
+  e `RequireTela` protege as rotas — o backend é quem garante.
 - Não faça deploy nem execute migrações de produção (`migrate:prod` /
   `docker-compose.prod.yml`) sem confirmação explícita do usuário.
 - `backend/dist/`, `backend/dev.db` e `.env` **não** devem ser versionados (foram

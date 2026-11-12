@@ -21,6 +21,7 @@ import { relatoriosRouter } from './routes/relatorios.routes';
 import { parametrosRouter } from './routes/parametros.routes';
 import { grRouter } from './routes/gr.routes';
 import { configuracoesRouter } from './routes/configuracoes.routes';
+import { permissoesRouter } from './routes/permissoes.routes';
 import { acessosClienteRouter, posicaoClienteRouter, publicoRouter } from './routes/acessos-cliente.routes';
 
 // A instância de desenvolvimento pode priorizar o .env local sem alterar a
@@ -55,6 +56,7 @@ app.use('/api/relatorios', relatoriosRouter);
 app.use('/api/parametros', parametrosRouter);
 app.use('/api/gr', grRouter);
 app.use('/api/configuracoes', configuracoesRouter);
+app.use('/api/permissoes', permissoesRouter);
 app.use('/api/acessos-cliente', acessosClienteRouter);
 app.use('/api/posicao-cliente', posicaoClienteRouter);
 app.use('/api/publico', publicoRouter);

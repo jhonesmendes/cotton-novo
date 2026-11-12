@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -34,14 +35,6 @@ const PERFIS = [
 // Visitante só nasce pelo convite (Configurações › Acesso do cliente) — aparece na lista, não no cadastro.
 const PERFIS_EXIBICAO = [...PERFIS, { value: 'VISITANTE', label: 'Visitante (cliente)', color: 'bg-amber-100 text-amber-800' }];
 
-// Espelha exatamente o que cada rota do backend libera por perfil
-// (requireRole em cada *.routes.ts) — não é só texto informativo.
-const PERMISSOES_POR_PERFIL: Record<string, string[]> = {
-  ADMIN: ['Dashboard', 'Liberações', 'Veículos', 'Alertas', 'Cadastros (completo)', 'Usuários'],
-  OPERADOR: ['Dashboard', 'Liberações (sem criar/editar)', 'Veículos', 'Alertas', 'Cadastros (completo)'],
-  GESTOR_FILIAL: ['Dashboard', 'Liberações', 'Veículos', 'Alertas', 'Cadastros (completo)'],
-  GR: ['Só a tela GR: SM, rastreamento e isca', 'Com filial: só as placas dela', 'Sem frete nem margem'],
-};
 
 const usuarioSchema = z.object({
   nome: z.string().min(1, 'Nome é obrigatório'),
@@ -248,26 +241,9 @@ export default function UsuariosPage() {
         )}
       </div>
 
-      {/* PERMISSÕES REFERÊNCIA */}
-      <div className="ui-card p-5">
-        <h3 className="font-bold text-sm mb-4">Permissões por Perfil</h3>
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-          {PERFIS.map(perfil => (
-            <div key={perfil.value} className="text-xs">
-              <span className={`block px-2 py-1 rounded font-medium mb-2 text-center ${perfil.color}`}>
-                {perfil.label}
-              </span>
-              <ul className="text-gray-600 space-y-1">
-                {PERMISSOES_POR_PERFIL[perfil.value].map(perm => (
-                  <li key={perm} className="flex items-center gap-1">
-                    <Check className="w-3 h-3 text-green-600" /> {perm}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-      </div>
+      <p className="text-xs text-ui-text-muted">
+        O que cada perfil pode ver e fazer fica em <Link to="/configuracoes/permissoes" className="font-semibold text-ui-primary hover:underline">Configurações › Permissões</Link>.
+      </p>
 
       {/* MODAL */}
       {modalAberto && (

@@ -345,6 +345,19 @@ model AcessoCliente {
   @@map("acessos_cliente")
 }
 
+// Permissões editáveis por perfil × tela × ação (Configurações › Permissões).
+// Sem linha = vale o padrão do código (services/permissoes.ts). ADMIN tem sempre tudo.
+model PermissaoPerfil {
+  id        Int      @id @default(autoincrement())
+  perfil    String
+  tela      String
+  acao      String
+  permitido Boolean
+  updatedAt DateTime @updatedAt @map("updated_at")
+  @@unique([perfil, tela, acao])
+  @@map("permissoes_perfil")
+}
+
 // Retrato diário dos KPIs do Dashboard (comparação "vs. semana passada" e minigráfico).
 model KpiDiario {
   id                Int      @id @default(autoincrement())

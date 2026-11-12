@@ -4,6 +4,7 @@ import { NavLink } from 'react-router-dom';
 const ABAS = [
   { to: '/configuracoes/usuarios', rotulo: 'Usuários' },
   { to: '/configuracoes/email', rotulo: 'E-mail (SMTP)' },
+  { to: '/configuracoes/permissoes', rotulo: 'Permissões' },
 ];
 
 export default function AbasConfiguracoes() {

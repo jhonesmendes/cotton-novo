@@ -6,30 +6,32 @@ import {
 } from '@heroicons/react/24/outline';
 import { useQuery } from '@tanstack/react-query';
 import BuscaGlobal from './BuscaGlobal';
+import { Tela, usePode } from '@/utils/permissoes';
 import MinhaConta, { aplicarPreferencias, salvarPreferencias } from './MinhaConta';
 import clsx from 'clsx';
 import { useAuthStore } from '@/stores/auth.store';
 import { useThemeStore } from '@/stores/theme.store';
 import api from '@/services/api';
 
-type ItemMenu = { to: string; label: string; icon: typeof HomeIcon; perfis?: string[] };
+// `tela`: permissão editável (Configurações › Permissões); `perfis`: telas fixas de administração.
+type ItemMenu = { to: string; label: string; icon: typeof HomeIcon; tela?: Tela; perfis?: string[] };
 
 // Menu agrupado. `perfis` restringe o item; sem `perfis` = todos os perfis internos.
 const grupos: { titulo: string; itens: ItemMenu[] }[] = [
   {
     titulo: 'Operação',
     itens: [
-      { to: '/dashboard', label: 'Dashboard', icon: HomeIcon },
-      { to: '/liberacoes', label: 'Liberações', icon: ClipboardDocumentListIcon },
-      { to: '/gr', label: 'GR', icon: FingerPrintIcon, perfis: ['ADMIN', 'GESTOR_FILIAL', 'OPERADOR', 'GR'] },
-      { to: '/alertas', label: 'Alertas', icon: BellAlertIcon },
+      { to: '/dashboard', label: 'Dashboard', icon: HomeIcon, tela: 'DASHBOARD' },
+      { to: '/liberacoes', label: 'Liberações', icon: ClipboardDocumentListIcon, tela: 'LIBERACOES' },
+      { to: '/gr', label: 'GR', icon: FingerPrintIcon, tela: 'GR' },
+      { to: '/alertas', label: 'Alertas', icon: BellAlertIcon, tela: 'ALERTAS' },
     ],
   },
   {
     titulo: 'Gestão',
     itens: [
-      { to: '/relatorios', label: 'Relatórios', icon: ChartBarIcon },
-      { to: '/cadastros', label: 'Revisão de Dados', icon: FolderIcon },
+      { to: '/relatorios', label: 'Relatórios', icon: ChartBarIcon, tela: 'RELATORIOS' },
+      { to: '/cadastros', label: 'Revisão de Dados', icon: FolderIcon, tela: 'CADASTROS' },
       { to: '/auditoria', label: 'Auditoria', icon: ShieldCheckIcon, perfis: ['ADMIN'] },
       { to: '/configuracoes/acessos-cliente', label: 'Acesso do cliente', icon: LinkIcon, perfis: ['ADMIN'] },
       { to: '/configuracoes', label: 'Configurações', icon: Cog6ToothIcon, perfis: ['ADMIN'] },
@@ -38,14 +40,21 @@ const grupos: { titulo: string; itens: ItemMenu[] }[] = [
 ];
 
 // Perfil GR vê só a tela GR.
-function itensDoPerfil(perfil?: string) {
+function itensDoPerfil(perfil: string | undefined, pode: (tela: Tela) => boolean) {
   if (perfil === 'GR') return [{ titulo: 'Operação', itens: grupos[0].itens.filter((i) => i.to === '/gr') }];
-  return grupos.map((g) => ({ ...g, itens: g.itens.filter((i) => !i.perfis || (perfil && i.perfis.includes(perfil))) }));
+  return grupos
+    .map((g) => ({ ...g, itens: g.itens.filter((i) => (i.tela ? pode(i.tela) : !i.perfis || (perfil && i.perfis.includes(perfil)))) }))
+    .filter((g) => g.itens.length > 0);
+}
+
+// Primeira tela que o perfil pode abrir (para onde mandar quem não tem o Dashboard, por ex.).
+export function primeiraTela(perfil: string | undefined, pode: (tela: Tela) => boolean) {
+  return itensDoPerfil(perfil, pode)[0]?.itens[0]?.to ?? '/dashboard';
 }
 
 const pageTitles: Record<string, string> = {
   '/dashboard': 'Dashboard', '/liberacoes': 'Liberações', '/alertas': 'Alertas', '/gr': 'GR — Gerenciadora de Risco',
-  '/configuracoes': 'Configurações', '/configuracoes/usuarios': 'Configurações', '/configuracoes/acessos-cliente': 'Acesso do cliente', '/configuracoes/email': 'Configurações',
+  '/configuracoes': 'Configurações', '/configuracoes/usuarios': 'Configurações', '/configuracoes/acessos-cliente': 'Acesso do cliente', '/configuracoes/email': 'Configurações', '/configuracoes/permissoes': 'Configurações',
   '/cadastros': 'Revisão de Dados', '/cadastros/modelos': 'Revisão de Dados',
   '/auditoria': 'Auditoria', '/relatorios': 'Relatórios',
 };
@@ -54,14 +63,15 @@ type SidebarContentProps = { onNavigate?: () => void; onLogout: () => void; onMi
 
 // Configurações fica ativo nas abas dele (Usuários / E-mail), não em Acesso do cliente.
 const ativoEm = (to: string, pathname: string, isActive: boolean) =>
-  to === '/configuracoes' ? /^\/configuracoes(\/(usuarios|email))?$/.test(pathname) : isActive;
+  to === '/configuracoes' ? /^\/configuracoes(\/(usuarios|email|permissoes))?$/.test(pathname) : isActive;
 
 // Navegação horizontal (estilo Controle): mesmos itens, em linha no topo.
 function NavTopo({ perfil }: { perfil?: string }) {
   const location = useLocation();
+  const pode = usePode();
   return (
     <nav className="hidden items-center gap-0.5 lg:flex" aria-label="Navegação principal">
-      {itensDoPerfil(perfil).map((g, gi) => (
+      {itensDoPerfil(perfil, pode).map((g, gi) => (
         <div key={g.titulo} className="flex items-center gap-0.5">
           {gi > 0 && <span className="mx-2 h-5 w-px bg-white/15" aria-hidden />}
           {g.itens.map(({ to, label, icon: Icon }) => (
@@ -79,6 +89,7 @@ function NavTopo({ perfil }: { perfil?: string }) {
 
 function SidebarContent({ onNavigate, onLogout, onMinhaConta, userName, perfil, compacto }: SidebarContentProps) {
   const location = useLocation();
+  const pode = usePode();
   // Cores do menu vêm do estilo do usuário (styles/estilos.css, --sb-*).
   // Compacto (estilo Executivo): trilho só de ícones, rótulo aparece ao passar o mouse.
   const itemClass = (isActive: boolean) => clsx(
@@ -99,7 +110,7 @@ function SidebarContent({ onNavigate, onLogout, onMinhaConta, userName, perfil, 
       </div>
     </div>
     <nav className={clsx('flex-1 space-y-4 pt-5', compacto ? 'flex flex-col items-center px-2' : 'px-3')} aria-label="Navegação principal">
-      {itensDoPerfil(perfil).map((g) => (
+      {itensDoPerfil(perfil, pode).map((g) => (
         <div key={g.titulo} className={clsx('space-y-0.5', compacto && 'flex flex-col items-center border-t border-white/0 pt-2 first:pt-0')}>
           <p className={clsx('ui-nav-grupo pb-1 text-[10px] font-semibold uppercase tracking-wider', compacto ? 'sr-only' : 'px-3')}>{g.titulo}</p>
           {g.itens.map(({ to, label, icon: Icon }) => (
@@ -144,6 +155,9 @@ export default function Layout() {
   const currentTitle = pageTitles[location.pathname]
     ?? (location.pathname.startsWith('/liberacoes/') ? 'Liberação' : 'Gestão de Cargas');
   const ehGr = user?.perfil === 'GR';
+  const pode = usePode();
+  const veAlertas = !ehGr && pode('ALERTAS');
+  const buscaGlobal = !ehGr && pode('LIBERACOES');
   const [buscaAberta, setBuscaAberta] = useState(false);
   const [minhaConta, setMinhaConta] = useState(false);
   // Botão sol/lua do topo também grava no usuário.
@@ -154,26 +168,26 @@ export default function Layout() {
 
   // Busca global: Ctrl+K / ⌘K.
   useEffect(() => {
-    if (ehGr) return;
+    if (!buscaGlobal) return;
     const atalho = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setBuscaAberta(true); }
     };
     window.addEventListener('keydown', atalho);
     return () => window.removeEventListener('keydown', atalho);
-  }, [ehGr]);
+  }, [buscaGlobal]);
 
   // Sino: alertas de prazo (vencido/hoje/crítico) + pendências de fechamento.
   const { data: alertas } = useQuery({
     queryKey: ['alertas', 'contador'],
     queryFn: () => api.get('/alertas?limit=1').then((r) => r.data),
     refetchInterval: 60_000,
-    enabled: !ehGr,
+    enabled: veAlertas,
   });
   const { data: pendencias } = useQuery({
     queryKey: ['alertas', 'pendencias-fechamento'],
     queryFn: () => api.get('/alertas/pendencias-fechamento').then((r) => r.data),
     refetchInterval: 60_000,
-    enabled: !ehGr,
+    enabled: veAlertas,
   });
   const totalAlertas = (alertas?.sumario ? alertas.sumario.vencidos + alertas.sumario.hoje + alertas.sumario.criticos : 0) + (pendencias?.total ?? 0);
   const handleLogout = () => { logout(); navigate('/login'); };
@@ -222,14 +236,14 @@ export default function Layout() {
           )}
         </div>
         <div className="flex items-center gap-3 text-right">
-          {!ehGr && (
+          {buscaGlobal && (
             <button type="button" onClick={() => setBuscaAberta(true)} title="Busca global (Ctrl+K)"
               className="hidden items-center gap-2 rounded-ui-md border border-ui-border px-3 py-1.5 text-xs text-ui-text-muted hover:bg-ui-muted sm:flex">
               <MagnifyingGlassIcon className="h-4 w-4" /><span className={navTopo ? 'hidden 2xl:inline' : ''}>Placa, motorista, instrução</span>
               <kbd className="rounded border border-ui-border px-1 text-[10px]">Ctrl K</kbd>
             </button>
           )}
-          {!ehGr && (
+          {veAlertas && (
             <button type="button" onClick={() => navigate('/alertas')} aria-label={`${totalAlertas} alertas`} title="Alertas"
               className="relative rounded-ui-sm p-2 text-ui-text-muted hover:bg-ui-muted hover:text-ui-text">
               <BellAlertIcon className="h-5 w-5" />
