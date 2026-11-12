@@ -144,7 +144,9 @@ AGUARDANDO_GR → TRANSITO_CARREGAMENTO → LOCAL → MANIFESTADO
 - **Acesso do cliente** (`controllers/acessos-cliente.controller.ts`, tela Configurações › Acesso
   do cliente, só ADMIN): link temporário sem login (24 h, `/posicao/:token`) ou convite por e-mail
   que cria um usuário `VISITANTE` preso ao cliente (link de cadastro de 7 h, `/convite/:token`).
-  Tokens só com hash no banco (`acessos_cliente`); rotas públicas em `/api/publico`. A tela de
+  Tokens só com hash no banco (`acessos_cliente`); rotas públicas em `/api/publico`. Cancelar ≠ excluir: `DELETE /acessos-cliente/:id`
+  cancela; `DELETE /:id/registro` e `POST /limpar-encerrados` apagam da lista só o que já não vale
+  (expirado, cancelado, visitante desativado). A tela de
   posição conta veículos por etapa e nunca mostra frete motorista, margem nem motorista.
 - **Dashboard** (`GET /dashboard/painel`, `pages/Dashboard`): um endpoint devolve todos os blocos
   já filtrados (cliente, filial, dia do deadline, situação do prazo, período de/até); filtros na

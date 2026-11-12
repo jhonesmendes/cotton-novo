@@ -99,14 +99,14 @@ function SidebarContent({ onNavigate, onLogout, onMinhaConta, userName, perfil, 
   );
 
   return <>
-    {/* Marca: mesma altura do cabeçalho do topo (h-14), as linhas divisórias ficam alinhadas. */}
-    <div className={clsx('ui-sidebar-marca flex h-14 shrink-0 items-center gap-3 border-b', compacto ? 'justify-center px-2' : 'px-4')}>
-      <span className="flex h-10 shrink-0 items-center rounded-ui-md bg-white px-1.5 shadow-sm">
-        <img src="/logo-fibra-forte.png" alt="Fibra Forte" className="h-8 w-auto" />
+    {/* Marca: logo em cima, maior, e o nome do sistema embaixo (no trilho compacto, só o logo). */}
+    <div className={clsx('ui-sidebar-marca flex shrink-0 border-b', compacto ? 'h-14 items-center justify-center px-2' : 'flex-col items-center gap-2 px-4 py-4 text-center')}>
+      <span className={clsx('flex shrink-0 items-center rounded-ui-md bg-white shadow-sm', compacto ? 'h-10 px-1.5' : 'h-16 px-3')}>
+        <img src="/logo-fibra-forte.png" alt="Fibra Forte" className={compacto ? 'h-8 w-auto' : 'h-12 w-auto'} />
       </span>
-      <div className={compacto ? 'sr-only' : 'min-w-0 leading-tight'}>
-        <span className="ui-marca-nome block font-display text-[15px] font-bold">Cotton</span>
-        <span className="ui-marca-sub block text-[10px] font-medium uppercase tracking-wide">Gestão de cargas</span>
+      <div className={compacto ? 'sr-only' : 'leading-tight'}>
+        <span className="ui-marca-nome block font-display text-base font-bold">Cotton</span>
+        <span className="ui-marca-sub block text-[10px] font-medium uppercase tracking-wider">Gestão de cargas</span>
       </div>
     </div>
     <nav className={clsx('flex-1 space-y-4 pt-5', compacto ? 'flex flex-col items-center px-2' : 'px-3')} aria-label="Navegação principal">

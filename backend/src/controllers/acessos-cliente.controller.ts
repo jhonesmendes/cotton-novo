@@ -101,6 +101,29 @@ export async function cancelar(req: AuthRequest, res: Response) {
   return res.json({ ok: true });
 }
 
+// Excluir de vez = apagar o registro da lista. Só para o que já não vale nada
+// (expirado, cancelado ou visitante desativado); válido/ativo precisa ser cancelado antes.
+const REMOVIVEIS = new Set(['EXPIRADO', 'CANCELADO', 'VISITANTE_DESATIVADO']);
+const comUsuario = { usuario: { select: { ativo: true } } } as const;
+
+export async function excluir(req: AuthRequest, res: Response) {
+  const acesso = await prisma.acessoCliente.findUnique({ where: { id: parseInt(req.params.id) }, include: comUsuario });
+  if (!acesso) throw new AppError('Acesso não encontrado', 404);
+  if (!REMOVIVEIS.has(situacao(acesso))) {
+    throw new AppError('Este acesso ainda vale. Cancele (ou desative o visitante) antes de excluir.', 400, 'ACESSO_EM_USO');
+  }
+  await prisma.acessoCliente.delete({ where: { id: acesso.id } });
+  return res.json({ ok: true });
+}
+
+// Limpa de uma vez todos os expirados/cancelados/desativados.
+export async function limparEncerrados(_req: AuthRequest, res: Response) {
+  const todos = await prisma.acessoCliente.findMany({ include: comUsuario });
+  const ids = todos.filter((a) => REMOVIVEIS.has(situacao(a))).map((a) => a.id);
+  if (ids.length) await prisma.acessoCliente.deleteMany({ where: { id: { in: ids } } });
+  return res.json({ removidos: ids.length });
+}
+
 // ─── Públicas (sem login) ────────────────────────────────────────────────────
 
 async function acessoValido(token: string, tipo: TipoAcessoCliente) {

@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { ClipboardDocumentIcon, LinkIcon, EnvelopeIcon } from '@heroicons/react/24/outline';
+import { ClipboardDocumentIcon, LinkIcon, EnvelopeIcon, TrashIcon } from '@heroicons/react/24/outline';
 import api from '@/services/api';
 import PageHeader from '@/components/ui/PageHeader';
 import { formatDateTime } from '@/utils/format';
+import ConfirmModal from '@/components/ConfirmModal';
 
 // Acessos do cliente à tela de posição (só ADMIN): link temporário (24 h, sem login)
 // ou convite de Visitante (e-mail com link de cadastro de 7 h). Sempre um cliente por acesso.
@@ -16,6 +17,9 @@ const SITUACAO: Record<string, { rotulo: string; cls: string }> = {
   VISITANTE_DESATIVADO: { rotulo: 'Visitante desativado', cls: 'bg-gray-100 text-gray-500' },
 };
 
+// Já não valem nada: podem sair da lista de vez.
+const ENCERRADOS = new Set(['EXPIRADO', 'CANCELADO', 'VISITANTE_DESATIVADO']);
+
 const erro = (e: any, padrao: string) => e?.response?.data?.error?.details?.[0]?.message ?? e?.response?.data?.error?.message ?? padrao;
 
 async function copiar(texto: string) {
@@ -26,6 +30,7 @@ export default function AcessosClientePage() {
   const qc = useQueryClient();
   const [clienteId, setClienteId] = useState('');
   const [email, setEmail] = useState('');
+  const [excluir, setExcluir] = useState<any | 'todos' | null>(null);
   const [gerado, setGerado] = useState<{ url: string; expiraEm: string; tipo: string } | null>(null);
 
   const { data: clientes } = useQuery({ queryKey: ['clientes'], queryFn: () => api.get('/clientes').then((r) => r.data) });
@@ -53,6 +58,15 @@ export default function AcessosClientePage() {
     },
     onError: (e) => toast.error(erro(e, 'Não foi possível concluir')),
   });
+
+  const remover = useMutation({
+    mutationFn: (alvo: any) => alvo === 'todos'
+      ? api.post('/acessos-cliente/limpar-encerrados').then((r) => r.data.removidos as number)
+      : api.delete(`/acessos-cliente/${alvo.id}/registro`).then(() => 1),
+    onSuccess: (n) => { toast.success(n === 1 ? 'Acesso excluído' : `${n} acessos excluídos`); setExcluir(null); recarregar(); },
+    onError: (e) => toast.error(erro(e, 'Não foi possível excluir')),
+  });
+  const encerrados = (acessos ?? []).filter((a) => ENCERRADOS.has(a.situacao)).length;
 
   return (
     <div className="ui-page space-y-6">
@@ -87,6 +101,14 @@ export default function AcessosClientePage() {
       </div>
 
       <div className="ui-card overflow-x-auto">
+        {encerrados > 0 && (
+          <div className="flex items-center justify-between gap-3 border-b border-ui-border-subtle px-4 py-2.5 text-xs text-ui-text-muted">
+            <span>{encerrados} {encerrados === 1 ? 'acesso encerrado' : 'acessos encerrados'} (expirado, cancelado ou visitante desativado)</span>
+            <button type="button" onClick={() => setExcluir('todos')} className="inline-flex items-center gap-1.5 font-semibold text-red-600 hover:underline">
+              <TrashIcon className="h-4 w-4" />Excluir encerrados
+            </button>
+          </div>
+        )}
         <table className="w-full text-sm">
           <thead className="bg-ui-muted text-xs uppercase text-ui-text-muted">
             <tr>
@@ -96,7 +118,7 @@ export default function AcessosClientePage() {
               <th className="px-4 py-3 text-left">Gerado</th>
               <th className="px-4 py-3 text-left">Validade</th>
               <th className="px-4 py-3 text-left">Situação</th>
-              <th className="px-4 py-3" />
+              <th className="px-4 py-3"><span className="sr-only">Ações</span></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-ui-border-subtle">
@@ -122,6 +144,12 @@ export default function AcessosClientePage() {
                         {a.situacao === 'ACEITO' ? 'Desativar visitante' : 'Cancelar'}
                       </button>
                     )}
+                    {ENCERRADOS.has(a.situacao) && (
+                      <button type="button" onClick={() => setExcluir(a)} title="Excluir da lista" aria-label="Excluir da lista"
+                        className="rounded-ui-sm p-1.5 text-ui-text-muted hover:bg-red-50 hover:text-red-600">
+                        <TrashIcon className="h-4 w-4" />
+                      </button>
+                    )}
                   </td>
                 </tr>
               );
@@ -130,6 +158,14 @@ export default function AcessosClientePage() {
           </tbody>
         </table>
       </div>
+
+      <ConfirmModal isOpen={!!excluir}
+        title={excluir === 'todos' ? 'Excluir acessos encerrados' : 'Excluir acesso'}
+        message={excluir === 'todos'
+          ? `Os ${encerrados} acessos expirados, cancelados ou de visitante desativado saem da lista. Não dá para desfazer.`
+          : 'Este acesso sai da lista. Não dá para desfazer.'}
+        confirmLabel="Excluir" variant="danger" loading={remover.isPending}
+        onConfirm={() => excluir && remover.mutate(excluir)} onCancel={() => setExcluir(null)} />
     </div>
   );
 }

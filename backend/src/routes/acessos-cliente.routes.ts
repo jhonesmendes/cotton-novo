@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { authenticate, requireRole } from '../middleware/auth';
 import {
-  aceitarConvite, cancelar, convidar, dadosConvite, gerarLink, listar, posicaoPorLink, posicaoVisitante, reenviar,
+  aceitarConvite, cancelar, convidar, dadosConvite, excluir, gerarLink, limparEncerrados, listar, posicaoPorLink, posicaoVisitante, reenviar,
 } from '../controllers/acessos-cliente.controller';
 
 // Gestão dos acessos — só ADMIN.
@@ -11,7 +11,9 @@ acessosClienteRouter.get('/', listar);
 acessosClienteRouter.post('/link', gerarLink);
 acessosClienteRouter.post('/convite', convidar);
 acessosClienteRouter.post('/:id/reenviar', reenviar);
+acessosClienteRouter.post('/limpar-encerrados', limparEncerrados);
 acessosClienteRouter.delete('/:id', cancelar);
+acessosClienteRouter.delete('/:id/registro', excluir);
 
 // Sem login: link temporário e cadastro pelo convite (o token é a credencial).
 export const publicoRouter = Router();
