@@ -101,9 +101,7 @@ function SidebarContent({ onNavigate, onLogout, onMinhaConta, userName, perfil, 
   return <>
     {/* Marca: logo em cima, maior, e o nome do sistema embaixo (no trilho compacto, só o logo). */}
     <div className={clsx('ui-sidebar-marca flex shrink-0 border-b', compacto ? 'h-14 items-center justify-center px-2' : 'flex-col items-center gap-2 px-4 py-4 text-center')}>
-      <span className={clsx('flex shrink-0 items-center rounded-ui-md bg-white shadow-sm', compacto ? 'h-10 px-1.5' : 'h-16 px-3')}>
-        <img src="/logo-fibra-forte.png" alt="Fibra Forte" className={compacto ? 'h-8 w-auto' : 'h-12 w-auto'} />
-      </span>
+      <img src="/logo-fibra-forte-transparente.png" alt="Fibra Forte Transportes" className={clsx('ui-logo', compacto ? 'h-9 w-auto' : 'h-auto w-36')} />
       <div className={compacto ? 'sr-only' : 'leading-tight'}>
         <span className="ui-marca-nome block font-display text-base font-bold">Cotton</span>
         <span className="ui-marca-sub block text-[10px] font-medium uppercase tracking-wider">Gestão de cargas</span>
@@ -225,9 +223,7 @@ export default function Layout() {
           <button type="button" aria-label="Abrir menu" onClick={() => setMobileOpen(true)} className={clsx('rounded-ui-sm p-2 text-ui-text-muted hover:bg-ui-muted', navTopo ? 'lg:hidden' : 'md:hidden')}><Bars3Icon className="h-6 w-6" /></button>
           {navTopo ? (
             <>
-              <span className="flex h-9 shrink-0 items-center rounded-ui-md bg-white px-1.5">
-                <img src="/logo-fibra-forte.png" alt="Fibra Forte" className="h-7 w-auto" />
-              </span>
+              <img src="/logo-fibra-forte-transparente.png" alt="Fibra Forte Transportes" className="ui-logo h-10 w-auto shrink-0" />
               <span className="ui-marca-nome mr-3 hidden font-display text-[15px] font-bold xl:inline">Cotton</span>
               <NavTopo perfil={user?.perfil} />
             </>

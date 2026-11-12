@@ -320,3 +320,13 @@ select option:disabled { color: rgb(var(--g-400)); }
 /* Botão/realce na cor limão pedem texto escuro (branco no limão não se lê). */
 .estilo-safra .ui-btn-primary, .estilo-safra .bg-ui-primary, .estilo-safra .bg-ui-primary * { color: #0c140f; }
 .estilo-safra h1 { font-weight: 700; letter-spacing: -.02em; }
+
+/* Logo transparente (azul + verde): em menu escuro o azul some no fundo — um contorno
+   branco fino nas letras devolve a leitura sem voltar a pôr fundo atrás do logo. */
+.ui-logo { transition: filter .2s; }
+:root.dark .ui-logo,
+:root.estilo-controle .ui-logo,
+:root.estilo-lavoura .ui-logo,
+:root.estilo-safra .ui-logo {
+  filter: drop-shadow(0 0 .6px #fff) drop-shadow(0 0 .6px #fff) drop-shadow(0 0 .6px #fff);
+}
